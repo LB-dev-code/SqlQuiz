@@ -218,6 +218,10 @@ public class AIQuestionController {
             String questionTypeStr = (String) request.get("questionType");
             String difficultyStr = (String) request.get("difficulty");
             
+            // 调试日志
+            System.out.println("[AI Question] Received questionType: " + questionTypeStr);
+            System.out.println("[AI Question] Received difficulty: " + difficultyStr);
+            
             Object scoreObj = request.get("score");
             Double score;
             if (scoreObj instanceof String) {
@@ -248,16 +252,26 @@ public class AIQuestionController {
             if (questionTypeStr != null && !questionTypeStr.trim().isEmpty()) {
                 try {
                     questionType = Question.QuestionType.valueOf(questionTypeStr);
+                    System.out.println("[AI Question] Parsed questionType: " + questionType);
                 } catch (IllegalArgumentException e) {
+                    System.err.println("[AI Question] Failed to parse questionType: " + questionTypeStr);
+                    System.err.println("[AI Question] Error: " + e.getMessage());
                 }
+            } else {
+                System.err.println("[AI Question] questionType is null or empty");
             }
 
             Question.DifficultyLevel difficulty = null;
             if (difficultyStr != null && !difficultyStr.trim().isEmpty()) {
                 try {
                     difficulty = Question.DifficultyLevel.valueOf(difficultyStr);
+                    System.out.println("[AI Question] Parsed difficulty: " + difficulty);
                 } catch (IllegalArgumentException e) {
+                    System.err.println("[AI Question] Failed to parse difficulty: " + difficultyStr);
+                    System.err.println("[AI Question] Error: " + e.getMessage());
                 }
+            } else {
+                System.err.println("[AI Question] difficulty is null or empty");
             }
 
             String tablePrefix = null;

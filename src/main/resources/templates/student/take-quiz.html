@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taking Quiz - MySQL Knowledge Testing Platform</title>
     
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Font Awesome - Using jsdelivr CDN to avoid Tracking Prevention -->
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
         :root {
@@ -623,13 +623,13 @@
             <div class="right">
                 <div class="chip">
                     <i class="fas fa-list"></i>
-                    <span>Progress: <span id="progressText">0/<span th:text="${#lists.size(questions)}">0</span></span>
-                    </div>
-                <div class="clock" id="timerDisplay" th:if="${timeRemaining >= 0}">
-                    <i class="fas fa-clock"></i>
-                    <span id="timeRemaining" th:attr="data-time=${timeRemaining}">60:00</span>
+                    <span>Progress: <span id="progressText">0/<span th:text="${#lists.size(questions)}">0</span></span></span>
                 </div>
-                <div class="clock" th:if="${timeRemaining < 0}">
+                <div class="clock" id="timerDisplay" th:if="${timeRemaining ge 0}">
+                    <i class="fas fa-clock"></i>
+                    <span id="timeRemaining" th:data-time="${timeRemaining}">60:00</span>
+                </div>
+                <div class="clock" th:if="${timeRemaining lt 0}">
                     <i class="fas fa-infinity"></i>
                     No time limit
                 </div>
@@ -649,7 +649,7 @@
 
         <!-- Questions Container -->
         <div id="questionsContainer">
-            <div class="question-card" th:each="question,questionStat : ${questions}" th:attr="data-question-id=${question.id}">
+            <div class="question-card" th:each="question,questionStat : ${questions}" th:data-question-id="${question.id}">
                 <div class="question-header">
                     <div class="question-title">
                         <i class="fas fa-question-circle"></i>
@@ -659,8 +659,8 @@
                         <span class="badge badge-primary" th:text="${question.questionType.englishName}">SQL编程题</span>
                         <span class="badge badge-warning" th:text="${question.score} + ' points'">10 points</span>
                         <span class="badge"
-                              th:classappend="${question.difficultyLevel != null ? (question.difficultyLevel.name() == 'EASY' ? 'badge-success' : (question.difficultyLevel.name() == 'MEDIUM' ? 'badge-warning' : 'badge-danger')) : 'badge-primary'}"
-                              th:text="${question.difficultyLevel != null ? question.difficultyLevel.englishName : 'Unknown'}">简单</span>
+                              th:classappend="${question.difficultyLevel ne null ? (question.difficultyLevel.name() eq 'EASY' ? 'badge-success' : (question.difficultyLevel.name() eq 'MEDIUM' ? 'badge-warning' : 'badge-danger')) : 'badge-primary'}"
+                              th:text="${question.difficultyLevel ne null ? question.difficultyLevel.englishName : 'Unknown'}">简单</span>
                     </div>
                 </div>
                 <div class="question-body">
@@ -669,7 +669,7 @@
                     </div>
 
                     <div class="table-structure" th:if="${question.databaseContext}">
-                        <div class="table-structure-container" th:attr="data-context=${question.databaseContext}">
+                        <div class="table-structure-container" th:data-context="${question.databaseContext}">
                             <div class="bg-light p-3 rounded">
                                 <pre th:text="${question.databaseContext}"></pre>
                             </div>
@@ -683,22 +683,22 @@
                         </div>
                         <textarea class="sql-editor"
                                   placeholder="Enter your SQL statement here..."
-                                  th:attr="data-question-id=${question.id}"></textarea>
+                                  th:data-question-id="${question.id}"></textarea>
                     </div>
 
                     <div class="actions">
                         <div class="actions-left">
-                            <button class="btn btn-outline" th:onclick="'testSQL(' + ${question.id} + ')'">
+                            <button class="btn btn-outline" th:onclick="|testSQL(${question.id})|">
                                 <i class="fas fa-play"></i>
                                 Test SQL
                             </button>
-                            <button class="btn btn-outline" th:onclick="'clearSQL(' + ${question.id} + ')'">
+                            <button class="btn btn-outline" th:onclick="|clearSQL(${question.id})|">
                                 <i class="fas fa-eraser"></i>
                                 Clear
                             </button>
                         </div>
                         <div class="actions-right">
-                            <button class="btn btn-primary" th:onclick="'saveAnswer(' + ${question.id} + ')'">
+                            <button class="btn btn-primary" th:onclick="|saveAnswer(${question.id})|">
                                 <i class="fas fa-save"></i>
                                 Save Answer
                             </button>
@@ -706,12 +706,12 @@
                     </div>
 
                     <!-- SQL测试结果 -->
-                    <div th:id="'sqlResult' + ${question.id}" class="sql-result">
+                    <div th:id="|sqlResult${question.id}|" class="sql-result">
                         <div class="sql-result-title">
                             <i class="fas fa-terminal"></i>
                             Execution Result:
                         </div>
-                        <div th:id="'sqlResultContent' + ${question.id}"></div>
+                        <div th:id="|sqlResultContent${question.id}|"></div>
                     </div>
                 </div>
             </div>
@@ -748,7 +748,7 @@
         <div class="question-nav-item"
              th:each="question,questionStat : ${questions}"
              th:classappend="${questionStat.first ? 'current' : ''}"
-             th:onclick="'scrollToQuestion(' + ${question.id} + ')'"
+             th:onclick="|scrollToQuestion(${question.id})|"
              th:text="${questionStat.count}">1</div>
     </div>
 
@@ -757,7 +757,7 @@
         const submissionId = /*[[${submission.id}]]*/ 1;
 
         // 初始化倒计时
-        let timeRemaining = /*[[${timeRemaining >= 0 ? timeRemaining * 60 : -1}]]*/ 3600; // 秒数
+        let timeRemaining = /*[[${timeRemaining ge 0 ? timeRemaining * 60 : -1}]]*/ 3600; // 秒数
         let timerInterval;
 
         // 启动倒计时
