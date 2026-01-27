@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice History - SqlQuiz</title>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            --morandi-blue: #a3b8c8;
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-primary: #475569;
+            --accent: #7c9aaf;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            padding: 24px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 10px;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .history-row {
+            transition: transform 0.2s;
+        }
+
+        .history-row td {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .history-row td:first-child {
+            border-left: 1px solid var(--glass-border);
+            border-radius: 12px 0 0 12px;
+        }
+
+        .history-row td:last-child {
+            border-right: 1px solid var(--glass-border);
+            border-radius: 0 12px 12px 0;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .accuracy-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: var(--morandi-blue);
+            color: white;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <a href="/student/practice/dashboard" class="btn-back"><i class="fas fa-arrow-left"></i> Back to
+                Dashboard</a>
+            <h2 style="font-family: Montserrat;">Practice History</h2>
+        </header>
+
+        <div class="glass-card">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Rounds</th>
+                        <th>Accuracy</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="session : ${history}" class="history-row">
+                        <td th:text="${#temporals.format(session.startTime, 'yyyy-MM-dd HH:mm')}">Date</td>
+                        <td>
+                            <th:block th:if="${session.targetQuestionType != null}" th:text="${session.targetQuestionType.displayName}">Type</th:block>
+                            <th:block th:if="${session.targetQuestionType == null}">Custom Mix</th:block>
+                        </td>
+                        <td th:text="${session.totalRounds}">0</td>
+                        <td><span class="accuracy-badge"
+                                th:text="${#numbers.formatDecimal(session.overallAccuracy * 100, 0, 0)} + '%'">90%</span>
+                        </td>
+                        <td>
+                            <th:block th:if="${session.status != null}" th:text="${session.status.displayName}">Status</th:block>
+                            <th:block th:if="${session.status == null}">Unknown</th:block>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div th:if="${#lists.isEmpty(history)}"
+                style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <i class="fas fa-box-open"
+                    style="font-size: 48px; display: block; margin-bottom: 20px; opacity: 0.3;"></i>
+                No historical records found.
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

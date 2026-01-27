@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Details - MySQL Knowledge Test Platform</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root{
+            /* Dark theme with glassmorphism colors matching register page */
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --shadow-2: rgba(0, 20, 60, 0.35);
+            --heart: #ff6aa2;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+            --spacing-6: 40px;
+            --spacing-7: 48px;
+            --spacing-8: 64px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        }
+        
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-6) var(--spacing-5);
+        }
+
+        /* ====== Top bar ====== */
+        .topbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            margin-bottom: var(--spacing-5);
+        }
+
+        .title-wrap {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .app-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 28px;
+            letter-spacing: 0.4px;
+            color: var(--white);
+        }
+
+        .user {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-3);
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .user:hover {
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .logout-btn {
+            padding: 6px 10px;
+            margin-left: var(--spacing-2);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid rgba(255, 95, 138, 0.3);
+            color: var(--danger);
+            font-size: 12px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 95, 138, 0.2);
+            border-color: var(--danger);
+            transform: translateY(-1px);
+        }
+
+        .avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(91,140,255,0.35), rgba(255,255,255,0.1));
+            border: 1px solid rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .username {
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        /* ====== Navigation links ====== */
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-3);
+            margin-bottom: var(--spacing-5);
+        }
+
+        .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: var(--spacing-2) var(--spacing-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--white);
+            background: var(--field);
+            border-color: var(--field-border);
+            transform: translateY(-1px);
+        }
+
+        /* ====== KPI cards row ====== */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-4);
+            margin-bottom: var(--spacing-6);
+        }
+
+        .kpi {
+            padding: var(--spacing-4);
+            border-radius: var(--radius-lg);
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .kpi:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            margin-bottom: var(--spacing-2);
+        }
+
+        .kpi-value {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        /* ====== Action buttons row ====== */
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-4);
+            margin-bottom: var(--spacing-8);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            cursor: pointer;
+            transition: all 0.12s ease;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            background: var(--panel);
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+            box-shadow:
+                0 14px 28px rgba(108,225,255,0.18),
+                0 4px 10px var(--shadow-1),
+                inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        .btn.secondary {
+            color: var(--white);
+        }
+
+        .btn:hover { 
+            transform: translateY(-1px); 
+            filter: brightness(1.04);
+        }
+
+        .btn.primary:hover {
+            box-shadow:
+                0 16px 32px rgba(108,225,255,0.22),
+                0 6px 14px var(--shadow-1);
+        }
+
+        .btn.secondary:hover {
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn:active { 
+            transform: translateY(0); 
+        }
+
+        /* ====== Small deco chips ====== */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+            color: var(--muted);
+        }
+
+        .chip-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+        }
+
+        /* ====== Main panels ====== */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            margin-bottom: var(--spacing-4);
+        }
+
+        .panel:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: var(--spacing-4) var(--spacing-5);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--white);
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .panel-body {
+            padding: var(--spacing-5);
+        }
+
+        .card-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-3);
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.28);
+            background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%);
+            backdrop-filter: blur(12px);
+        }
+
+        .label {
+            font-size: 12px;
+            color: var(--muted);
+            opacity: 0.9;
+        }
+
+        .value {
+            font-size: 14px;
+            color: var(--white);
+        }
+
+        /* Score grid */
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-3);
+        }
+
+        .pill {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-3) 0;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.28);
+            background: rgba(255,255,255,0.14);
+            color: var(--white);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* SQL display */
+        .sql-display {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--white);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: var(--spacing-3) 0;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: var(--spacing-1) var(--spacing-2);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: rgba(79, 240, 167, 0.15);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(255, 200, 87, 0.15);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(255, 95, 138, 0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .badge-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--muted);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Status messages */
+        .alert {
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+            border: 1px solid;
+        }
+
+        .alert-success {
+            background: rgba(79, 240, 167, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-danger {
+            background: rgba(255, 95, 138, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Loading */
+        .loading-spinner {
+            display: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Table */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th {
+            background: rgba(0,0,0,0.3);
+            padding: var(--spacing-2) var(--spacing-3);
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent-2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .table td {
+            padding: var(--spacing-2) var(--spacing-3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--white);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-6) var(--spacing-4);
+            color: var(--text-dim);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-4);
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .empty-description {
+            font-size: 16px;
+            margin-bottom: var(--spacing-5);
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .actions { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .topbar { grid-template-columns: 1fr; gap: var(--spacing-3); }
+            .user { justify-content: flex-start; }
+            .nav-links { flex-wrap: wrap; }
+            .card-section { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main content -->
+    <div class="page">
+        <!-- Top bar -->
+        <div class="topbar">
+            <div class="title-wrap">
+                <div class="chip">
+                    <span class="chip-dot"></span>
+                    <span th:if="${submission != null}">Submission Details</span>
+                    <span th:if="${submission == null}">Submission Records</span>
+                </div>
+                <div class="app-title">MySQL Knowledge Test Platform</div>
+            </div>
+            <div class="user">
+                <div class="avatar">T</div>
+                <div class="username">Teacher</div>
+                <a href="/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Navigation links -->
+        <div class="nav-links">
+            <a href="/teacher/dashboard" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="/teacher/quizzes" class="nav-link">
+                <i class="fas fa-list"></i> Quiz Management
+            </a>
+            <a href="#" class="nav-link" style="background: var(--field); color: var(--white);">
+                <i class="fas fa-file-alt"></i>
+                <span th:if="${submission != null}">提交详情</span>
+                <span th:if="${submission == null}">提交记录</span>
+            </a>
+            <a href="/teacher/sql-test" class="nav-link">
+                <i class="fas fa-code"></i> SQL Test
+            </a>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="kpi-row">
+            <div class="kpi">
+                <div class="kpi-label">Total Submissions</div>
+                <div class="kpi-value" th:text="${submissions != null ? #lists.size(submissions) : '1'}">0</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Pending Grading</div>
+                <div class="kpi-value">-</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Graded</div>
+                <div class="kpi-value">-</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Average Score</div>
+                <div class="kpi-value">-</div>
+            </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="actions">
+            <a th:if="${submission != null}" th:href="@{/teacher/quiz/{id}/statistics(id=${submission.quiz.id})}" class="btn primary">
+                <i class="fas fa-arrow-left"></i>
+                返回统计
+            </a>
+            <a th:if="${submission == null}" href="/teacher/dashboard" class="btn primary">
+                <i class="fas fa-tachometer-alt"></i>
+                仪表板
+            </a>
+            <a href="/teacher/sql-test" class="btn secondary">
+                <i class="fas fa-code"></i>
+                SQL测试
+            </a>
+            <button onclick="window.print()" class="btn secondary">
+                <i class="fas fa-print"></i>
+                打印页面
+            </button>
+        </div>
+
+        <!-- Main content panels -->
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">
+                        <span th:if="${submission != null}">学生提交详情</span>
+                        <span th:if="${submission == null}">提交记录列表</span>
+                    </div>
+                    <div class="panel-subtitle" th:if="${submission != null}">
+                        查看<span th:text="${submission.student.fullName}">学生姓名</span>的答题详情和评分
+                    </div>
+                    <div class="panel-subtitle" th:if="${submission == null}">
+                        所有学生的测试提交记录
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <!-- Single submission details -->
+                <div th:if="${submission != null}">
+                    <!-- Student Info Panel -->
+                    <div class="panel" style="margin-bottom: var(--spacing-4);">
+                        <div class="panel-header">
+                            <div class="panel-title">学生信息</div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="card-section">
+                                <div class="field">
+                                    <div class="label">学生姓名</div>
+                                    <div class="value" th:text="${submission.student.fullName}">学生姓名</div>
+                                </div>
+                                <div class="field">
+                                    <div class="label">测试标题</div>
+                                    <div class="value" th:text="${submission.quiz.title}">MySQL基础知识测试</div>
+                                </div>
+                            </div>
+                            <div class="card-section" style="margin-top: var(--spacing-3);">
+                                <div class="field">
+                                    <div class="label">提交时间</div>
+                                    <div class="value" th:text="${#temporals.format(submission.submitTime, 'yyyy-MM-dd HH:mm:ss')}">2024-01-15 14:45:30</div>
+                                </div>
+                                <div class="field">
+                                    <div class="label">提交状态</div>
+                                    <div class="value">
+                                        <span class="badge badge-success" th:text="${submission.status.displayName}">已提交</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="score-grid">
+                                <div class="pill">总题数：<span th:text="${#lists.size(questionAnswers)}">3</span></div>
+                                <div class="pill">用时：<span th:if="${submission.timeSpent != null}" th:text="${submission.timeSpent + ' 分钟'}">45 分钟</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Scoring Section -->
+                    <div class="panel" style="margin-bottom: var(--spacing-4);">
+                        <div class="panel-header">
+                            <div class="panel-title">AI智能评分</div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="field">
+                                <div class="label">自动评分状态</div>
+                                <div class="value">
+                                    <form th:action="@{/teacher/quiz/statistics/submission/{id}(id=${submission.id})}" method="post" id="scoreForm">
+                                        <button type="submit" class="btn primary" id="scoreBtn">
+                                            <i class="fas fa-robot"></i> 开始AI评分
+                                        </button>
+                                    </form>
+                                    <div class="loading-spinner mt-2" id="loadingSpinner">
+                                        <div class="spinner" style="display: inline-block;"></div>
+                                        <small style="color: var(--muted);">AI评分中，请稍候...</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div th:if="${feedback}" class="field" style="margin-top: var(--spacing-3);">
+                                <div class="label">AI反馈</div>
+                                <div class="value sql-display" th:text="${feedback}">AI反馈内容</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerts -->
+                    <div th:if="${message}" class="alert alert-success" style="margin-bottom: var(--spacing-4);">
+                        <i class="fas fa-check-circle"></i>
+                        <span th:text="${message}">操作成功</span>
+                    </div>
+
+                    <div th:if="${error}" class="alert alert-danger" style="margin-bottom: var(--spacing-4);">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span th:text="${error}">操作失败</span>
+                    </div>
+                </div>
+
+                <!-- Submissions List -->
+                <div th:if="${submission == null}">
+                    <div style="overflow-x: auto;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="15%">学生</th>
+                                    <th width="20%">测试</th>
+                                    <th width="15%">状态</th>
+                                    <th width="15%">分数</th>
+                                    <th width="15%">提交时间</th>
+                                    <th width="10%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="sub, subStat : ${submissions}">
+                                    <td th:text="${subStat.count}">1</td>
+                                    <td th:text="${sub.student.fullName}">学生姓名</td>
+                                    <td th:text="${sub.quiz.title}">测试标题</td>
+                                    <td>
+                                        <span class="badge badge-success" th:if="${sub.status.displayName == '已提交'}" th:text="${sub.status.displayName}">已提交</span>
+                                        <span class="badge badge-warning" th:if="${sub.status.displayName != '已提交'}" th:text="${sub.status.displayName}">未提交</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${sub.percentage != null}" th:text="${sub.percentage + '%'}">85%</span>
+                                        <span th:if="${sub.percentage == null}" style="color: var(--muted);">-</span>
+                                    </td>
+                                    <td th:text="${#temporals.format(sub.submitTime, 'yyyy-MM-dd HH:mm')}">2024-01-15 14:45</td>
+                                    <td>
+                                        <a th:href="@{/teacher/submission-detail(submission_id=${sub.id})}" class="btn primary" style="padding: var(--spacing-1) var(--spacing-2); font-size: 12px;">
+                                            查看
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions -->
+        <div th:if="${submission != null}" th:each="qa, qaStat : ${questionAnswers}">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">题目 <span th:text="${qaStat.count}">1</span>：<span th:text="${qa.question.content}">查询所有用户信息</span></div>
+                </div>
+                <div class="panel-body">
+                    <div class="field">
+                        <div class="label">题目描述</div>
+                        <div class="value" th:text="${qa.question.description != null ? qa.question.description : '无'}">题目描述</div>
+                    </div>
+
+                    <div class="card-section">
+                        <div class="field">
+                            <div class="label">学生答案</div>
+                            <div class="value sql-display" th:if="${qa.studentSql != null and !#strings.isEmpty(qa.studentSql)}" th:text="${qa.studentSql}">SELECT * FROM users;</div>
+                            <div class="value" th:if="${qa.studentSql == null or #strings.isEmpty(qa.studentSql)}" style="color: var(--danger);">
+                                <i class="fas fa-exclamation-triangle"></i> 学生未提交答案
+                            </div>
+                        </div>
+                        <div class="field">
+                            <div class="label">参考答案</div>
+                            <div class="value sql-display" th:if="${qa.question.expectedSql != null and !#strings.isEmpty(qa.question.expectedSql)}" th:text="${qa.question.expectedSql}">参考答案</div>
+                            <div class="value" th:if="${qa.question.expectedSql == null or #strings.isEmpty(qa.question.expectedSql)}">无参考答案</div>
+                        </div>
+                    </div>
+
+                    <div class="score-grid">
+                        <div class="pill">题目分数：<span th:text="${qa.question.score}">10</span></div>
+                        <div class="pill">获得分数：<span th:text="${qa.score != null ? qa.score : '未评分'}">8</span></div>
+                    </div>
+
+                    <div th:if="${qa.executionError != null and !#strings.isEmpty(qa.executionError)}" class="field" style="margin-top: var(--spacing-3);">
+                        <div class="label">执行错误</div>
+                        <div class="value" style="color: var(--danger);" th:text="${qa.executionError}">执行错误信息</div>
+                    </div>
+
+                    <div th:if="${qa.manualFeedback != null and !#strings.isEmpty(qa.manualFeedback)}" class="field" style="margin-top: var(--spacing-3);">
+                        <div class="label">教师反馈</div>
+                        <div class="value" th:text="${qa.manualFeedback}">教师反馈内容</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Info Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">使用帮助</div>
+            </div>
+            <div class="panel-body" style="font-size: 13px; color: var(--muted); line-height: 1.6;">
+                <p style="margin: 0 0 var(--spacing-2) 0;">• 查看学生提交的SQL答案和执行结果</p>
+                <p style="margin: 0 0 var(--spacing-2) 0;">• 使用AI评分自动评估答案质量</p>
+                <p style="margin: 0 0 var(--spacing-2) 0;">• 添加教师反馈进行人工评价</p>
+                <p style="margin: 0;">• 导出或打印详细报告</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 处理AI评分表单提交
+        document.getElementById('scoreForm')?.addEventListener('submit', function(e) {
+            const scoreBtn = document.getElementById('scoreBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            // 显示加载状态
+            scoreBtn.disabled = true;
+            scoreBtn.innerHTML = '<div class="spinner" style="display: inline-block;"></div>评分中...';
+            if (loadingSpinner) {
+                loadingSpinner.style.display = 'block';
+            }
+        });
+
+        // 自动隐藏alert消息
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                alert.style.opacity = '0';
+                alert.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${quiz.title} + ' - MySQL Knowledge Testing Platform'">Quiz Details - MySQL Knowledge Testing Platform
+  </title>
+
+  <style>
+    :root {
+      /* Palette tuned for sleek, modern, light-on-dark glassmorphism */
+      --bg: #0b0f16;
+      --panel: rgba(18, 24, 35, 0.55);
+      --panel-strong: rgba(18, 24, 35, 0.7);
+      --white: #ffffff;
+      --muted: #9aa3b2;
+      --accent: #6aa7ff;
+      --accent-2: #86e3ff;
+      --success: #46d39a;
+      --warning: #f0b74a;
+      --danger: #f05a5a;
+
+      /* Typography */
+      --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --h1: 24px;
+      --h2: 16px;
+      --label: 12px;
+      --body: 14px;
+      --tiny: 11px;
+
+      /* Radii and blurs */
+      --radius-xl: 18px;
+      --radius-lg: 14px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
+      --blur-heavy: 20px;
+      --blur-mid: 14px;
+
+      /* Borders */
+      --border-soft: 1px solid rgba(255, 255, 255, 0.08);
+      --border-strong: 1px solid rgba(255, 255, 255, 0.15);
+
+      /* Shadows (soft, directional) */
+      --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.28);
+      --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: radial-gradient(1200px 1200px at 10% 10%, #11172a 0%, #0b0f16 40%, #0b0f16 100%);
+      color: var(--white);
+      font-family: var(--font);
+      letter-spacing: 0.02em;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 32px;
+      display: grid;
+      place-items: center;
+    }
+
+    .content-wrap {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header bar */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      backdrop-filter: blur(var(--blur-mid));
+      -webkit-backdrop-filter: blur(var(--blur-mid));
+      border: var(--border-soft);
+      box-shadow: var(--shadow-inset);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: var(--body);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(106, 167, 255, 0.15);
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+      font-size: var(--tiny);
+      letter-spacing: 0.2px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    .breadcrumb a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      color: var(--white);
+    }
+
+    .breadcrumb .sep {
+      margin: 0 8px;
+      color: #5d6a83;
+    }
+
+    /* Grid layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* Glass card base */
+    .card {
+      position: relative;
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      background: var(--panel);
+      backdrop-filter: blur(var(--blur-heavy));
+      -webkit-backdrop-filter: blur(var(--blur-heavy));
+      border: var(--border-soft);
+      box-shadow: var(--shadow-inset), var(--shadow-1);
+    }
+
+    /* Title and description */
+    .title {
+      font-size: var(--h1);
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 4px 0 8px;
+      color: var(--white);
+    }
+
+    .desc {
+      font-size: var(--body);
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Profile row */
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 18px;
+      margin-bottom: 12px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+      border: var(--border-soft);
+      box-shadow: var(--shadow-inset);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .profile-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .profile-name {
+      font-size: var(--body);
+      font-weight: 600;
+      color: var(--white);
+      letter-spacing: 0.2px;
+    }
+
+    .profile-sub {
+      font-size: var(--tiny);
+      color: var(--muted);
+      letter-spacing: 0.3px;
+    }
+
+    /* Stats row */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      border-radius: var(--radius-md);
+      padding: 14px 14px 12px;
+      background: var(--panel-strong);
+      backdrop-filter: blur(var(--blur-mid));
+      -webkit-backdrop-filter: blur(var(--blur-mid));
+      border: var(--border-soft);
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.2px;
+    }
+
+    .stat-label {
+      margin-top: 6px;
+      font-size: var(--tiny);
+      color: var(--muted);
+      letter-spacing: 0.3px;
+    }
+
+    /* Start button */
+    .actions {
+      margin-top: 10px;
+    }
+
+    .start-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: var(--body);
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: var(--white);
+      background: linear-gradient(180deg, var(--accent) 0%, #58a6ff 100%);
+      border: var(--border-strong);
+      box-shadow: var(--shadow-1);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .start-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 28px rgba(88, 166, 255, 0.35);
+    }
+
+    .start-btn:disabled {
+      background: var(--panel-strong);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: var(--shadow-inset);
+    }
+
+    .secondary-btn {
+      background: transparent;
+      border: var(--border-soft);
+      box-shadow: var(--shadow-inset);
+    }
+
+    .secondary-btn:hover {
+      background: var(--panel-strong);
+    }
+
+    /* Right panel stack */
+    .side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Side card header */
+    .side-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .side-title {
+      font-size: var(--h2);
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.2px;
+    }
+
+    .warn-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, rgba(255, 220, 120, 0.35), rgba(255, 171, 80, 0.28));
+      border: 1px solid rgba(255, 190, 120, 0.45);
+      box-shadow: var(--shadow-inset);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--warning);
+    }
+
+    /* Side text */
+    .side-text {
+      font-size: var(--tiny);
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    /* Value card */
+    .value-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-radius: var(--radius-lg);
+      background: var(--panel-strong);
+      backdrop-filter: blur(var(--blur-mid));
+      -webkit-backdrop-filter: blur(var(--blur-mid));
+      border: var(--border-soft);
+    }
+
+    .value-title {
+      font-size: var(--body);
+      font-weight: 600;
+      color: var(--white);
+      letter-spacing: 0.2px;
+    }
+
+    .value-num {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    /* Alert messages */
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+      font-size: var(--body);
+    }
+
+    .alert-success {
+      background: rgba(70, 211, 154, 0.1);
+      border: 1px solid rgba(70, 211, 154, 0.3);
+      color: var(--success);
+    }
+
+    .alert-danger {
+      background: rgba(240, 90, 90, 0.1);
+      border: 1px solid rgba(240, 90, 90, 0.3);
+      color: var(--danger);
+    }
+
+    /* Rules list */
+    .rules-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .rules-list li {
+      padding: 8px 0;
+      font-size: var(--tiny);
+      color: var(--muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .rules-list li:last-child {
+      border-bottom: none;
+    }
+
+    .rules-list li:before {
+      content: "•";
+      color: var(--warning);
+      font-weight: bold;
+      display: inline-block;
+      width: 1em;
+      margin-right: 8px;
+    }
+
+    /* Navigation */
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-link {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      font-size: var(--body);
+    }
+
+    .nav-link:hover {
+      color: var(--white);
+      background: var(--panel-strong);
+    }
+
+    /* Responsive */
+    @media (max-width: 980px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 16px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Font feature for numbers */
+    .mono {
+      font-feature-settings: "tnum" on, "lnum" on;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="content-wrap">
+      <!-- Header bar -->
+      <div class="header">
+        <div class="header-left">
+          <div class="header-dot"></div>
+          <span>Quiz Details</span>
+        </div>
+        <div class="header-right">
+          <div class="nav">
+            <a href="/student/dashboard" class="nav-link">Dashboard</a>
+            <a href="/student/quizzes" class="nav-link">Quiz Center</a>
+            <a href="/student/submissions" class="nav-link">My History</a>
+            <a href="/student/practice/dashboard" class="nav-link">SQL Practice</a>
+            <a href="/logout" class="nav-link">Logout</a>
+          </div>
+          <div class="header-dot" style="background:#ff6aa5; box-shadow:0 0 0 4px rgba(255,106,165,0.12)"></div>
+          <div class="header-dot" style="background:#74d68e; box-shadow:0 0 0 4px rgba(116,214,142,0.12)"></div>
+        </div>
+      </div>
+
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <a href="/student/dashboard">Dashboard</a> <span class="sep">></span>
+        <a href="/student/quizzes">Quiz Center</a> <span class="sep">></span>
+        <span>测试详情</span>
+      </div>
+
+      <!-- Messages -->
+      <div th:if="${message}" class="alert alert-success">
+        <span th:text="${message}">Operation successful</span>
+      </div>
+
+      <div th:if="${error}" class="alert alert-danger">
+        <span th:text="${error}">Operation failed</span>
+      </div>
+
+      <!-- Main grid -->
+      <div class="grid">
+        <!-- Left main card -->
+        <div class="card">
+          <div class="title" th:text="${quiz.title}">MySQL Knowledge Test</div>
+          <div class="desc" th:text="${quiz.description}">
+            This is a comprehensive test about MySQL database knowledge, including basic syntax, query optimization,
+            index usage, and more.
+          </div>
+
+          <div class="profile">
+            <div class="avatar" th:text="${#strings.substring(quiz.teacher.fullName, 0, 1)}">J</div>
+            <div class="profile-text">
+              <div class="profile-name" th:text="${quiz.teacher.fullName}">Instructor</div>
+              <div class="profile-sub">Quiz Creator</div>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-value mono">待定</div>
+              <div class="stat-label">Question Count</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value mono" th:if="${quiz.timeLimit}" th:text="${quiz.timeLimit}">60</div>
+              <div class="stat-value mono" th:unless="${quiz.timeLimit}">∞</div>
+              <div class="stat-label">Time Limit (min)</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value mono" th:if="${quiz.maxAttempts}" th:text="${quiz.maxAttempts}">3</div>
+              <div class="stat-value mono" th:unless="${quiz.maxAttempts}">∞</div>
+              <div class="stat-label">Max Attempts</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value mono">100</div>
+              <div class="stat-label">Total Score</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <form th:if="${canTake}" th:action="@{/student/quiz/{id}/start(id=${quiz.id})}" method="post"
+              style="display: inline;">
+              <button type="submit" class="start-btn"
+                onclick="return confirm('Are you sure you want to start the quiz? Timer will begin after starting!')">
+                Start Quiz
+              </button>
+            </form>
+            <button th:unless="${canTake}" class="start-btn" disabled>
+              Cannot Start Quiz
+            </button>
+          </div>
+        </div>
+
+        <!-- Right side stack -->
+        <div class="side-stack">
+          <!-- Quiz Rules -->
+          <div class="card">
+            <div class="side-header">
+              <div class="warn-icon">!</div>
+              <div class="side-title">Quiz Rules</div>
+            </div>
+            <div class="side-text">
+              <ul class="rules-list">
+                <li>Please ensure stable network connection to avoid disconnection during the test</li>
+                <li>Do not refresh or go back after starting the test, otherwise progress may be lost</li>
+                <li>For SQL programming questions, please ensure correct syntax as the system will automatically execute
+                  and grade</li>
+                <li>Please answer theory questions in detail, answers will be manually graded by the teacher</li>
+                <li>If you encounter technical issues, please contact the teacher or administrator promptly</li>
+                <li th:if="${quiz.timeLimit}">
+                  This test has a time limit (<span th:text="${quiz.timeLimit}">60</span> minutes), and will be
+                  automatically submitted when time expires
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Participants -->
+          <div class="value-card">
+            <div class="value-title">Participants</div>
+            <div class="value-num mono" th:text="${0}">0</div>
+          </div>
+
+          <!-- Average Score -->
+          <div class="value-card">
+            <div class="value-title">Average Score</div>
+            <div class="value-num mono" th:text="'0%'">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

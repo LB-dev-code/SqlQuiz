@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - MySQL Knowledge Test Platform</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="/css/custom.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .error-404 {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #dc3545;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .error-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        .floating-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card error-card">
+                    <div class="card-body text-center p-5">
+                        <div class="floating-icon mb-4">
+                            <i class="fas fa-search" style="font-size: 4rem; color: #6c757d;"></i>
+                        </div>
+                        
+                        <div class="error-404 mb-3">404</div>
+                        
+                        <h2 class="text-gradient mb-3">Page Not Found</h2>
+                        
+                        <p class="text-muted mb-4 lead">
+                            Sorry, the page you are visiting does not exist. It may have been deleted, renamed, or you entered the wrong URL.
+                        </p>
+                        
+                        <div class="alert alert-light border mb-4">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <i class="fas fa-home fa-2x text-primary mb-2"></i>
+                                    <p class="mb-0"><small>Go Home</small></p>
+                                </div>
+                                <div class="col-4">
+                                    <i class="fas fa-search fa-2x text-info mb-2"></i>
+                                    <p class="mb-0"><small>Search Content</small></p>
+                                </div>
+                                <div class="col-4">
+                                    <i class="fas fa-question-circle fa-2x text-warning mb-2"></i>
+                                    <p class="mb-0"><small>Get Help</small></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-center gap-3 flex-wrap">
+                            <a href="/" class="btn btn-gradient-primary">
+                                <i class="fas fa-home me-2"></i>Go Home
+                            </a>
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Go Back
+                            </a>
+                            <a href="/login" class="btn btn-outline-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>Go to Login
+                            </a>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <h6><i class="fas fa-users me-2"></i>User Portal</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="/student/dashboard" class="btn btn-outline-info btn-sm">
+                                        <i class="fas fa-user-graduate me-2"></i>Student Platform
+                                    </a>
+                                    <a href="/teacher/dashboard" class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-chalkboard-teacher me-2"></i>Teacher Platform
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <h6><i class="fas fa-link me-2"></i>Quick Links</h6>
+                                <div class="d-grid gap-2">
+                                    <a href="/register" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-user-plus me-2"></i>Register Account
+                                    </a>
+                                    <a href="/student/sql-practice" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-code me-2"></i>SQL Practice
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional Tips -->
+                <div class="text-center mt-4">
+                    <small class="text-white-50">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        If you believe this is an error, please contact the system administrator
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click ripple effect to buttons
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    let ripple = document.createElement('span');
+                    ripple.classList.add('ripple');
+                    this.appendChild(ripple);
+                    
+                    let x = e.clientX - e.target.offsetLeft;
+                    let y = e.clientY - e.target.offsetTop;
+                    
+                    ripple.style.left = `${x}px`;
+                    ripple.style.top = `${y}px`;
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

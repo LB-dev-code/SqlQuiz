@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Question Normalization - MySQL Knowledge Test Platform</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+    <style>
+        :root{
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: "Segoe UI", "PingFang SC", system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-5);
+            padding-bottom: var(--spacing-4);
+            border-bottom: 1px solid var(--field-border);
+        }
+
+        .title-group h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-5);
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-4);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--accent);
+        }
+
+        .input-group {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .label {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .input, .select, .textarea {
+            width: 100%;
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            color: var(--white);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: ui-monospace, monospace;
+        }
+
+        .select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239aa6b2' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+
+        .input:focus, .select:focus, .textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--field-focus);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            border: 1px solid var(--field-border);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-section {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .section-label {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .editable-content {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+        }
+
+        .editable-content:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--field-focus);
+        }
+
+        .editable-content[contenteditable="true"] {
+            min-height: 50px;
+        }
+
+        /* Markdown渲染内容样式 */
+        .markdown-content {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            line-height: 1.8;
+            color: var(--white);
+        }
+
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            color: var(--accent);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-content code {
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: ui-monospace, monospace;
+            font-size: 13px;
+        }
+
+        .markdown-content pre {
+            background: rgba(0,0,0,0.5);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-content li {
+            margin-bottom: 6px;
+        }
+
+        /* 可编辑表格样式 - 参考学生练习样式 */
+        .editable-table-container {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 16px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .editable-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .editable-data-table th {
+            background: rgba(91, 140, 255, 0.3);
+            color: var(--white);
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent);
+            font-size: 13px;
+        }
+
+        .editable-data-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--field-border);
+            color: var(--white);
+            cursor: text;
+            transition: background 0.2s;
+            font-size: 13px;
+        }
+
+        .editable-data-table td:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .editable-data-table td:focus {
+            outline: 2px solid var(--accent);
+            background: rgba(91, 140, 255, 0.1);
+        }
+
+        .editable-data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .table-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--field-border);
+            background: var(--field);
+            color: var(--white);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .table-actions button:hover {
+            background: rgba(91, 140, 255, 0.2);
+            border-color: var(--accent);
+        }
+
+        .editable-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--spacing-3) 0;
+        }
+
+        .editable-content th, .editable-content td {
+            border: 1px solid var(--field-border);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .editable-content th {
+            background: rgba(91,140,255,0.2);
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        .editable-content code {
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: ui-monospace, monospace;
+        }
+
+        .editable-content pre {
+            background: rgba(0,0,0,0.5);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+
+        .data-table-container {
+            margin-top: var(--spacing-3);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .data-table th {
+            background: rgba(91, 140, 255, 0.3);
+            color: var(--white);
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .data-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--field-border);
+            color: var(--white);
+        }
+
+        .data-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .actions {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: var(--spacing-3);
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--field-border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--spacing-3);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.easy {
+            background: rgba(79, 240, 167, 0.2);
+            color: var(--success);
+        }
+
+        .badge.medium {
+            background: rgba(255, 200, 87, 0.2);
+            color: var(--warning);
+        }
+
+        .badge.hard {
+            background: rgba(255, 95, 138, 0.2);
+            color: var(--danger);
+        }
+
+        .alert {
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-4);
+            display: none;
+        }
+
+        .alert.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-error {
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-success {
+            background: rgba(79, 240, 167, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .title-input {
+            font-size: 20px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: var(--white);
+            width: 100%;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        .title-input:focus {
+            border-bottom: 1px solid var(--accent);
+        }
+
+        /* 图片上传区域样式 */
+        .upload-area {
+            border: 2px dashed var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-5);
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: rgba(255,255,255,0.03);
+            display: none;
+        }
+
+        .upload-area.show {
+            display: block;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(91,140,255,0.1);
+        }
+
+        .upload-area i {
+            font-size: 48px;
+            color: var(--accent);
+            margin-bottom: var(--spacing-3);
+        }
+
+        .upload-area p {
+            color: var(--muted);
+            margin: 8px 0;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        #imagePreview {
+            margin-top: var(--spacing-3);
+            position: relative;
+            display: none;
+        }
+
+        #imagePreview.show {
+            display: block;
+        }
+
+        #imagePreview img {
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--field-border);
+        }
+
+        .remove-image-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .remove-image-btn:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="title-group">
+                <h1><i class="fas fa-magic"></i> AI Question Normalization</h1>
+                <p class="subtitle">Paste your question and let AI structure it for your quiz system</p>
+            </div>
+            <a href="/teacher/quizzes" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Quiz List
+            </a>
+        </div>
+
+        <div class="main-grid">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-edit"></i>
+                    Input Question
+                </div>
+
+                <div class="alert alert-error" id="errorAlert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorMessage"></span>
+                </div>
+
+                <div class="alert alert-success" id="successAlert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="successMessage"></span>
+                </div>
+
+                <div class="input-group">
+                    <label class="label">Select Target Quiz</label>
+                    <select class="select" id="quizId" required>
+                        <option value="">Choose a quiz...</option>
+                        <option th:each="quiz : ${quizzes}" 
+                                th:value="${quiz.id}" 
+                                th:text="${quiz.title}">Quiz Name</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="label">Input Type</label>
+                    <select class="select" id="inputType">
+                        <option value="TEXT">Plain Text</option>
+                        <option value="IMAGE">Image (OCR)</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="textInputGroup">
+                    <label class="label">Question Content</label>
+                    <textarea class="textarea" id="inputContent" 
+                              placeholder="Paste your question here...&#10;&#10;Example:&#10;Find all students who scored more than 80 in the math exam. Display their name and score in descending order."></textarea>
+                </div>
+
+                <div class="input-group" id="imageInputGroup">
+                    <label class="label">Upload Question Image</label>
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p style="font-weight: 600; font-size: 15px;">Click to upload or drag and drop</p>
+                        <p style="font-size: 13px;">Supports: JPG, PNG, WebP (Max 5MB)</p>
+                        <input type="file" id="fileInput" accept="image/*" onchange="handleImageSelect(event)">
+                    </div>
+                    <div id="imagePreview">
+                        <button class="remove-image-btn" onclick="clearImage(event)" title="Remove image">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <img id="previewImg" src="" alt="Preview">
+                    </div>
+                </div>
+
+                <button class="btn primary" onclick="normalizeQuestion()" id="normalizeBtn">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Normalize with AI
+                </button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>AI is processing your question...</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-eye"></i>
+                    Preview Result
+                </div>
+
+                <div id="previewEmpty" class="empty-state">
+                    <i class="fas fa-file-alt"></i>
+                    <p>Enter a question and click "Normalize with AI" to see the structured result here</p>
+                </div>
+
+                <div id="previewContent" style="display: none;">
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-heading"></i> Question Title</div>
+                        <input type="text" class="title-input" id="editTitle" placeholder="Enter question title">
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-tags"></i> Type & Difficulty</div>
+                        <div style="margin-top: 10px;">
+                            <span class="badge" id="previewType" style="margin-right: 10px;"></span>
+                            <span class="badge" id="previewDifficulty"></span>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-file-alt"></i> Question Description</div>
+                        <div class="markdown-content" id="renderDescription"></div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-table"></i> Database Tables (Click cells to edit)</div>
+                        <div id="renderTables"></div>
+                    </div>
+
+                    <div class="preview-section" style="display: none;">
+                        <div class="section-label"><i class="fas fa-code"></i> Setup SQL (Hidden)</div>
+                        <textarea class="textarea" id="editSetupSql" placeholder="CREATE TABLE and INSERT statements"></textarea>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-check-circle"></i> Expected SQL (Editable)</div>
+                        <textarea class="textarea" id="editExpectedSql" placeholder="Expected answer SQL"></textarea>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-lightbulb"></i> Answer Explanation</div>
+                        <div class="markdown-content" id="renderAnswer"></div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 20px;">
+                        <label class="label">Question Score</label>
+                        <input type="number" class="input" id="questionScore" value="10" min="1" max="100">
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn primary" onclick="confirmQuestion()" id="confirmBtn">
+                            <i class="fas fa-check"></i> Confirm & Add to Quiz
+                        </button>
+                        <button class="btn" onclick="normalizeQuestion()">
+                            <i class="fas fa-redo"></i> Re-normalize
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestionData = null;
+        let uploadedImageFile = null;
+
+        // 监听输入类型切换
+        document.getElementById('inputType').addEventListener('change', function(e) {
+            const inputType = e.target.value;
+            const textGroup = document.getElementById('textInputGroup');
+            const imageGroup = document.getElementById('imageInputGroup');
+            const uploadArea = document.getElementById('uploadArea');
+            
+            if (inputType === 'IMAGE') {
+                textGroup.style.display = 'none';
+                imageGroup.style.display = 'block';
+                uploadArea.classList.add('show');
+            } else {
+                textGroup.style.display = 'block';
+                imageGroup.style.display = 'none';
+                uploadArea.classList.remove('show');
+                clearImage();
+            }
+        });
+
+        // 处理拖拽上传
+        const uploadArea = document.getElementById('uploadArea');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.classList.remove('dragover');
+            }, false);
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleImageFile(files[0]);
+            }
+        }, false);
+
+        // 处理图片选择
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        }
+
+        // 处理图片文件
+        function handleImageFile(file) {
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+                showAlert('Please select an image file', 'error');
+                return;
+            }
+
+            // 验证文件大小（5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                showAlert('File size exceeds 5MB limit', 'error');
+                return;
+            }
+
+            uploadedImageFile = file;
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('imagePreview').classList.add('show');
+                document.getElementById('uploadArea').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 清除图片
+        function clearImage(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+            uploadedImageFile = null;
+            document.getElementById('previewImg').src = '';
+            document.getElementById('imagePreview').classList.remove('show');
+            document.getElementById('uploadArea').style.display = 'block';
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function normalizeQuestion() {
+            const quizId = document.getElementById('quizId').value;
+            const inputType = document.getElementById('inputType').value;
+
+            if (!quizId) {
+                showAlert('Please select a target quiz', 'error');
+                return;
+            }
+
+            let inputContent = '';
+
+            // 如果是图片模式，先进行OCR识别
+            if (inputType === 'IMAGE') {
+                if (!uploadedImageFile) {
+                    showAlert('Please upload an image', 'error');
+                    return;
+                }
+
+                document.getElementById('loading').classList.add('active');
+                document.getElementById('normalizeBtn').disabled = true;
+
+                try {
+                    // 上传图片并进行OCR
+                    const formData = new FormData();
+                    formData.append('file', uploadedImageFile);
+
+                    const ocrResponse = await fetch('/teacher/api/question/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const ocrResult = await ocrResponse.json();
+
+                    if (!ocrResult.success) {
+                        showAlert('OCR recognition failed: ' + (ocrResult.error || 'Unknown error'), 'error');
+                        document.getElementById('loading').classList.remove('active');
+                        document.getElementById('normalizeBtn').disabled = false;
+                        return;
+                    }
+
+                    inputContent = ocrResult.text;
+                    
+                    // 显示识别结果到textarea（可选）
+                    document.getElementById('inputContent').value = inputContent;
+                    showAlert('OCR recognition completed! Normalizing question...', 'success');
+
+                } catch (error) {
+                    showAlert('Image upload failed: ' + error.message, 'error');
+                    document.getElementById('loading').classList.remove('active');
+                    document.getElementById('normalizeBtn').disabled = false;
+                    return;
+                }
+            } else {
+                // 文本模式
+                inputContent = document.getElementById('inputContent').value.trim();
+                if (!inputContent) {
+                    showAlert('Please enter question content', 'error');
+                    return;
+                }
+
+                document.getElementById('loading').classList.add('active');
+                document.getElementById('normalizeBtn').disabled = true;
+            }
+
+            try {
+                const response = await fetch('/teacher/api/question/normalize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        input: inputContent,
+                        inputType: 'TEXT' // 总是以TEXT方式规范化（OCR后的文本）
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentQuestionData = result.data;
+                    currentQuestionData.quizId = quizId;
+                    renderPreview(result.data);
+                    showAlert('Question normalized successfully!', 'success');
+                } else {
+                    showAlert(result.error || 'Normalization failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('normalizeBtn').disabled = false;
+            }
+        }
+
+        function renderPreview(data) {
+            document.getElementById('previewEmpty').style.display = 'none';
+            document.getElementById('previewContent').style.display = 'block';
+
+            document.getElementById('editTitle').value = data.title || '';
+
+            const typeMap = {
+                'SELECT_BASIC': 'Basic SELECT',
+                'SELECT_JOIN': 'JOIN Query',
+                'SELECT_SUBQUERY': 'Subquery',
+                'SELECT_AGGREGATE': 'Aggregate',
+                'SELECT_COMPLEX': 'Complex',
+                'DML_INSERT': 'INSERT',
+                'DML_UPDATE': 'UPDATE',
+                'DML_DELETE': 'DELETE'
+            };
+
+            const typeElem = document.getElementById('previewType');
+            typeElem.textContent = typeMap[data.questionType] || data.questionType || 'Unknown';
+            typeElem.className = 'badge';
+
+            const diffElem = document.getElementById('previewDifficulty');
+            diffElem.textContent = data.difficulty || 'MEDIUM';
+            diffElem.className = 'badge ' + (data.difficulty ? data.difficulty.toLowerCase() : 'medium');
+
+            // 使用marked.js渲染Markdown描述
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    sanitize: false
+                });
+                document.getElementById('renderDescription').innerHTML = marked.parse(data.description || '');
+                document.getElementById('renderAnswer').innerHTML = marked.parse(data.answer || '');
+            } else {
+                document.getElementById('renderDescription').innerHTML = data.description || '';
+                document.getElementById('renderAnswer').innerHTML = data.answer || '';
+            }
+
+            // 存储setupSQL但不显示
+            document.getElementById('editSetupSql').value = data.setupSql || '';
+            document.getElementById('editExpectedSql').value = data.expectedSql || '';
+
+            // 渲染可编辑的数据表格
+            renderEditableTables(data.setupSql);
+        }
+
+        // 渲染可编辑表格
+        function renderEditableTables(setupSql) {
+            const container = document.getElementById('renderTables');
+            container.innerHTML = '';
+
+            if (!setupSql) {
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data available</p>';
+                return;
+            }
+
+            const tables = parseSetupSql(setupSql);
+            tablesData = tables; // 初始化全局变量
+            
+            if (tables.length === 0) {
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data found</p>';
+                return;
+            }
+
+            tables.forEach((tableData, tableIndex) => {
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'editable-table-container';
+                tableContainer.dataset.tableIndex = tableIndex;
+
+                // 表格标题
+                const tableTitle = document.createElement('div');
+                tableTitle.className = 'table-title';
+                tableTitle.innerHTML = `<i class="fas fa-table"></i> ${tableData.tableName}`;
+                tableContainer.appendChild(tableTitle);
+
+                if (tableData.columns && tableData.columns.length > 0) {
+                    // 创建可编辑表格
+                    const table = document.createElement('table');
+                    table.className = 'editable-data-table';
+
+                    // 表头
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    tableData.columns.forEach(col => {
+                        const th = document.createElement('th');
+                        th.textContent = col;
+                        headerRow.appendChild(th);
+                    });
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+
+                    // 表体 - 可编辑
+                    const tbody = document.createElement('tbody');
+                    tableData.data.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tableData.columns.forEach((col, colIndex) => {
+                            const td = document.createElement('td');
+                            td.contentEditable = true;
+                            td.textContent = row[colIndex] || '';
+                            td.dataset.tableIndex = tableIndex;
+                            td.dataset.rowIndex = rowIndex;
+                            td.dataset.colIndex = colIndex;
+                            
+                            // 监听编辑事件
+                            td.addEventListener('blur', function() {
+                                updateTableData(tableIndex, rowIndex, colIndex, this.textContent);
+                            });
+
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+
+                    tableContainer.appendChild(table);
+
+                    // 添加操作按钮
+                    const actions = document.createElement('div');
+                    actions.className = 'table-actions';
+                    actions.innerHTML = `
+                        <button onclick="addTableRow(${tableIndex})"><i class="fas fa-plus"></i> Add Row</button>
+                        <button onclick="removeTableRow(${tableIndex})"><i class="fas fa-minus"></i> Remove Last Row</button>
+                    `;
+                    tableContainer.appendChild(actions);
+                }
+
+                container.appendChild(tableContainer);
+            });
+        }
+
+        // 存储表格数据的全局变量
+        let tablesData = [];
+
+        // 更新表格数据
+        function updateTableData(tableIndex, rowIndex, colIndex, value) {
+            if (!tablesData[tableIndex]) {
+                tablesData[tableIndex] = parseSetupSql(document.getElementById('editSetupSql').value)[tableIndex];
+            }
+            
+            if (tablesData[tableIndex] && tablesData[tableIndex].data[rowIndex]) {
+                tablesData[tableIndex].data[rowIndex][colIndex] = value;
+                
+                // 同步更新setupSQL
+                updateSetupSql();
+            }
+        }
+
+        // 添加行
+        function addTableRow(tableIndex) {
+            const setupSql = document.getElementById('editSetupSql').value;
+            tablesData = parseSetupSql(setupSql);
+            
+            if (tablesData[tableIndex]) {
+                const newRow = new Array(tablesData[tableIndex].columns.length).fill('');
+                tablesData[tableIndex].data.push(newRow);
+                
+                updateSetupSql();
+                renderEditableTables(document.getElementById('editSetupSql').value);
+            }
+        }
+
+        // 删除最后一行
+        function removeTableRow(tableIndex) {
+            const setupSql = document.getElementById('editSetupSql').value;
+            tablesData = parseSetupSql(setupSql);
+            
+            if (tablesData[tableIndex] && tablesData[tableIndex].data.length > 0) {
+                tablesData[tableIndex].data.pop();
+                
+                updateSetupSql();
+                renderEditableTables(document.getElementById('editSetupSql').value);
+            }
+        }
+
+        // 根据tablesData更新setupSQL
+        function updateSetupSql() {
+            let newSetupSql = '';
+            
+            tablesData.forEach(table => {
+                // CREATE TABLE语句（保持原样，只更新INSERT）
+                const currentSql = document.getElementById('editSetupSql').value;
+                const createTablePattern = new RegExp(`CREATE TABLE.*?${table.tableName}.*?\\);`, 's');
+                const createMatch = currentSql.match(createTablePattern);
+                
+                if (createMatch) {
+                    newSetupSql += createMatch[0] + '\n\n';
+                }
+
+                // 重新生成INSERT语句
+                if (table.data.length > 0) {
+                    table.data.forEach(row => {
+                        const values = row.map(v => {
+                            // 如果是数字，不加引号
+                            if (!isNaN(v) && v !== '') {
+                                return v;
+                            }
+                            // 字符串加引号
+                            return `'${v.replace(/'/g, "\\'")}'`;
+                        }).join(', ');
+                        
+                        newSetupSql += `INSERT INTO ${table.tableName} (${table.columns.join(', ')}) VALUES (${values});\n`;
+                    });
+                    newSetupSql += '\n';
+                }
+            });
+            
+            document.getElementById('editSetupSql').value = newSetupSql.trim();
+        }
+
+        function parseSetupSql(setupSql) {
+            const tables = [];
+            const lines = setupSql.split('\n');
+            let currentTable = null;
+            let inInsert = false;
+            let insertColumns = [];
+
+            lines.forEach(line => {
+                line = line.trim();
+                
+                if (line.toUpperCase().startsWith('CREATE TABLE')) {
+                    if (currentTable && currentTable.data.length > 0) {
+                        tables.push(currentTable);
+                    }
+                    
+                    const tableName = line.match(/CREATE TABLE\s+`?(\w+)`?/i);
+                    currentTable = {
+                        tableName: tableName ? tableName[1] : 'unknown',
+                        columns: [],
+                        data: []
+                    };
+                    inInsert = false;
+                } else if (line.toUpperCase().startsWith('INSERT INTO') && currentTable) {
+                    inInsert = true;
+                    const colsMatch = line.match(/\(([^)]+)\)/);
+                    if (colsMatch) {
+                        insertColumns = colsMatch[1].split(',').map(c => c.trim().replace(/`/g, ''));
+                        if (currentTable.columns.length === 0) {
+                            currentTable.columns = insertColumns;
+                        }
+                    }
+                } else if (inInsert && line.toUpperCase().startsWith('VALUES')) {
+                    const valuesMatch = line.match(/\((.*?)\)/);
+                    if (valuesMatch && currentTable) {
+                        const values = valuesMatch[1].split(',').map(v => v.trim().replace(/['"`]/g, ''));
+                        
+                        if (currentTable.columns.length === 0) {
+                            currentTable.columns = insertColumns;
+                        }
+                        
+                        currentTable.data.push(values);
+                    }
+                } else if (line.endsWith(';') || line === '') {
+                    inInsert = false;
+                }
+            });
+
+            if (currentTable && currentTable.data.length > 0) {
+                tables.push(currentTable);
+            }
+
+            return tables;
+        }
+
+        async function confirmQuestion() {
+            if (!currentQuestionData) {
+                showAlert('No question to confirm', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                // 从渲染的Markdown内容获取数据
+                const description = document.getElementById('renderDescription').innerHTML;
+                const answer = document.getElementById('renderAnswer').innerHTML;
+                
+                const requestData = {
+                    quizId: currentQuestionData.quizId,
+                    title: document.getElementById('editTitle').value,
+                    description: description,
+                    databaseContext: currentQuestionData.databaseContext || '', // 保留原始数据
+                    setupSql: document.getElementById('editSetupSql').value,
+                    expectedSql: document.getElementById('editExpectedSql').value,
+                    answer: answer,
+                    questionType: currentQuestionData.questionType,
+                    difficulty: currentQuestionData.difficulty,
+                    score: parseFloat(document.getElementById('questionScore').value)
+                };
+
+                console.log('Sending request:', requestData);
+
+                const response = await fetch('/teacher/api/question/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+
+                if (result.success) {
+                    showAlert('Question added to quiz successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/teacher/quiz/' + currentQuestionData.quizId + '/questions';
+                    }, 1500);
+                } else {
+                    showAlert(result.error || 'Failed to add question', 'error');
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Network error: ' + error.message, 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertElem = document.getElementById(type === 'error' ? 'errorAlert' : 'successAlert');
+            const msgElem = document.getElementById(type === 'error' ? 'errorMessage' : 'successMessage');
+
+            msgElem.textContent = message;
+            alertElem.classList.add('show');
+
+            setTimeout(() => {
+                alertElem.classList.remove('show');
+            }, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const editableElements = document.querySelectorAll('[contenteditable="true"]');
+            editableElements.forEach(el => {
+                el.addEventListener('focus', function() {
+                    if (this.textContent === '') {
+                        this.innerHTML = '';
+                    }
+                });
+                
+                el.addEventListener('blur', function() {
+                    if (this.innerHTML.trim() === '') {
+                        this.innerHTML = '';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
