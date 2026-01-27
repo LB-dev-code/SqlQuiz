@@ -403,6 +403,120 @@
             border-bottom: 1px solid var(--accent);
         }
 
+        /* Markdown渲染内容样式 */
+        .markdown-content {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            line-height: 1.8;
+            color: var(--white);
+        }
+
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            color: var(--accent);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-content code {
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: ui-monospace, monospace;
+            font-size: 13px;
+        }
+
+        .markdown-content pre {
+            background: rgba(0,0,0,0.5);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-content li {
+            margin-bottom: 6px;
+        }
+
+        /* 改进的可编辑表格样式 - 参考学生练习 */
+        .editable-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .editable-data-table th {
+            background: rgba(91, 140, 255, 0.3);
+            color: var(--white);
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent);
+            font-size: 13px;
+        }
+
+        .editable-data-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--field-border);
+            color: var(--white);
+            cursor: text;
+            transition: background 0.2s;
+            font-size: 13px;
+        }
+
+        .editable-data-table td:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .editable-data-table td:focus {
+            outline: 2px solid var(--accent);
+            background: rgba(91, 140, 255, 0.1);
+        }
+
+        .editable-data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 16px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--field-border);
+            background: var(--field);
+            color: var(--white);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .table-actions button:hover {
+            background: rgba(91, 140, 255, 0.2);
+            border-color: var(--accent);
+        }
+
         .answer-section {
             background: rgba(79, 240, 167, 0.05);
             border: 1px solid rgba(79, 240, 167, 0.2);
@@ -530,23 +644,18 @@
                     </div>
 
                     <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-file-alt"></i> Description (Editable)</div>
-                        <div class="editable-content" id="editDescription" contenteditable="true" data-placeholder="Enter question description"></div>
+                        <div class="section-label"><i class="fas fa-file-alt"></i> Question Description (Editable)</div>
+                        <div class="markdown-content" id="renderDescription" contenteditable="true"></div>
                     </div>
 
                     <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-database"></i> Table Structure (Editable)</div>
-                        <div class="editable-content" id="editDatabaseContext" contenteditable="true" data-placeholder="Table structure will appear here"></div>
+                        <div class="section-label"><i class="fas fa-table"></i> Database Tables (Click cells to edit)</div>
+                        <div id="renderTables"></div>
                     </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-table"></i> Sample Data (Editable Table)</div>
-                        <div id="editableTableContainer"></div>
-                    </div>
-
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-code"></i> Setup SQL (Auto-generated from table)</div>
-                        <textarea class="textarea" id="editSetupSql" placeholder="CREATE TABLE and INSERT statements" readonly></textarea>
+                    <div class="preview-section" style="display: none;">
+                        <div class="section-label"><i class="fas fa-code"></i> Setup SQL (Hidden)</div>
+                        <textarea class="textarea" id="editSetupSql" placeholder="CREATE TABLE and INSERT statements"></textarea>
                     </div>
 
                     <div class="preview-section">
@@ -554,12 +663,9 @@
                         <textarea class="textarea" id="editExpectedSql" placeholder="Expected answer SQL"></textarea>
                     </div>
 
-                    <div class="answer-section">
-                        <div class="answer-title">
-                            <i class="fas fa-lightbulb"></i>
-                            AI-Generated Answer Explanation (Editable)
-                        </div>
-                        <div class="editable-content" id="editAnswer" contenteditable="true" data-placeholder="Detailed answer explanation with solution approach"></div>
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-lightbulb"></i> Answer Explanation (Editable)</div>
+                        <div class="markdown-content" id="renderAnswer" contenteditable="true"></div>
                     </div>
 
                     <div class="input-group" style="margin-top: 20px;">
@@ -582,7 +688,6 @@
 
     <script>
         let currentQuestionData = null;
-        let tableData = [];
 
         async function generateQuestion() {
             const quizId = document.getElementById('quizId').value;
@@ -655,48 +760,66 @@
             diffElem.textContent = data.difficulty || 'MEDIUM';
             diffElem.className = 'badge ' + (data.difficulty ? data.difficulty.toLowerCase() : 'medium');
 
-            document.getElementById('editDescription').innerHTML = data.description || '';
-            document.getElementById('editDatabaseContext').innerHTML = data.databaseContext || '';
-            document.getElementById('editSetupSql').value = data.setupSql || '';
-            document.getElementById('editExpectedSql').value = data.expectedSql || '';
-            document.getElementById('editAnswer').innerHTML = data.answer || '';
+            // 使用marked.js渲染Markdown描述
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm: true,
+                    sanitize: false
+                });
+                document.getElementById('renderDescription').innerHTML = marked.parse(data.description || '');
+                document.getElementById('renderAnswer').innerHTML = marked.parse(data.answer || '');
+            } else {
+                document.getElementById('renderDescription').innerHTML = data.description || '';
+                document.getElementById('renderAnswer').innerHTML = data.answer || '';
+            }
 
-            renderEditableTable(data.setupSql);
+            // 存储setupSQL但不显示
+            document.getElementById('editSetupSql').value = data.setupSql || '';
+            
+            // 移除expectedSql中的表名前缀后显示
+            const cleanedExpectedSql = removeTablePrefixFromSql(data.expectedSql || '');
+            document.getElementById('editExpectedSql').value = cleanedExpectedSql;
+
+            // 渲染可编辑的数据表格
+            renderEditableTables(data.setupSql);
         }
 
-        function renderEditableTable(setupSql) {
-            const container = document.getElementById('editableTableContainer');
+       // 渲染可编辑表格
+        function renderEditableTables(setupSql) {
+            const container = document.getElementById('renderTables');
             container.innerHTML = '';
 
             if (!setupSql) {
-                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No sample data available</p>';
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data available</p>';
                 return;
             }
 
             const tables = parseSetupSql(setupSql);
+            tablesData = tables; // 初始化全局变量
             
             if (tables.length === 0) {
-                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data found in setup SQL</p>';
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data found</p>';
                 return;
             }
 
-            tableData = tables;
-
             tables.forEach((tableData, tableIndex) => {
-                const tableWrapper = document.createElement('div');
-                tableWrapper.className = 'editable-table-container';
-                tableWrapper.style.marginBottom = '20px';
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'editable-table-container';
+                tableContainer.dataset.tableIndex = tableIndex;
 
+                // 表格标题 - 显示简化的表名
                 const tableTitle = document.createElement('div');
-                tableTitle.style.cssText = 'font-size: 14px; font-weight: 600; color: var(--accent); padding: 10px;';
-                tableTitle.innerHTML = `<i class="fas fa-table"></i> ${tableData.tableName}`;
-                tableWrapper.appendChild(tableTitle);
+                tableTitle.className = 'table-title';
+                tableTitle.innerHTML = `<i class="fas fa-table"></i> ${tableData.displayName || tableData.tableName}`;
+                tableContainer.appendChild(tableTitle);
 
-                if (tableData.columns && tableData.columns.length > 0 && tableData.data && tableData.data.length > 0) {
+                if (tableData.columns && tableData.columns.length > 0) {
+                    // 创建可编辑表格
                     const table = document.createElement('table');
-                    table.className = 'editable-table';
-                    table.dataset.tableIndex = tableIndex;
+                    table.className = 'editable-data-table';
 
+                    // 表头
                     const thead = document.createElement('thead');
                     const headerRow = document.createElement('tr');
                     tableData.columns.forEach(col => {
@@ -707,181 +830,238 @@
                     thead.appendChild(headerRow);
                     table.appendChild(thead);
 
+                    // 表体 - 可编辑
                     const tbody = document.createElement('tbody');
                     tableData.data.forEach((row, rowIndex) => {
                         const tr = document.createElement('tr');
-                        tr.dataset.rowIndex = rowIndex;
                         tableData.columns.forEach((col, colIndex) => {
                             const td = document.createElement('td');
-                            td.textContent = row[colIndex] || '';
                             td.contentEditable = true;
+                            td.textContent = row[colIndex] || '';
+                            td.dataset.tableIndex = tableIndex;
+                            td.dataset.rowIndex = rowIndex;
                             td.dataset.colIndex = colIndex;
+                            
+                            // 监听编辑事件
                             td.addEventListener('blur', function() {
-                                updateTableCell(tableIndex, rowIndex, colIndex, this.textContent);
+                                updateTableData(tableIndex, rowIndex, colIndex, this.textContent);
                             });
+
                             tr.appendChild(td);
                         });
                         tbody.appendChild(tr);
                     });
                     table.appendChild(tbody);
 
+                    tableContainer.appendChild(table);
+
+                    // 添加操作按钮
                     const actions = document.createElement('div');
                     actions.className = 'table-actions';
-                    
-                    const addBtn = document.createElement('button');
-                    addBtn.innerHTML = '<i class="fas fa-plus"></i> Add Row';
-                    addBtn.onclick = () => addTableRow(tableIndex);
-                    actions.appendChild(addBtn);
-
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.innerHTML = '<i class="fas fa-minus"></i> Delete Row';
-                    deleteBtn.onclick = () => deleteTableRow(tableIndex);
-                    actions.appendChild(deleteBtn);
-
-                    tableWrapper.appendChild(table);
-                    tableWrapper.appendChild(actions);
+                    actions.innerHTML = `
+                        <button onclick="addTableRow(${tableIndex})"><i class="fas fa-plus"></i> Add Row</button>
+                        <button onclick="removeTableRow(${tableIndex})"><i class="fas fa-minus"></i> Remove Last Row</button>
+                    `;
+                    tableContainer.appendChild(actions);
                 }
 
-                container.appendChild(tableWrapper);
+                container.appendChild(tableContainer);
             });
         }
 
-        function updateTableCell(tableIndex, rowIndex, colIndex, value) {
-            if (tableData[tableIndex] && tableData[tableIndex].data[rowIndex]) {
-                tableData[tableIndex].data[rowIndex][colIndex] = value;
+        // 存储表格数据的全局变量
+        let tablesData = [];
+
+        // 更新表格数据
+        function updateTableData(tableIndex, rowIndex, colIndex, value) {
+            if (!tablesData[tableIndex]) {
+                tablesData[tableIndex] = parseSetupSql(document.getElementById('editSetupSql').value)[tableIndex];
+            }
+            
+            if (tablesData[tableIndex] && tablesData[tableIndex].data[rowIndex]) {
+                tablesData[tableIndex].data[rowIndex][colIndex] = value;
+                
+                // 同步更新setupSQL
                 updateSetupSql();
             }
         }
 
+        // 添加行
         function addTableRow(tableIndex) {
-            if (tableData[tableIndex]) {
-                const newRow = new Array(tableData[tableIndex].columns.length).fill('');
-                tableData[tableIndex].data.push(newRow);
-                renderEditableTableFromData();
-                updateSetupSql();
-            }
-        }
-
-        function deleteTableRow(tableIndex) {
-            if (tableData[tableIndex] && tableData[tableIndex].data.length > 1) {
-                tableData[tableIndex].data.pop();
-                renderEditableTableFromData();
-                updateSetupSql();
-            }
-        }
-
-        function renderEditableTableFromData() {
-            const container = document.getElementById('editableTableContainer');
-            const currentHtml = container.innerHTML;
+            const setupSql = document.getElementById('editSetupSql').value;
+            tablesData = parseSetupSql(setupSql);
             
-            tableData.forEach((tableData, tableIndex) => {
-                const tableWrapper = container.querySelectorAll('.editable-table-container')[tableIndex];
-                if (tableWrapper) {
-                    const table = tableWrapper.querySelector('table');
-                    if (table) {
-                        const tbody = table.querySelector('tbody');
-                        tbody.innerHTML = '';
+            if (tablesData[tableIndex]) {
+                const newRow = new Array(tablesData[tableIndex].columns.length).fill('');
+                tablesData[tableIndex].data.push(newRow);
+                
+                updateSetupSql();
+                renderEditableTables(document.getElementById('editSetupSql').value);
+            }
+        }
+
+        // 删除最后一行
+        function removeTableRow(tableIndex) {
+            const setupSql = document.getElementById('editSetupSql').value;
+            tablesData = parseSetupSql(setupSql);
+            
+            if (tablesData[tableIndex] && tablesData[tableIndex].data.length > 0) {
+                tablesData[tableIndex].data.pop();
+                
+                updateSetupSql();
+                renderEditableTables(document.getElementById('editSetupSql').value);
+            }
+        }
+
+        // 根据tablesData更新setupSQL
+        function updateSetupSql() {
+            let newSetupSql = '';
+            
+            tablesData.forEach(table => {
+                // CREATE TABLE语句（保持原样，只更新INSERT）
+                const currentSql = document.getElementById('editSetupSql').value;
+                const createTablePattern = new RegExp(`CREATE TABLE.*?${table.tableName}.*?\\);`, 's');
+                const createMatch = currentSql.match(createTablePattern);
+                
+                if (createMatch) {
+                    newSetupSql += createMatch[0] + '\n\n';
+                }
+
+                // 重新生成INSERT语句
+                if (table.data.length > 0) {
+                    table.data.forEach(row => {
+                        const values = row.map(v => {
+                            // 如果是数字，不加引号
+                            if (!isNaN(v) && v !== '') {
+                                return v;
+                            }
+                            // 字符串加引号
+                            return `'${v.replace(/'/g, "\\'")}'`;
+                        }).join(', ');
                         
-                        tableData.data.forEach((row, rowIndex) => {
-                            const tr = document.createElement('tr');
-                            tr.dataset.rowIndex = rowIndex;
-                            tableData.columns.forEach((col, colIndex) => {
-                                const td = document.createElement('td');
-                                td.textContent = row[colIndex] || '';
-                                td.contentEditable = true;
-                                td.dataset.colIndex = colIndex;
-                                td.addEventListener('blur', function() {
-                                    updateTableCell(tableIndex, rowIndex, colIndex, this.textContent);
-                                });
-                                tr.appendChild(td);
-                            });
-                            tbody.appendChild(tr);
-                        });
-                    }
+                        newSetupSql += `INSERT INTO ${table.tableName} (${table.columns.join(', ')}) VALUES (${values});\n`;
+                    });
+                    newSetupSql += '\n';
                 }
             });
-        }
-
-        function updateSetupSql() {
-            let setupSql = '';
             
-            tableData.forEach(table => {
-                const tableName = table.tableName;
-                
-                let createSql = `CREATE TABLE \`${tableName}\` (\n`;
-                createSql += table.columns.map((col, idx) => {
-                    const isLast = idx === table.columns.length - 1;
-                    return `  \`${col}\` VARCHAR(255)${isLast ? '' : ','}`;
-                }).join('\n');
-                createSql += '\n);\n\n';
-                
-                setupSql += createSql;
-                
-                table.data.forEach((row, idx) => {
-                    const isLast = idx === table.data.length - 1;
-                    const values = row.map(v => `'${v || ''}'`).join(', ');
-                    const cols = table.columns.map(c => `\`${c}\``).join(', ');
-                    setupSql += `INSERT INTO \`${tableName}\` (${cols}) VALUES (${values})${isLast ? ';' : ''}\n`;
-                });
-                
-                setupSql += '\n';
-            });
-            
-            document.getElementById('editSetupSql').value = setupSql;
+            document.getElementById('editSetupSql').value = newSetupSql.trim();
         }
 
         function parseSetupSql(setupSql) {
             const tables = [];
-            const lines = setupSql.split('\n');
-            let currentTable = null;
-            let inInsert = false;
-            let insertColumns = [];
-
-            lines.forEach(line => {
-                line = line.trim();
-                
-                if (line.toUpperCase().startsWith('CREATE TABLE')) {
-                    if (currentTable && currentTable.data.length > 0) {
-                        tables.push(currentTable);
-                    }
+            if (!setupSql || setupSql.trim() === '') {
+                return tables;
+            }
+        
+            // 使用正则表达式匹配CREATE TABLE和INSERT语句
+            const createTableRegex = /CREATE TABLE\s+`?([\w_]+)`?\s*\([^;]+\);?/gi;
+            // 修改为支持多行VALUES的正则表达式
+            const insertRegex = /INSERT INTO\s+`?([\w_]+)`?\s*\(([^)]+)\)\s*VALUES\s+([\s\S]+?);/gi;
+        
+            // 解析CREATE TABLE语句以获取表名
+            const tableMap = new Map();
+            let match;
                     
-                    const tableName = line.match(/CREATE TABLE\s+`?(\w+)`?/i);
-                    currentTable = {
-                        tableName: tableName ? tableName[1] : 'unknown',
+            while ((match = createTableRegex.exec(setupSql)) !== null) {
+                const fullTableName = match[1];
+                const displayName = removeTablePrefix(fullTableName);
+                if (!tableMap.has(fullTableName)) {
+                    tableMap.set(fullTableName, {
+                        tableName: fullTableName, // 数据库中的完整表名
+                        displayName: displayName, // 显示用的简化表名
                         columns: [],
                         data: []
-                    };
-                    inInsert = false;
-                } else if (line.toUpperCase().startsWith('INSERT INTO') && currentTable) {
-                    inInsert = true;
-                    const colsMatch = line.match(/\(([^)]+)\)/);
-                    if (colsMatch) {
-                        insertColumns = colsMatch[1].split(',').map(c => c.trim().replace(/`/g, ''));
-                        if (currentTable.columns.length === 0) {
-                            currentTable.columns = insertColumns;
+                    });
+                }
+            }
+        
+            // 解析INSERT语句
+            while ((match = insertRegex.exec(setupSql)) !== null) {
+                const fullTableName = match[1];
+                const displayName = removeTablePrefix(fullTableName);
+                const columns = match[2].split(',').map(c => c.trim().replace(/[`\s]/g, ''));
+                const valuesBlock = match[3]; // 整个VALUES块
+                
+                // 解析多行值：('Y', 'N'), ('Y', 'Y'), ...
+                const valueRowRegex = /\(([^)]+)\)/g;
+                let valueMatch;
+                
+                if (!tableMap.has(fullTableName)) {
+                    tableMap.set(fullTableName, {
+                        tableName: fullTableName,
+                        displayName: displayName,
+                        columns: columns,
+                        data: []
+                    });
+                } else if (tableMap.get(fullTableName).columns.length === 0) {
+                    tableMap.get(fullTableName).columns = columns;
+                }
+                
+                // 提取每一行的VALUES
+                while ((valueMatch = valueRowRegex.exec(valuesBlock)) !== null) {
+                    const values = valueMatch[1].split(',').map(v => {
+                        v = v.trim();
+                        // 移除引号
+                        if ((v.startsWith("'") && v.endsWith("'")) || 
+                            (v.startsWith('"') && v.endsWith('"'))) {
+                            return v.slice(1, -1);
                         }
-                    }
-                } else if (inInsert && line.toUpperCase().startsWith('VALUES')) {
-                    const valuesMatch = line.match(/\((.*?)\)/);
-                    if (valuesMatch && currentTable) {
-                        const values = valuesMatch[1].split(',').map(v => v.trim().replace(/['"`]/g, ''));
-                        
-                        if (currentTable.columns.length === 0) {
-                            currentTable.columns = insertColumns;
-                        }
-                        
-                        currentTable.data.push(values);
-                    }
-                } else if (line.endsWith(';') || line === '') {
-                    inInsert = false;
+                        // 保持原始值（包括布尔值、数字等）
+                        return v;
+                    });
+                    tableMap.get(fullTableName).data.push(values);
+                }
+            }
+        
+            // 转换为数组
+            tableMap.forEach(table => {
+                if (table.data.length > 0) {
+                    tables.push(table);
                 }
             });
-
-            if (currentTable && currentTable.data.length > 0) {
-                tables.push(currentTable);
-            }
-
+        
+            console.log('Parsed tables:', tables); // 调试日志
             return tables;
+        }
+        
+        // 移除表名前缀，只显示原始表名
+        function removeTablePrefix(tableName) {
+            // quiz_q_14dbfc95_1769492438429_customers -> customers
+            if (tableName.match(/^quiz_q_[\w]+_\d+_(.+)$/)) {
+                return tableName.replace(/^quiz_q_[\w]+_\d+_/, '');
+            }
+            return tableName;
+        }
+
+        // 从SQL语句中移除表名前缀
+        function removeTablePrefixFromSql(sql) {
+            if (!sql) return sql;
+            
+            // 匹配SQL中所有的quiz_q_前缀表名并替换为简化表名
+            // 匹配模式：quiz_q_[任意字符]_[数字]_[表名]
+            return sql.replace(/quiz_q_[\w]+_\d+_([\w]+)/g, '$1');
+        }
+
+        // 为SQL语句中的表名添加前缀
+        function addTablePrefixToSql(sql, setupSql) {
+            if (!sql || !setupSql) return sql;
+            
+            // 从setupSql中提取所有表名及其前缀的映射
+            const tables = parseSetupSql(setupSql);
+            let result = sql;
+            
+            tables.forEach(table => {
+                // 使用displayName（简化表名）匹配并替换为tableName（完整表名）
+                const displayName = table.displayName || removeTablePrefix(table.tableName);
+                const fullTableName = table.tableName;
+                
+                // 使用单词边界匹配，确保只替换完整的表名
+                const regex = new RegExp('\\b' + displayName + '\\b', 'g');
+                result = result.replace(regex, fullTableName);
+            });
+            
+            return result;
         }
 
         async function confirmQuestion() {
@@ -895,14 +1075,25 @@
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
             try {
+                // 从Markdown渲染后的内容获取数据
+                const description = document.getElementById('renderDescription').innerHTML;
+                const answer = document.getElementById('renderAnswer').innerHTML;
+                
+                // 获取setupSql和expectedSql
+                const setupSql = document.getElementById('editSetupSql').value;
+                const displayExpectedSql = document.getElementById('editExpectedSql').value;
+                
+                // 将expectedSql中的简化表名恢复为完整表名
+                const fullExpectedSql = addTablePrefixToSql(displayExpectedSql, setupSql);
+                
                 const requestData = {
                     quizId: String(currentQuestionData.quizId),
                     title: document.getElementById('editTitle').value,
-                    description: document.getElementById('editDescription').innerHTML,
-                    databaseContext: document.getElementById('editDatabaseContext').innerHTML,
-                    setupSql: document.getElementById('editSetupSql').value,
-                    expectedSql: document.getElementById('editExpectedSql').value,
-                    answer: document.getElementById('editAnswer').innerHTML,
+                    description: description,
+                    databaseContext: currentQuestionData.databaseContext || '', // 保留原始数据
+                    setupSql: setupSql,
+                    expectedSql: fullExpectedSql,  // 使用恢复前缀后的SQL
+                    answer: answer,
                     questionType: currentQuestionData.questionType,
                     difficulty: currentQuestionData.difficulty,
                     score: String(document.getElementById('questionScore').value)
