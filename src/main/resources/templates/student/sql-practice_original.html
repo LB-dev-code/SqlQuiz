@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Practice - MySQL Knowledge Testing Platform</title>
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Dark theme with glassmorphism colors matching register page */
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --shadow-2: rgba(0, 20, 60, 0.35);
+            --heart: #ff6aa2;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+            --spacing-6: 40px;
+            --spacing-7: 48px;
+            --spacing-8: 64px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%);
+            font-family: var(--font-sans);
+            color: var(--white);
+        }
+
+        /* Navigation bar */
+        .navbar {
+            background: var(--panel);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: var(--spacing-2) 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-4);
+        }
+
+        .navbar-brand {
+            color: var(--white);
+            font-size: 20px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-4);
+            margin-left: auto;
+        }
+
+        .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: var(--spacing-1) var(--spacing-3);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--white);
+            background: var(--panel-strong);
+        }
+
+        /* Main content */
+        .page-content {
+            padding: var(--spacing-6) 0;
+        }
+
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: var(--spacing-5);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Glass card */
+        .card {
+            background: var(--panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 8px 32px var(--shadow-1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: var(--spacing-4) var(--spacing-5);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .card-body {
+            padding: var(--spacing-5);
+        }
+
+        /* SQL Editor */
+        .sql-editor {
+            width: 100%;
+            min-height: 200px;
+            padding: var(--spacing-3);
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        .sql-editor:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--field-focus);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: var(--spacing-2);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: var(--spacing-2) var(--spacing-4);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--panel-strong);
+            color: var(--white);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* Results */
+        .result-table {
+            max-height: 400px;
+            overflow: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th {
+            background: rgba(0,0,0,0.3);
+            padding: var(--spacing-2) var(--spacing-3);
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent-2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky;
+            top: 0;
+        }
+
+        .table td {
+            padding: var(--spacing-2) var(--spacing-3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--white);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        /* Status messages */
+        .success-message {
+            background: rgba(79, 240, 167, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+        }
+
+        .error-message {
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+        }
+
+        /* Examples */
+        .example-section {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .example-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .example-sql {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-left: 3px solid var(--accent);
+            padding: var(--spacing-2) var(--spacing-3);
+            margin-bottom: var(--spacing-2);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: var(--white);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+
+        .example-sql:hover {
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--accent-hover);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: var(--spacing-6);
+            color: var(--muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: var(--spacing-2);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/student/dashboard" class="navbar-brand">
+                <i class="fas fa-database"></i>
+                SQL Practice Arena
+            </a>
+            <div class="navbar-nav">
+                <a href="/student/dashboard" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="/student/quizzes" class="nav-link">
+                    <i class="fas fa-list"></i> Quiz Center
+                </a>
+                <a href="/student/sql-practice" class="nav-link">
+                    <i class="fas fa-code"></i> SQL Practice
+                </a>
+                <a href="/logout" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <div class="page-content">
+        <div class="container">
+            <div class="content-wrapper">
+                <!-- Left: SQL Editor and Results -->
+                <div>
+                    <!-- SQL Editor -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-code"></i>
+                                SQL Editor
+                            </h2>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-secondary" onclick="formatSql()">
+                                    <i class="fas fa-align-left"></i> Format
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearSql()">
+                                    <i class="fas fa-eraser"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <form id="sqlPracticeForm">
+                                <textarea class="sql-editor" id="sqlInput" name="sql" 
+                                    placeholder="Enter your SQL statement here...&#10;&#10;For example:&#10;SELECT * FROM users WHERE age > 18;"></textarea>
+                                
+                                <div class="btn-group" style="margin-top: var(--spacing-3);">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-play"></i> Execute SQL
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="card" style="margin-top: var(--spacing-4);">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-terminal"></i>
+                                Execution Results
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="loadingIndicator" class="loading" style="display: none;">
+                                <div class="spinner"></div>
+                                Executing SQL statement...
+                            </div>
+                            
+                            <div id="resultContainer">
+                                <div style="text-align: center; padding: var(--spacing-5); color: var(--muted);">
+                                    <i class="fas fa-info-circle" style="font-size: 48px; margin-bottom: var(--spacing-3); opacity: 0.5;"></i>
+                                    <p>Enter SQL statement above and click "Execute SQL" to see results</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Examples -->
+                <div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-lightbulb"></i>
+                                Example SQL Statements
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <!-- Basic Queries -->
+                            <div class="example-section">
+                                <h3 class="example-title">Basic Queries</h3>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT * FROM users LIMIT 10;
+                                </div>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT username, email FROM users;
+                                </div>
+                            </div>
+
+                            <!-- Conditional Queries -->
+                            <div class="example-section">
+                                <h3 class="example-title">Conditional Queries</h3>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT * FROM users WHERE age > 18;
+                                </div>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT * FROM users WHERE username LIKE 'admin%';
+                                </div>
+                            </div>
+
+                            <!-- Sorting and Grouping -->
+                            <div class="example-section">
+                                <h3 class="example-title">Sorting and Grouping</h3>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT * FROM users ORDER BY created_at DESC;
+                                </div>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT role, COUNT(*) as count FROM users GROUP BY role;
+                                </div>
+                            </div>
+
+                            <!-- JOIN Queries -->
+                            <div class="example-section">
+                                <h3 class="example-title">JOIN Queries</h3>
+                                <div class="example-sql" onclick="loadExample(this)">
+                                    SELECT u.username, q.title FROM users u JOIN quizzes q ON u.id = q.teacher_id;
+                                </div>
+                            </div>
+
+                            <!-- Alert -->
+                            <div style="background: rgba(255, 200, 87, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: var(--spacing-3); border-radius: var(--radius-md); margin-top: var(--spacing-4);">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: var(--spacing-2);"></i>
+                                <strong>Note:</strong> Please avoid executing statements that may damage data (such as DROP, DELETE, etc.)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Submit SQL form
+        document.getElementById('sqlPracticeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const sql = document.getElementById('sqlInput').value.trim();
+            if (!sql) {
+                alert('Please enter SQL statement');
+                return;
+            }
+            
+            // Show loading indicator
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultContainer').innerHTML = '';
+            
+            // Send AJAX request
+            fetch('/student/sql-practice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'sql=' + encodeURIComponent(sql)
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResult(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                displayError('Network error: ' + error.message);
+            })
+            .finally(() => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            });
+        });
+        
+        // Display execution result
+        function displayResult(result) {
+            const container = document.getElementById('resultContainer');
+            
+            if (result.success) {
+                let html = '<div class="success-message">';
+                html += '<i class="fas fa-check-circle"></i> ';
+                html += '<strong>Execution successful</strong>';
+                if (result.executionTime) {
+                    html += ' (Time: ' + result.executionTime + 'ms)';
+                }
+                html += '</div>';
+                
+                if (result.resultData && result.resultData.length > 0) {
+                    html += '<div class="result-table">';
+                    html += '<table class="table">';
+                    
+                    // Table header
+                    html += '<thead><tr>';
+                    Object.keys(result.resultData[0]).forEach(key => {
+                        html += '<th>' + key + '</th>';
+                    });
+                    html += '</tr></thead>';
+                    
+                    // Table body
+                    html += '<tbody>';
+                    result.resultData.forEach(row => {
+                        html += '<tr>';
+                        Object.values(row).forEach(value => {
+                            html += '<td>' + (value || '') + '</td>';
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                    
+                    html += '<p style="color: var(--muted); font-size: 13px; margin-top: var(--spacing-2);">';
+                    html += 'Returned ' + result.resultData.length + ' rows</p>';
+                } else {
+                    html += '<p style="color: var(--muted);">Query executed successfully but returned no data.</p>';
+                }
+                
+                container.innerHTML = html;
+            } else {
+                displayError(result.errorMessage || 'Execution failed');
+            }
+        }
+        
+        // Display error message
+        function displayError(message) {
+            const container = document.getElementById('resultContainer');
+            container.innerHTML = '<div class="error-message">' +
+                '<i class="fas fa-exclamation-circle"></i> ' +
+                '<strong>Execution failed:</strong><br>' + message +
+                '</div>';
+        }
+        
+        // Load example SQL
+        function loadExample(element) {
+            const sql = element.textContent.trim();
+            document.getElementById('sqlInput').value = sql;
+        }
+        
+        // Clear SQL
+        function clearSql() {
+            if (confirm('Are you sure you want to clear current SQL content?')) {
+                document.getElementById('sqlInput').value = '';
+                document.getElementById('resultContainer').innerHTML = 
+                    '<div style="text-align: center; padding: var(--spacing-5); color: var(--muted);">' +
+                    '<i class="fas fa-info-circle" style="font-size: 48px; margin-bottom: var(--spacing-3); opacity: 0.5;"></i>' +
+                    '<p>Enter SQL statement above and click "Execute SQL" to see results</p>' +
+                    '</div>';
+            }
+        }
+        
+        // Format SQL (simple implementation)
+        function formatSql() {
+            const sqlInput = document.getElementById('sqlInput');
+            let sql = sqlInput.value;
+            
+            if (!sql.trim()) {
+                alert('请先输入SQL语句');
+                return;
+            }
+            
+            // Simple SQL formatting
+            sql = sql.replace(/\s+/g, ' '); // Merge multiple spaces
+            sql = sql.replace(/\s*,\s*/g, ',\n    '); // Line break after comma
+            sql = sql.replace(/\s*(SELECT|FROM|WHERE|ORDER BY|GROUP BY|HAVING|JOIN|LEFT JOIN|RIGHT JOIN|INNER JOIN)\s+/gi, '\n$1 ');
+            sql = sql.replace(/\s*;\s*$/, ';\n'); // Line break after semicolon
+            sql = sql.trim();
+            
+            sqlInput.value = sql;
+        }
+    </script>
+</body>
+</html>

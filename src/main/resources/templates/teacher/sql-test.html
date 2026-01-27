@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SQL Practice Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+        :root{
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: var(--font-sans);
+            margin: 0;
+        }
+
+        .navbar {
+            background: var(--panel);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: var(--spacing-2) 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .card {
+            background: var(--panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-1);
+            overflow: hidden;
+            margin-bottom: var(--spacing-4);
+        }
+
+        .card-header {
+            padding: var(--spacing-4) var(--spacing-5);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .card-body {
+            padding: var(--spacing-5);
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-5);
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            margin-bottom: var(--spacing-5);
+        }
+
+        .title-wrap {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .app-title {
+            font-family: var(--font-sans);
+            font-weight: 700;
+            font-size: 28px;
+            letter-spacing: 0.4px;
+            color: var(--white);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-bottom: var(--spacing-5);
+        }
+
+        .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: var(--spacing-2) var(--spacing-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--white);
+            background: var(--field);
+            border-color: var(--field-border);
+        }
+
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: var(--spacing-5);
+        }
+
+        /* Selectors */
+        .selector-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-3);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .selector-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2);
+        }
+
+        .selector-label {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .selector-select {
+            padding: var(--spacing-2) var(--spacing-3);
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .selector-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--field-focus);
+        }
+
+        /* Question Display */
+        .question-display {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-4);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .question-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .question-content {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* Table Display */
+        .table-display {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-4);
+            margin-bottom: var(--spacing-4);
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-2);
+            margin-bottom: var(--spacing-2);
+        }
+
+        /* SQL Editor */
+        .sql-editor {
+            width: 100%;
+            min-height: 150px;
+            padding: var(--spacing-3);
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            color: var(--white);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        .sql-editor:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--field-focus);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: var(--spacing-2);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-4);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            color: var(--white);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.04);
+        }
+
+        /* Results */
+        .result-table {
+            max-height: 400px;
+            overflow: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table th {
+            background: rgba(0,0,0,0.3);
+            padding: var(--spacing-2) var(--spacing-3);
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent-2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky;
+            top: 0;
+        }
+
+        .table td {
+            padding: var(--spacing-2) var(--spacing-3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: var(--white);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        /* Status messages */
+        .success-message {
+            background: rgba(79, 240, 167, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+        }
+
+        .error-message {
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+        }
+
+        .warning-message {
+            background: rgba(255, 200, 87, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-3);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: var(--spacing-6);
+            color: var(--muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: var(--spacing-2);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1100px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .selector-section {
+                grid-template-columns: 1fr;
+            }
+        }
+  </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Top bar -->
+        <div class="topbar">
+            <div class="title-wrap">
+                <div class="app-title">SQL练习工具</div>
+            </div>
+        </div>
+
+        <!-- Navigation links -->
+        <div class="nav-links">
+            <a href="/teacher/dashboard" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="/teacher/quizzes" class="nav-link">
+                <i class="fas fa-list"></i> Quiz Management
+            </a>
+            <a href="/teacher/sql-test" class="nav-link" style="background: var(--field); color: var(--white);">
+                <i class="fas fa-code"></i> SQL Practice
+            </a>
+        </div>
+
+        <div class="content-wrapper">
+            <!-- Left: Main Content -->
+            <div>
+                <!-- Quiz and Question Selectors -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-list"></i>
+                            选择题目
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="selector-section">
+                            <div class="selector-group">
+                                <label class="selector-label">选择Quiz</label>
+                                <select id="quizSelector" class="selector-select" onchange="loadQuestions()">
+                                    <option value="">-- 请选择Quiz --</option>
+                                </select>
+                            </div>
+                            <div class="selector-group">
+                                <label class="selector-label">选择题目</label>
+                                <select id="questionSelector" class="selector-select" onchange="loadQuestionDetail()" disabled>
+                                    <option value="">-- 请先选择Quiz --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question and Table Display -->
+                <div id="questionSection" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <i class="fas fa-question-circle"></i>
+                                题目内容
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="questionDisplay" class="question-display"></div>
+                            <div id="tableDisplay"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SQL Editor -->
+                <div id="editorSection" class="card" style="display: none;">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-code"></i>
+                            SQL编辑器
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <textarea class="sql-editor" id="sqlInput" name="sql" 
+                            placeholder="在此输入SQL语句..."></textarea>
+                        
+                        <div class="btn-group" style="margin-top: var(--spacing-3);">
+                            <button type="button" class="btn btn-primary" onclick="validateSql()">
+                                <i class="fas fa-play"></i> 验证SQL
+                            </button>
+                            <button type="button" class="btn" onclick="clearSql()">
+                                <i class="fas fa-eraser"></i> 清空
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="resultSection" class="card" style="display: none;">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-terminal"></i>
+                            执行结果
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="loadingIndicator" class="loading" style="display: none;">
+                            <div class="spinner"></div>
+                            执行中...
+                        </div>
+                        
+                        <div id="resultContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Info -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            使用说明
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <p style="color: var(--muted); line-height: 1.6; margin-bottom: var(--spacing-3);">
+                            1. 从上方选择一个Quiz<br>
+                            2. 选择要练习的题目<br>
+                            3. 查看题目内容和表格数据<br>
+                            4. 在编辑器中编写SQL语句<br>
+                            5. 点击"验证SQL"查看结果
+                        </p>
+                        
+                        <div style="background: rgba(255, 200, 87, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: var(--spacing-3); border-radius: var(--radius-md);">
+                            <i class="fas fa-lightbulb" style="margin-right: var(--spacing-2);"></i>
+                            <strong>提示:</strong> 系统会自动验证你的SQL语句是否正确
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+  <script>
+    let currentQuestionId = null;
+
+    // 页面加载时初始化
+    window.addEventListener('DOMContentLoaded', function() {
+        loadQuizzes();
+    });
+
+    // 加载Quiz列表
+    function loadQuizzes() {
+        fetch('/api/sql-practice/quizzes')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const selector = document.getElementById('quizSelector');
+                    selector.innerHTML = '<option value="">-- 请选择Quiz --</option>';
+                    
+                    data.data.forEach(quiz => {
+                        const option = document.createElement('option');
+                        option.value = quiz.id;
+                        option.textContent = quiz.title + ' (' + quiz.questionCount + ' 题)';
+                        selector.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('加载Quiz列表失败:', error);
+            });
+    }
+
+    // 加载题目列表
+    function loadQuestions() {
+        const quizId = document.getElementById('quizSelector').value;
+        const questionSelector = document.getElementById('questionSelector');
+        
+        if (!quizId) {
+            questionSelector.innerHTML = '<option value="">-- 请先选择Quiz --</option>';
+            questionSelector.disabled = true;
+            return;
+        }
+
+        questionSelector.disabled = false;
+        
+        fetch('/api/sql-practice/quiz/' + quizId + '/questions')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    questionSelector.innerHTML = '<option value="">-- 请选择题目 --</option>';
+                    
+                    data.data.forEach((q, index) => {
+                        const option = document.createElement('option');
+                        option.value = q.id;
+                        option.textContent = (index + 1) + '. ' + q.content.substring(0, 50) + '...';
+                        questionSelector.appendChild(option);
+                    });
+                    
+                    // 重置显示
+                    document.getElementById('questionSection').style.display = 'none';
+                    document.getElementById('editorSection').style.display = 'none';
+                    document.getElementById('resultSection').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('加载题目列表失败:', error);
+            });
+    }
+
+    // 加载题目详情
+    function loadQuestionDetail() {
+        const questionId = document.getElementById('questionSelector').value;
+        
+        if (!questionId) {
+            document.getElementById('questionSection').style.display = 'none';
+            document.getElementById('editorSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'none';
+            return;
+        }
+
+        currentQuestionId = questionId;
+
+        fetch('/api/sql-practice/question/' + questionId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayQuestion(data.data);
+                    document.getElementById('questionSection').style.display = 'block';
+                    document.getElementById('editorSection').style.display = 'block';
+                    document.getElementById('resultSection').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('加载题目详情失败:', error);
+            });
+    }
+
+    // 显示题目和表格
+    function displayQuestion(data) {
+        // 显示题目
+        let questionHtml = '<div class="question-title">' + data.content + '</div>';
+        if (data.description) {
+            questionHtml += '<div class="question-content">' + data.description + '</div>';
+        }
+        document.getElementById('questionDisplay').innerHTML = questionHtml;
+
+        // 显示表格
+        let tableHtml = '';
+        if (data.tables && data.tables.length > 0) {
+            data.tables.forEach(tableInfo => {
+                tableInfo.data.forEach(table => {
+                    tableHtml += '<div class="table-display">';
+                    tableHtml += '<div class="table-title">表: ' + table.tableName + '</div>';
+                    tableHtml += '<table class="table">';
+                    
+                    // 表头
+                    tableHtml += '<thead><tr>';
+                    table.columns.forEach(col => {
+                        tableHtml += '<th>' + col + '</th>';
+                    });
+                    tableHtml += '</tr></thead>';
+                    
+                    // 表体
+                    tableHtml += '<tbody>';
+                    table.rows.forEach(row => {
+                        tableHtml += '<tr>';
+                        table.columns.forEach(col => {
+                            tableHtml += '<td>' + (row[col] || '') + '</td>';
+                        });
+                        tableHtml += '</tr>';
+                    });
+                    tableHtml += '</tbody></table></div>';
+                });
+            });
+        }
+        
+        if (!tableHtml) {
+            tableHtml = '<div style="color: var(--muted);">该题目没有关联表格</div>';
+        }
+        
+        document.getElementById('tableDisplay').innerHTML = tableHtml;
+    }
+
+    // 验证SQL
+    function validateSql() {
+        const sql = document.getElementById('sqlInput').value.trim();
+        
+        if (!sql) {
+            alert('请输入SQL语句');
+            return;
+        }
+        
+        if (!currentQuestionId) {
+            alert('请先选择题目');
+            return;
+        }
+
+        document.getElementById('loadingIndicator').style.display = 'block';
+        document.getElementById('resultContainer').innerHTML = '';
+        
+        fetch('/api/sql-practice/question/' + currentQuestionId + '/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sql: sql })
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayResult(data);
+        })
+        .catch(error => {
+            console.error('验证失败:', error);
+            displayError('验证失败: ' + error.message);
+        })
+        .finally(() => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        });
+    }
+
+    // 显示结果
+    function displayResult(result) {
+        const container = document.getElementById('resultContainer');
+        
+        if (!result.success) {
+            displayError(result.error || '验证失败');
+            return;
+        }
+
+        let html = '';
+        
+        if (result.isCorrect) {
+            html += '<div class="success-message">';
+            html += '<i class="fas fa-check-circle"></i> ';
+            html += '<strong>' + (result.message || 'SQL语句正确！') + '</strong>';
+            if (result.executionTime) {
+                html += ' (执行时间: ' + result.executionTime + 'ms)';
+            }
+            html += '</div>';
+        } else {
+            html += '<div class="error-message">';
+            html += '<i class="fas fa-times-circle"></i> ';
+            html += '<strong>' + (result.message || 'SQL语句不正确') + '</strong>';
+            html += '</div>';
+        }
+        
+        // 显示用户结果
+        if (result.userResult && result.userResult.length > 0) {
+            html += '<h3 style="color: var(--white); margin: var(--spacing-3) 0 var(--spacing-2);">你的结果:</h3>';
+            html += '<div class="result-table">';
+            html += '<table class="table">';
+            
+            html += '<thead><tr>';
+            Object.keys(result.userResult[0]).forEach(key => {
+                html += '<th>' + key + '</th>';
+            });
+            html += '</tr></thead>';
+            
+            html += '<tbody>';
+            result.userResult.forEach(row => {
+                html += '<tr>';
+                Object.values(row).forEach(value => {
+                    html += '<td>' + (value || '') + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        // 如果不正确，显示期望结果
+        if (!result.isCorrect && result.expectedResult && result.expectedResult.length > 0) {
+            html += '<h3 style="color: var(--white); margin: var(--spacing-3) 0 var(--spacing-2);">期望结果:</h3>';
+            html += '<div class="result-table">';
+            html += '<table class="table">';
+            
+            html += '<thead><tr>';
+            Object.keys(result.expectedResult[0]).forEach(key => {
+                html += '<th>' + key + '</th>';
+            });
+            html += '</tr></thead>';
+            
+            html += '<tbody>';
+            result.expectedResult.forEach(row => {
+                html += '<tr>';
+                Object.values(row).forEach(value => {
+                    html += '<td>' + (value || '') + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    // 显示错误
+    function displayError(message) {
+        const container = document.getElementById('resultContainer');
+        container.innerHTML = '<div class="error-message">' +
+            '<i class="fas fa-exclamation-circle"></i> ' +
+            '<strong>错误:</strong><br>' + message +
+            '</div>';
+    }
+
+    // 清空SQL
+    function clearSql() {
+        document.getElementById('sqlInput').value = '';
+        document.getElementById('resultContainer').innerHTML = 
+            '<div style="text-align: center; padding: var(--spacing-5); color: var(--muted);">' +
+            '<i class="fas fa-info-circle" style="font-size: 48px; margin-bottom: var(--spacing-3); opacity: 0.5;"></i>' +
+            '<p>输入SQL语句并点击"验证SQL"来查看结果</p>' +
+            '</div>';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - SQL Quiz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 色板 - 工业风格 */
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-elevated: #1c2128;
+
+            /* 强调色 - 青色系 */
+            --accent: #2f81f7;
+            --accent-hover: #58a6ff;
+            --accent-muted: rgba(47, 129, 247, 0.15);
+            --accent-subtle: rgba(47, 129, 247, 0.1);
+
+            /* 边框和分隔线 */
+            --border-default: #30363d;
+            --border-muted: #21262d;
+            --border-accent: #388bfd;
+
+            /* 文字颜色 */
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --text-link: #58a6ff;
+
+            /* 状态颜色 */
+            --success: #238636;
+            --success-bg: rgba(35, 134, 54, 0.15);
+            --success-border: rgba(35, 134, 54, 0.4);
+            --error: #f85149;
+            --error-bg: rgba(248, 81, 73, 0.15);
+            --error-border: rgba(248, 81, 73, 0.4);
+
+            /* 尺寸 */
+            --radius: 6px;
+            --input-height: 36px;
+
+            /* 字体 */
+            --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+            /* 动画 */
+            --transition: 150ms ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 背景网格 - 静态 */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--border-muted) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-muted) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+        }
+
+        /* 噪点层 */
+        .noise {
+            position: fixed;
+            inset: 0;
+            opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        /* 主布局 - 非对称 */
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 左侧信息区 */
+        .info-section {
+            padding: 48px 60px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-default);
+        }
+
+        /* 顶部品牌 */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: auto;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-logo svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .brand-name {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        /* 标题区 */
+        .title-block {
+            margin-bottom: 48px;
+        }
+
+        .title-block h1 {
+            font-size: 42px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+        }
+
+        .title-block h1 code {
+            font-family: var(--font-mono);
+            color: var(--accent-hover);
+            font-size: 0.9em;
+        }
+
+        .title-block p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 420px;
+        }
+
+        /* 快速登录卡片区 */
+        .quick-login {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            padding: 20px;
+            width: fit-content;
+        }
+
+        .quick-login-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+
+        .quick-login-header svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-muted);
+        }
+
+        .account-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .account-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-muted);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .account-item:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-default);
+        }
+
+        .account-item.teacher {
+            border-left: 3px solid #d29922;
+        }
+
+        .account-item.student {
+            border-left: 3px solid var(--accent);
+        }
+
+        .account-role {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .account-item.teacher .account-role {
+            color: #e3b341;
+        }
+
+        .account-item.student .account-role {
+            color: var(--accent-hover);
+        }
+
+        .account-creds {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .account-creds kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-default);
+            border-radius: 3px;
+            font-size: 11px;
+            color: var(--text-primary);
+            margin: 0 2px;
+        }
+
+        /* 底部 */
+        .info-footer {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .info-footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .info-footer a:hover {
+            color: var(--text-primary);
+        }
+
+        /* 右侧登录表单区 */
+        .form-section {
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .form-header {
+            margin-bottom: 32px;
+        }
+
+        .form-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .form-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* 表单 */
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper svg.input-icon {
+            position: absolute;
+            left: 10px;
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-muted);
+            pointer-events: none;
+            transition: stroke var(--transition);
+        }
+
+        .form-input {
+            width: 100%;
+            height: var(--input-height);
+            padding: 0 12px 0 36px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: var(--font-sans);
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-input:hover {
+            border-color: var(--text-muted);
+        }
+
+        .form-input:focus {
+            outline: none;
+            background: var(--bg-elevated);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-subtle);
+        }
+
+        .form-input:focus + svg.input-icon {
+            stroke: var(--accent);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: 4px;
+            transition: color var(--transition), background var(--transition);
+        }
+
+        .password-toggle:hover {
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+        }
+
+        .password-toggle svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+        }
+
+        /* 记住我 & 忘记密码 */
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: -4px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .checkbox-label input {
+            display: none;
+        }
+
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid var(--border-default);
+            border-radius: 3px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .checkbox-label input:checked + .checkbox {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .checkbox svg {
+            width: 10px;
+            height: 10px;
+            stroke: white;
+            stroke-width: 2.5;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all var(--transition);
+        }
+
+        .checkbox-label input:checked + .checkbox svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .forgot-link {
+            font-size: 13px;
+            color: var(--text-link);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+        .forgot-link:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
+        /* 按钮 */
+        .btn-submit {
+            height: 36px;
+            margin-top: 8px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        .btn-submit.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .btn-submit.loading .btn-text {
+            visibility: hidden;
+        }
+
+        .btn-submit.loading::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 分隔线 */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-default);
+        }
+
+        .divider span {
+            padding: 0 12px;
+        }
+
+        /* 注册链接 */
+        .register-link {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .register-link a {
+            color: var(--text-link);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* 消息提示 */
+        .alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .alert svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .alert-error {
+            background: var(--error-bg);
+            border-color: var(--error-border);
+            color: #ffa198;
+        }
+
+        .alert-error svg {
+            stroke: #f85149;
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            border-color: var(--success-border);
+            color: #7ee787;
+        }
+
+        .alert-success svg {
+            stroke: #238636;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .info-section {
+                display: none;
+            }
+
+            .form-section {
+                max-width: 400px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-section {
+                padding: 32px 24px;
+            }
+
+            .title-block h1 {
+                font-size: 32px;
+            }
+        }
+
+        /* 装饰性边框线 */
+        .border-line {
+            position: fixed;
+            background: var(--border-default);
+            pointer-events: none;
+        }
+
+        .border-line.top {
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+        }
+
+        .border-line.left {
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 1px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景元素 -->
+    <div class="grid-bg"></div>
+    <div class="noise"></div>
+    <div class="border-line top"></div>
+    <div class="border-line left"></div>
+
+    <div class="layout">
+        <!-- 左侧信息区 -->
+        <section class="info-section">
+            <div class="brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                </div>
+                <span class="brand-name">SQL Quiz</span>
+            </div>
+
+            <div class="title-block">
+                <h1>掌握 <code>SQL</code> 技能<br>从这里开始</h1>
+                <p>专业的 MySQL 知识测试平台，帮助教师高效管理测验，助力学生系统性提升数据库技能。</p>
+            </div>
+
+            <div class="quick-login">
+                <div class="quick-login-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>快速测试账号</span>
+                </div>
+                <div class="account-list">
+                    <div class="account-item teacher" onclick="quickLogin('teacher', '123456')">
+                        <span class="account-role">TEACHER</span>
+                        <span class="account-creds"><kbd>teacher</kbd> / <kbd>123456</kbd></span>
+                    </div>
+                    <div class="account-item student" onclick="quickLogin('student', '123456')">
+                        <span class="account-role">STUDENT</span>
+                        <span class="account-creds"><kbd>student</kbd> / <kbd>123456</kbd></span>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="info-footer">
+                <a href="#">关于平台</a>
+                <a href="#">使用帮助</a>
+                <a href="#">联系我们</a>
+            </footer>
+        </section>
+
+        <!-- 右侧登录表单 -->
+        <section class="form-section">
+            <div class="form-container">
+                <div class="form-header">
+                    <h2>欢迎回来</h2>
+                    <p>登录您的账户继续使用</p>
+                </div>
+
+                <!-- 错误/成功消息 -->
+                <div th:if="${error}" class="alert alert-error">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span th:text="${error}">登录失败</span>
+                </div>
+
+                <div th:if="${message}" class="alert alert-success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span th:text="${message}">操作成功</span>
+                </div>
+
+                <form th:action="@{/login}" method="post" class="form" id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label" for="username">用户名或邮箱</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="username" name="username" class="form-input"
+                                   placeholder="输入用户名" required autocomplete="username">
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">密码</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" name="password" class="form-input"
+                                   placeholder="输入密码" required autocomplete="current-password">
+                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            <button type="button" class="password-toggle" id="togglePassword" title="显示密码">
+                                <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                    <line x1="1" y1="1" x2="23" y2="23"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="remember-me">
+                            <span class="checkbox">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </span>
+                            <span>记住我</span>
+                        </label>
+                        <a href="#" class="forgot-link">忘记密码？</a>
+                    </div>
+
+                    <button type="submit" class="btn-submit" id="loginBtn">
+                        <span class="btn-text">登录账户</span>
+                    </button>
+                </form>
+
+                <div class="divider">
+                    <span>或</span>
+                </div>
+
+                <p class="register-link">
+                    还没有账户？ <a href="/register">立即注册</a>
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 密码显示/隐藏切换
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const eyeOpen = togglePassword.querySelector('.eye-open');
+        const eyeClosed = togglePassword.querySelector('.eye-closed');
+
+        togglePassword.addEventListener('click', function() {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            eyeOpen.style.display = isPassword ? 'none' : 'block';
+            eyeClosed.style.display = isPassword ? 'block' : 'none';
+            togglePassword.title = isPassword ? '隐藏密码' : '显示密码';
+        });
+
+        // 表单提交加载状态
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+
+        loginForm.addEventListener('submit', function() {
+            loginBtn.classList.add('loading');
+        });
+
+        // 快速登录功能
+        function quickLogin(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            // 自动聚焦登录按钮，提示用户点击
+            loginBtn.focus();
+            // 可选：添加视觉反馈
+            loginBtn.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                loginBtn.style.transform = '';
+            }, 200);
+        }
+    </script>
+</body>
+</html>

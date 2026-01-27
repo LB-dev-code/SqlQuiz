@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Error - MySQL Knowledge Test Platform</title>
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root{
+            /* Dark theme with glassmorphism colors matching other pages */
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --shadow-2: rgba(0, 20, 60, 0.35);
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+            --spacing-6: 40px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+            padding: var(--spacing-4);
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-4);
+        }
+
+        .error-card {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            padding: var(--spacing-6);
+        }
+
+        .error-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .error-icon {
+            font-size: 5rem;
+            color: var(--danger);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .error-title {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: var(--spacing-3);
+        }
+
+        .error-description {
+            color: var(--muted);
+            font-size: 16px;
+            margin-bottom: var(--spacing-4);
+            line-height: 1.6;
+        }
+
+        .error-details {
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            margin-bottom: var(--spacing-5);
+            text-align: left;
+        }
+
+        .error-details strong {
+            color: var(--white);
+            display: block;
+            margin-bottom: var(--spacing-1);
+        }
+
+        .error-details span {
+            color: var(--muted);
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-3);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: 14px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            cursor: pointer;
+            transition: all 0.12s ease;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            background: var(--panel);
+            color: var(--white);
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+            box-shadow:
+                0 14px 28px rgba(108,225,255,0.18),
+                0 4px 10px var(--shadow-1),
+                inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        .btn.secondary {
+            color: var(--white);
+        }
+
+        .btn:hover { 
+            transform: translateY(-1px); 
+            filter: brightness(1.04);
+        }
+
+        .btn.primary:hover {
+            box-shadow:
+                0 16px 32px rgba(108,225,255,0.22),
+                0 6px 14px var(--shadow-1);
+        }
+
+        .btn.secondary:hover {
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn:active { 
+            transform: translateY(0); 
+        }
+
+        /* Responsive */
+        @media (max-width: 720px) {
+            .page { padding: var(--spacing-2); }
+            .error-card { padding: var(--spacing-4); }
+            .action-buttons { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="error-card">
+            <i class="fas fa-exclamation-triangle error-icon"></i>
+            <h1 class="error-title">Page Error</h1>
+            <p class="error-description">
+                Sorry, an error occurred on the page you are visiting. Please check your operation or try again later.
+            </p>
+            
+            <div class="error-details" th:if="${error}">
+                <strong>Error Message:</strong>
+                <span th:text="${error}">Unknown Error</span>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="javascript:history.back()" class="btn secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Go Back
+                </a>
+                <a href="/" class="btn primary">
+                    <i class="fas fa-home"></i>
+                    Go Home
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

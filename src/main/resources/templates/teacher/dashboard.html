@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - MySQL Knowledge Test Platform</title>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root{
+            /* Dark theme with glassmorphism colors matching student pages */
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --shadow-2: rgba(0, 20, 60, 0.35);
+            --heart: #ff6aa2;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+            --spacing-6: 40px;
+            --spacing-7: 48px;
+            --spacing-8: 64px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-6) var(--spacing-6);
+        }
+
+        /* ====== Top bar ====== */
+        .topbar {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            margin-bottom: var(--spacing-5);
+        }
+
+        .title-wrap {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .app-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 36px;
+            letter-spacing: 0.4px;
+            color: var(--white);
+        }
+
+        .user {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-3);
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .user:hover {
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+        
+        .logout-btn {
+            padding: 6px 10px;
+            margin-left: var(--spacing-2);
+            border-radius: var(--radius-sm);
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid rgba(255, 95, 138, 0.3);
+            color: var(--danger);
+            font-size: 12px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 95, 138, 0.2);
+            border-color: var(--danger);
+            transform: translateY(-1px);
+        }
+
+        .avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(91,140,255,0.35), rgba(255,255,255,0.1));
+            border: 1px solid rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .username {
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        /* ====== Navigation links ====== */
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-3);
+            margin-bottom: var(--spacing-5);
+        }
+
+        .nav-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: var(--spacing-2) var(--spacing-3);
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--white);
+            background: var(--field);
+            border-color: var(--field-border);
+            transform: translateY(-1px);
+        }
+
+        /* ====== KPI cards row ====== */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-5);
+            margin-bottom: var(--spacing-6);
+        }
+
+        .kpi {
+            padding: var(--spacing-4);
+            border-radius: var(--radius-lg);
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .kpi:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            margin-bottom: var(--spacing-2);
+        }
+
+        .kpi-value {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        /* ====== Action buttons row ====== */
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-4);
+            margin-bottom: var(--spacing-8);
+        }
+
+        /* ====== Panel components ====== */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: var(--spacing-4);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--white);
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* ====== List components ====== */
+        .list {
+            padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
+            display: grid;
+            gap: var(--spacing-2);
+        }
+
+        .list-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255,255,255,0.12);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+            transition: all 0.2s ease;
+        }
+
+        .list-item:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: var(--white);
+            font-size: 14px;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .item-description {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* ====== Small deco chips ====== */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+            color: var(--muted);
+        }
+
+        .chip-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+        }
+
+        /* ====== Action Buttons ====== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            border: 1px solid var(--field-border);
+            box-shadow: var(--shadow-1);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            cursor: pointer;
+            transition: all 0.12s ease;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            background: var(--panel);
+            color: var(--white);
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+            box-shadow:
+                0 14px 28px rgba(108,225,255,0.18),
+                0 4px 10px var(--shadow-1),
+                inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        .btn.secondary {
+            color: var(--white);
+        }
+
+        .btn:hover { 
+            transform: translateY(-1px); 
+            filter: brightness(1.04);
+        }
+
+        .btn.primary:hover {
+            box-shadow:
+                0 16px 32px rgba(108,225,255,0.22),
+                0 6px 14px var(--shadow-1);
+        }
+
+        .btn.secondary:hover {
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn:active { 
+            transform: translateY(0); 
+        }
+
+        /* ====== Bottom grid: Available + Recent ====== */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-5);
+            margin-top: var(--spacing-8);
+        }
+
+        /* ====== Status badges ====== */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(79, 240, 167, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(79, 240, 167, 0.3);
+        }
+
+        .status-inactive {
+            background: rgba(154, 166, 178, 0.2);
+            color: var(--muted);
+            border: 1px solid rgba(154, 166, 178, 0.3);
+        }
+
+        /* ====== Quiz metadata ====== */
+        .quiz-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-2);
+            margin-top: var(--spacing-1);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* ====== Utility classes ====== */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-6) var(--spacing-4);
+            color: var(--text-dim);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-3);
+            opacity: 0.5;
+        }
+
+        .text-small {
+            font-size: 12px;
+        }
+
+        .mt-2 { margin-top: var(--spacing-2); }
+        .mt-3 { margin-top: var(--spacing-3); }
+        .mt-4 { margin-top: var(--spacing-4); }
+
+        /* ====== Responsive ====== */
+        @media (max-width: 1100px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .actions { grid-template-columns: 1fr; }
+            .bottom-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .topbar { grid-template-columns: 1fr; gap: var(--spacing-3); }
+            .user { justify-content: flex-start; }
+            .nav-links { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Top bar -->
+        <div class="topbar">
+            <div class="title-wrap">
+                <div class="chip">
+                    <span class="chip-dot"></span>
+                    <span>Teacher Dashboard</span>
+                </div>
+                <div class="app-title">MySQL Knowledge Test Platform</div>
+            </div>
+            <div class="user">
+                <div class="avatar" th:text="${#strings.substring(teacher.fullName, 0, 1)}">T</div>
+                <div class="username" th:text="${teacher.fullName}">Teacher Name</div>
+                <a href="/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+  
+        <!-- KPI cards -->
+        <div class="kpi-row">
+            <div class="kpi">
+                <div class="kpi-label">Total Quizzes</div>
+                <div class="kpi-value" th:text="${#lists.size(quizzes)}">0</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Active Quizzes</div>
+                <div class="kpi-value" th:text="${#lists.size(quizzes.?[isActive])}">0</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Total Questions</div>
+                <div class="kpi-value" th:text="${totalQuestions}">0</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-label">Student Submissions</div>
+                <div class="kpi-value" th:text="${totalSubmissions}">0</div>
+            </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="actions">
+            <a href="/teacher/quiz/create" class="btn primary">
+                <i class="fas fa-plus"></i>
+                Create Quiz
+            </a>
+            <a href="/teacher/quizzes" class="btn secondary">
+                <i class="fas fa-list"></i>
+                Quiz List
+            </a>
+        </div>
+
+        <!-- Bottom grid -->
+        <div class="bottom-grid">
+            <!-- Recent Tests -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Recent Quizzes</div>
+                        <div class="panel-subtitle" th:if="${!#lists.isEmpty(quizzes)}">Latest created quizzes</div>
+                        <div class="panel-subtitle" th:if="${#lists.isEmpty(quizzes)}">No quizzes created yet</div>
+                    </div>
+                </div>
+                <div class="list">
+                    <div th:if="${#lists.isEmpty(quizzes)}" class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <div>No quizzes created yet</div>
+                        <div class="text-small mt-2">Create your first quiz to get started</div>
+                        <div class="mt-3">
+                            <a href="/teacher/quiz/create" class="btn primary" style="padding: 8px 16px; font-size: 12px;">
+                                <i class="fas fa-plus me-1"></i> Create First Quiz
+                            </a>
+                        </div>
+                    </div>
+
+                    <div th:if="${!#lists.isEmpty(quizzes)}">
+                        <a th:href="@{/teacher/quiz/{id}/statistics(id=${quiz.id})}" class="list-item" th:each="quiz : ${quizzes}" th:if="${quizStat.index < 5}" style="text-decoration: none;">
+                            <div>
+                                <div class="item-title" th:text="${quiz.title}">Quiz Title</div>
+                                <div class="item-description" th:text="${quiz.description}">Quiz Description</div>
+                                <div class="quiz-meta">
+                                    <div class="meta-item">
+                                        <i class="fas fa-clock"></i>
+                                        <span th:text="${#temporals.format(quiz.createdAt, 'yyyy-MM-dd HH:mm')}">Created Time</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <span th:if="${quiz.isActive}" class="status-badge status-active">Active</span>
+                                <span th:unless="${quiz.isActive}" class="status-badge status-inactive">Inactive</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Tools -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">SQL Tools</div>
+                        <div class="panel-subtitle">Database testing tools</div>
+                    </div>
+                </div>
+                <div class="list">
+                    <div class="list-item">
+                        <div>
+                            <div class="item-title">SQL Test</div>
+                            <div class="item-description">Test SQL query statements</div>
+                        </div>
+                        <div>
+                            <a href="/teacher/sql-test" class="btn secondary" style="padding: 8px 12px; font-size: 12px;">
+                                Open
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

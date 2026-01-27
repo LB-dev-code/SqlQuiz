@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Question Generation - MySQL Knowledge Test Platform</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+    <style>
+        :root{
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: "Segoe UI", "PingFang SC", system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-5);
+            padding-bottom: var(--spacing-4);
+            border-bottom: 1px solid var(--field-border);
+        }
+
+        .title-group h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-5);
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-4);
+            backdrop-filter: blur(14px);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: var(--accent);
+        }
+
+        .input-group {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .label {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .input, .select, .textarea {
+            width: 100%;
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            color: var(--white);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: ui-monospace, monospace;
+        }
+
+        .select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239aa6b2' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
+        }
+
+        .input:focus, .select:focus, .textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--field-focus);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            border: 1px solid var(--field-border);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-section {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .section-label {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .editable-content {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+        }
+
+        .editable-content:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--field-focus);
+        }
+
+        .editable-content[contenteditable="true"] {
+            min-height: 50px;
+        }
+
+        .editable-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--spacing-3) 0;
+        }
+
+        .editable-content th, .editable-content td {
+            border: 1px solid var(--field-border);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .editable-content th {
+            background: rgba(91,140,255,0.2);
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        /* 可编辑表格样式 */
+        .editable-table-container {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .editable-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .editable-table th {
+            background: rgba(91, 140, 255, 0.3);
+            color: var(--white);
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .editable-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--field-border);
+        }
+
+        .editable-table td[contenteditable="true"] {
+            background: rgba(255,255,255,0.02);
+            min-width: 80px;
+            outline: none;
+        }
+
+        .editable-table td[contenteditable="true"]:focus {
+            background: rgba(100, 180, 255, 0.1);
+            box-shadow: inset 0 0 0 2px var(--accent);
+        }
+
+        .editable-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .table-actions {
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .table-actions button {
+            padding: 4px 12px;
+            font-size: 12px;
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            color: var(--white);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+        }
+
+        .table-actions button:hover {
+            background: var(--field-focus);
+            border-color: var(--accent);
+        }
+
+        .actions {
+            display: flex;
+            gap: var(--spacing-3);
+            margin-top: var(--spacing-4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: var(--spacing-3);
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--field-border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--spacing-3);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.easy {
+            background: rgba(79, 240, 167, 0.2);
+            color: var(--success);
+        }
+
+        .badge.medium {
+            background: rgba(255, 200, 87, 0.2);
+            color: var(--warning);
+        }
+
+        .badge.hard {
+            background: rgba(255, 95, 138, 0.2);
+            color: var(--danger);
+        }
+
+        .alert {
+            padding: var(--spacing-3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-4);
+            display: none;
+        }
+
+        .alert.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-error {
+            background: rgba(255, 95, 138, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-success {
+            background: rgba(79, 240, 167, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .info-box {
+            background: rgba(108, 225, 255, 0.1);
+            border: 1px solid rgba(108, 225, 255, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title-input {
+            font-size: 20px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: var(--white);
+            width: 100%;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        .title-input:focus {
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .answer-section {
+            background: rgba(79, 240, 167, 0.05);
+            border: 1px solid rgba(79, 240, 167, 0.2);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-4);
+        }
+
+        .answer-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: var(--spacing-3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="title-group">
+                <h1><i class="fas fa-robot"></i> AI Question Generation</h1>
+                <p class="subtitle">Generate MySQL quiz questions using AI with knowledge base support</p>
+            </div>
+            <a href="/teacher/quizzes" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Quiz List
+            </a>
+        </div>
+
+        <div class="main-grid">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-cog"></i>
+                    Generation Settings
+                </div>
+
+                <div class="alert alert-error" id="errorAlert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorMessage"></span>
+                </div>
+
+                <div class="alert alert-success" id="successAlert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="successMessage"></span>
+                </div>
+
+                <div class="input-group">
+                    <label class="label">Select Target Quiz</label>
+                    <select class="select" id="quizId" required>
+                        <option value="">Choose a quiz...</option>
+                        <option th:each="quiz : ${quizzes}" 
+                                th:value="${quiz.id}" 
+                                th:text="${quiz.title}">Quiz Name</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="label">Question Type</label>
+                    <select class="select" id="questionType" required>
+                        <option value="">Select type...</option>
+                        <option value="SINGLE_TABLE">Single Table Query (单表查询)</option>
+                        <option value="GROUP_AGGREGATE">Group & Aggregate (分组聚合)</option>
+                        <option value="MULTI_JOIN">Multi-table JOIN (多表JOIN)</option>
+                        <option value="SUBQUERY">Subquery (子查询)</option>
+                        <option value="COMPREHENSIVE">Comprehensive Query (综合查询)</option>
+                        <option value="UPDATE_DELETE">UPDATE/DELETE (更新删除)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="label">Difficulty Level</label>
+                    <select class="select" id="difficulty">
+                        <option value="EASY">Easy (简单)</option>
+                        <option value="MEDIUM" selected>Medium (中等)</option>
+                        <option value="HARD">Hard (困难)</option>
+                    </select>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-box-title">
+                        <i class="fas fa-lightbulb"></i>
+                        How it works
+                    </div>
+                    <p style="font-size: 13px; color: var(--muted); margin: 0;">
+                        AI will generate a question based on your selected type and difficulty, referencing our knowledge base of SQL problems. Each question includes table structure, sample data, and detailed answer explanation.
+                    </p>
+                </div>
+
+                <button class="btn primary" onclick="generateQuestion()" id="generateBtn">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Generate Question
+                </button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>AI is generating a unique question for you...</p>
+                    <small style="color: var(--muted);">This may take 10-30 seconds</small>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-eye"></i>
+                    Generated Question
+                </div>
+
+                <div id="previewEmpty" class="empty-state">
+                    <i class="fas fa-file-alt"></i>
+                    <p>Select question type and difficulty, then click "Generate Question" to create a new SQL quiz question</p>
+                </div>
+
+                <div id="previewContent" style="display: none;">
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-heading"></i> Question Title</div>
+                        <input type="text" class="title-input" id="editTitle" placeholder="Enter question title">
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-tags"></i> Type & Difficulty</div>
+                        <div style="margin-top: 10px;">
+                            <span class="badge" id="previewType" style="margin-right: 10px;"></span>
+                            <span class="badge" id="previewDifficulty"></span>
+                        </div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-file-alt"></i> Description (Editable)</div>
+                        <div class="editable-content" id="editDescription" contenteditable="true" data-placeholder="Enter question description"></div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-database"></i> Table Structure (Editable)</div>
+                        <div class="editable-content" id="editDatabaseContext" contenteditable="true" data-placeholder="Table structure will appear here"></div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-table"></i> Sample Data (Editable Table)</div>
+                        <div id="editableTableContainer"></div>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-code"></i> Setup SQL (Auto-generated from table)</div>
+                        <textarea class="textarea" id="editSetupSql" placeholder="CREATE TABLE and INSERT statements" readonly></textarea>
+                    </div>
+
+                    <div class="preview-section">
+                        <div class="section-label"><i class="fas fa-check-circle"></i> Expected SQL (Editable)</div>
+                        <textarea class="textarea" id="editExpectedSql" placeholder="Expected answer SQL"></textarea>
+                    </div>
+
+                    <div class="answer-section">
+                        <div class="answer-title">
+                            <i class="fas fa-lightbulb"></i>
+                            AI-Generated Answer Explanation (Editable)
+                        </div>
+                        <div class="editable-content" id="editAnswer" contenteditable="true" data-placeholder="Detailed answer explanation with solution approach"></div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 20px;">
+                        <label class="label">Question Score</label>
+                        <input type="number" class="input" id="questionScore" value="10" min="1" max="100">
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn primary" onclick="confirmQuestion()" id="confirmBtn">
+                            <i class="fas fa-check"></i> Confirm & Add to Quiz
+                        </button>
+                        <button class="btn" onclick="regenerateQuestion()">
+                            <i class="fas fa-redo"></i> Regenerate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestionData = null;
+        let tableData = [];
+
+        async function generateQuestion() {
+            const quizId = document.getElementById('quizId').value;
+            const questionType = document.getElementById('questionType').value;
+            const difficulty = document.getElementById('difficulty').value;
+
+            if (!quizId) {
+                showAlert('Please select a target quiz', 'error');
+                return;
+            }
+
+            if (!questionType) {
+                showAlert('Please select a question type', 'error');
+                return;
+            }
+
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('generateBtn').disabled = true;
+
+            try {
+                const response = await fetch('/teacher/api/question/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        questionType: questionType,
+                        difficulty: difficulty
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentQuestionData = result.data;
+                    currentQuestionData.quizId = quizId;
+                    renderPreview(result.data);
+                    showAlert('Question generated successfully!', 'success');
+                } else {
+                    showAlert(result.error || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        function renderPreview(data) {
+            document.getElementById('previewEmpty').style.display = 'none';
+            document.getElementById('previewContent').style.display = 'block';
+
+            document.getElementById('editTitle').value = data.title || '';
+
+            const typeMap = {
+                'SINGLE_TABLE': 'Single Table',
+                'GROUP_AGGREGATE': 'Group/Aggregate',
+                'MULTI_JOIN': 'Multi-JOIN',
+                'SUBQUERY': 'Subquery',
+                'COMPREHENSIVE': 'Comprehensive',
+                'UPDATE_DELETE': 'Update/Delete'
+            };
+
+            const typeElem = document.getElementById('previewType');
+            typeElem.textContent = typeMap[data.questionType] || data.questionType || 'Unknown';
+            typeElem.className = 'badge';
+
+            const diffElem = document.getElementById('previewDifficulty');
+            diffElem.textContent = data.difficulty || 'MEDIUM';
+            diffElem.className = 'badge ' + (data.difficulty ? data.difficulty.toLowerCase() : 'medium');
+
+            document.getElementById('editDescription').innerHTML = data.description || '';
+            document.getElementById('editDatabaseContext').innerHTML = data.databaseContext || '';
+            document.getElementById('editSetupSql').value = data.setupSql || '';
+            document.getElementById('editExpectedSql').value = data.expectedSql || '';
+            document.getElementById('editAnswer').innerHTML = data.answer || '';
+
+            renderEditableTable(data.setupSql);
+        }
+
+        function renderEditableTable(setupSql) {
+            const container = document.getElementById('editableTableContainer');
+            container.innerHTML = '';
+
+            if (!setupSql) {
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No sample data available</p>';
+                return;
+            }
+
+            const tables = parseSetupSql(setupSql);
+            
+            if (tables.length === 0) {
+                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data found in setup SQL</p>';
+                return;
+            }
+
+            tableData = tables;
+
+            tables.forEach((tableData, tableIndex) => {
+                const tableWrapper = document.createElement('div');
+                tableWrapper.className = 'editable-table-container';
+                tableWrapper.style.marginBottom = '20px';
+
+                const tableTitle = document.createElement('div');
+                tableTitle.style.cssText = 'font-size: 14px; font-weight: 600; color: var(--accent); padding: 10px;';
+                tableTitle.innerHTML = `<i class="fas fa-table"></i> ${tableData.tableName}`;
+                tableWrapper.appendChild(tableTitle);
+
+                if (tableData.columns && tableData.columns.length > 0 && tableData.data && tableData.data.length > 0) {
+                    const table = document.createElement('table');
+                    table.className = 'editable-table';
+                    table.dataset.tableIndex = tableIndex;
+
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    tableData.columns.forEach(col => {
+                        const th = document.createElement('th');
+                        th.textContent = col;
+                        headerRow.appendChild(th);
+                    });
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+                    tableData.data.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.dataset.rowIndex = rowIndex;
+                        tableData.columns.forEach((col, colIndex) => {
+                            const td = document.createElement('td');
+                            td.textContent = row[colIndex] || '';
+                            td.contentEditable = true;
+                            td.dataset.colIndex = colIndex;
+                            td.addEventListener('blur', function() {
+                                updateTableCell(tableIndex, rowIndex, colIndex, this.textContent);
+                            });
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'table-actions';
+                    
+                    const addBtn = document.createElement('button');
+                    addBtn.innerHTML = '<i class="fas fa-plus"></i> Add Row';
+                    addBtn.onclick = () => addTableRow(tableIndex);
+                    actions.appendChild(addBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '<i class="fas fa-minus"></i> Delete Row';
+                    deleteBtn.onclick = () => deleteTableRow(tableIndex);
+                    actions.appendChild(deleteBtn);
+
+                    tableWrapper.appendChild(table);
+                    tableWrapper.appendChild(actions);
+                }
+
+                container.appendChild(tableWrapper);
+            });
+        }
+
+        function updateTableCell(tableIndex, rowIndex, colIndex, value) {
+            if (tableData[tableIndex] && tableData[tableIndex].data[rowIndex]) {
+                tableData[tableIndex].data[rowIndex][colIndex] = value;
+                updateSetupSql();
+            }
+        }
+
+        function addTableRow(tableIndex) {
+            if (tableData[tableIndex]) {
+                const newRow = new Array(tableData[tableIndex].columns.length).fill('');
+                tableData[tableIndex].data.push(newRow);
+                renderEditableTableFromData();
+                updateSetupSql();
+            }
+        }
+
+        function deleteTableRow(tableIndex) {
+            if (tableData[tableIndex] && tableData[tableIndex].data.length > 1) {
+                tableData[tableIndex].data.pop();
+                renderEditableTableFromData();
+                updateSetupSql();
+            }
+        }
+
+        function renderEditableTableFromData() {
+            const container = document.getElementById('editableTableContainer');
+            const currentHtml = container.innerHTML;
+            
+            tableData.forEach((tableData, tableIndex) => {
+                const tableWrapper = container.querySelectorAll('.editable-table-container')[tableIndex];
+                if (tableWrapper) {
+                    const table = tableWrapper.querySelector('table');
+                    if (table) {
+                        const tbody = table.querySelector('tbody');
+                        tbody.innerHTML = '';
+                        
+                        tableData.data.forEach((row, rowIndex) => {
+                            const tr = document.createElement('tr');
+                            tr.dataset.rowIndex = rowIndex;
+                            tableData.columns.forEach((col, colIndex) => {
+                                const td = document.createElement('td');
+                                td.textContent = row[colIndex] || '';
+                                td.contentEditable = true;
+                                td.dataset.colIndex = colIndex;
+                                td.addEventListener('blur', function() {
+                                    updateTableCell(tableIndex, rowIndex, colIndex, this.textContent);
+                                });
+                                tr.appendChild(td);
+                            });
+                            tbody.appendChild(tr);
+                        });
+                    }
+                }
+            });
+        }
+
+        function updateSetupSql() {
+            let setupSql = '';
+            
+            tableData.forEach(table => {
+                const tableName = table.tableName;
+                
+                let createSql = `CREATE TABLE \`${tableName}\` (\n`;
+                createSql += table.columns.map((col, idx) => {
+                    const isLast = idx === table.columns.length - 1;
+                    return `  \`${col}\` VARCHAR(255)${isLast ? '' : ','}`;
+                }).join('\n');
+                createSql += '\n);\n\n';
+                
+                setupSql += createSql;
+                
+                table.data.forEach((row, idx) => {
+                    const isLast = idx === table.data.length - 1;
+                    const values = row.map(v => `'${v || ''}'`).join(', ');
+                    const cols = table.columns.map(c => `\`${c}\``).join(', ');
+                    setupSql += `INSERT INTO \`${tableName}\` (${cols}) VALUES (${values})${isLast ? ';' : ''}\n`;
+                });
+                
+                setupSql += '\n';
+            });
+            
+            document.getElementById('editSetupSql').value = setupSql;
+        }
+
+        function parseSetupSql(setupSql) {
+            const tables = [];
+            const lines = setupSql.split('\n');
+            let currentTable = null;
+            let inInsert = false;
+            let insertColumns = [];
+
+            lines.forEach(line => {
+                line = line.trim();
+                
+                if (line.toUpperCase().startsWith('CREATE TABLE')) {
+                    if (currentTable && currentTable.data.length > 0) {
+                        tables.push(currentTable);
+                    }
+                    
+                    const tableName = line.match(/CREATE TABLE\s+`?(\w+)`?/i);
+                    currentTable = {
+                        tableName: tableName ? tableName[1] : 'unknown',
+                        columns: [],
+                        data: []
+                    };
+                    inInsert = false;
+                } else if (line.toUpperCase().startsWith('INSERT INTO') && currentTable) {
+                    inInsert = true;
+                    const colsMatch = line.match(/\(([^)]+)\)/);
+                    if (colsMatch) {
+                        insertColumns = colsMatch[1].split(',').map(c => c.trim().replace(/`/g, ''));
+                        if (currentTable.columns.length === 0) {
+                            currentTable.columns = insertColumns;
+                        }
+                    }
+                } else if (inInsert && line.toUpperCase().startsWith('VALUES')) {
+                    const valuesMatch = line.match(/\((.*?)\)/);
+                    if (valuesMatch && currentTable) {
+                        const values = valuesMatch[1].split(',').map(v => v.trim().replace(/['"`]/g, ''));
+                        
+                        if (currentTable.columns.length === 0) {
+                            currentTable.columns = insertColumns;
+                        }
+                        
+                        currentTable.data.push(values);
+                    }
+                } else if (line.endsWith(';') || line === '') {
+                    inInsert = false;
+                }
+            });
+
+            if (currentTable && currentTable.data.length > 0) {
+                tables.push(currentTable);
+            }
+
+            return tables;
+        }
+
+        async function confirmQuestion() {
+            if (!currentQuestionData) {
+                showAlert('No question to confirm', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const requestData = {
+                    quizId: String(currentQuestionData.quizId),
+                    title: document.getElementById('editTitle').value,
+                    description: document.getElementById('editDescription').innerHTML,
+                    databaseContext: document.getElementById('editDatabaseContext').innerHTML,
+                    setupSql: document.getElementById('editSetupSql').value,
+                    expectedSql: document.getElementById('editExpectedSql').value,
+                    answer: document.getElementById('editAnswer').innerHTML,
+                    questionType: currentQuestionData.questionType,
+                    difficulty: currentQuestionData.difficulty,
+                    score: String(document.getElementById('questionScore').value)
+                };
+
+                console.log('Sending request:', requestData);
+
+                const response = await fetch('/teacher/api/question/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+
+                if (result.success) {
+                    showAlert('Question added to quiz successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/teacher/quiz/' + currentQuestionData.quizId + '/questions';
+                    }, 1500);
+                } else {
+                    showAlert(result.error || 'Failed to add question', 'error');
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Network error: ' + error.message, 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+            }
+        }
+
+        function regenerateQuestion() {
+            document.getElementById('previewContent').style.display = 'none';
+            document.getElementById('previewEmpty').style.display = 'block';
+            currentQuestionData = null;
+            tableData = [];
+            generateQuestion();
+        }
+
+        function showAlert(message, type) {
+            const alertElem = document.getElementById(type === 'error' ? 'errorAlert' : 'successAlert');
+            const msgElem = document.getElementById(type === 'error' ? 'errorMessage' : 'successMessage');
+
+            msgElem.textContent = message;
+            alertElem.classList.add('show');
+
+            setTimeout(() => {
+                alertElem.classList.remove('show');
+            }, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const editableElements = document.querySelectorAll('[contenteditable="true"]');
+            editableElements.forEach(el => {
+                el.addEventListener('focus', function() {
+                    if (this.textContent === '') {
+                        this.innerHTML = '';
+                    }
+                });
+                
+                el.addEventListener('blur', function() {
+                    if (this.innerHTML.trim() === '') {
+                        this.innerHTML = '';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

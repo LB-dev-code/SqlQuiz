@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试题目创建</title>
+</head>
+<body>
+    <h1>测试题目创建API</h1>
+    <button onclick="testCreateQuestion()">创建测试题目</button>
+    <div id="result"></div>
+
+    <script>
+        function testCreateQuestion() {
+            const setupSql = `CREATE TABLE products (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                name VARCHAR(100) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                category VARCHAR(50)
+            );
+
+            INSERT INTO products (name, price, category) VALUES
+            ('Laptop', 899.99, 'Electronics'),
+            ('Mouse', 29.99, 'Electronics'),
+            ('Desk', 249.99, 'Furniture');`;
+
+            const data = {
+                quizId: 1,
+                title: "API测试题目 - 查询产品",
+                description: "测试表格创建功能",
+                databaseContext: "产品表",
+                setupSql: setupSql,
+                expectedSql: "SELECT * FROM products WHERE category = 'Electronics';",
+                answer: "SELECT * FROM products WHERE category = 'Electronics';",
+                questionType: "SELECT_BASIC",
+                difficulty: "EASY",
+                score: 10.0
+            };
+
+            fetch('/teacher/api/question/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                document.getElementById('result').innerHTML = `
+                    <h3>结果:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = `
+                    <h3>错误:</h3>
+                    <p>${error.message}</p>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

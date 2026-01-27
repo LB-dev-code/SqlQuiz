@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taking Quiz - MySQL Knowledge Testing Platform</title>
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Dark theme with glassmorphism colors matching register page */
+            --bg: #0b0f14;
+            --bg-grad-1: #0b0f14;
+            --bg-grad-2: #0e1219;
+            --panel: rgba(18, 22, 29, 0.55);
+            --panel-strong: rgba(18, 22, 29, 0.75);
+            --white: #e8edf7;
+            --muted: #9aa6b2;
+            --text-dim: #6b7280;
+            --field: rgba(255,255,255,0.06);
+            --field-border: rgba(255,255,255,0.12);
+            --field-focus: rgba(100, 180, 255, 0.25);
+            --accent-1: #6e74ff;
+            --accent-2: #6ce1ff;
+            --accent: #5b8cff;
+            --accent-hover: #4979ff;
+            --danger: #ff5f8a;
+            --success: #4ff0a7;
+            --warning: #ffc857;
+            --shadow-1: rgba(0, 0, 0, 0.35);
+            --shadow-2: rgba(0, 20, 60, 0.35);
+            --heart: #ff6aa2;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 10px;
+            --spacing-1: 8px;
+            --spacing-2: 12px;
+            --spacing-3: 16px;
+            --spacing-4: 24px;
+            --spacing-5: 32px;
+            --spacing-6: 40px;
+            --spacing-7: 48px;
+            --spacing-8: 64px;
+
+            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
+            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--white);
+            font-family: var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-4);
+        }
+
+        /* Top Bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-1);
+            padding: var(--spacing-3) var(--spacing-4);
+            margin-bottom: var(--spacing-4);
+            position: sticky;
+            top: var(--spacing-4);
+            z-index: 100;
+        }
+
+        .left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }
+
+        .title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 0.3px;
+            color: var(--white);
+        }
+
+        .chips {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .chip {
+            height: 28px;
+            padding: 0 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            color: var(--white);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            backdrop-filter: blur(8px);
+        }
+
+        .chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--accent);
+            opacity: 0.9;
+            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+        }
+
+        .chip.code .chip-dot {
+            background: var(--accent);
+        }
+
+        .chip.medium .chip-dot {
+            background: var(--warning);
+        }
+
+        .right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .clock {
+            font-weight: 600;
+            color: var(--white);
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--field);
+            border: 1px solid var(--field-border);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        .timer-warning {
+            background: rgba(255, 200, 87, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .timer-danger {
+            background: rgba(255, 95, 138, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Progress Container */
+        .progress-container {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-3);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--field);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-bottom: var(--spacing-2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            transition: width 0.3s ease;
+            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* Question Cards */
+        .question-card {
+            background: var(--panel);
+            border: 1px solid var(--field-border);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-1);
+            margin-bottom: var(--spacing-4);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            overflow: hidden;
+        }
+
+        .question-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(130, 200, 255, 0.65);
+            box-shadow: 0 0 0 2px var(--field-focus);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .question-header {
+            background: linear-gradient(180deg, rgba(91, 140, 255, 0.15), rgba(108, 225, 255, 0.08));
+            border-bottom: 1px solid var(--field-border);
+            padding: var(--spacing-4);
+        }
+
+        .question-title {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--white);
+            margin-bottom: var(--spacing-2);
+        }
+
+        .question-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            height: 24px;
+            padding: 0 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-primary {
+            background: rgba(91, 140, 255, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-success {
+            background: rgba(91, 140, 255, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-warning {
+            background: rgba(255, 200, 87, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(255, 95, 138, 0.2);
+            color: var(--danger);
+        }
+
+        .question-body {
+            padding: var(--spacing-5);
+        }
+
+        .question-description {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: var(--spacing-4);
+        }
+
+        .table-structure {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--field-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-4);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .table-structure h6 {
+            color: var(--white);
+            margin-bottom: var(--spacing-2);
+            font-weight: 600;
+        }
+
+        /* SQL Editor */
+        .sql-editor-container {
+            margin-bottom: var(--spacing-4);
+        }
+
+        .sql-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            color: var(--white);
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: var(--spacing-2);
+        }
+
+        .sql-editor {
+            width: 100%;
+            min-height: 180px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--field-border);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+            color: var(--white);
+            padding: var(--spacing-3);
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        .sql-editor:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 6px var(--field-focus);
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+        }
+
+        .sql-editor::placeholder {
+            color: var(--text-dim);
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-3);
+            margin-bottom: var(--spacing-4);
+        }
+
+        .actions-left {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .actions-right {
+            display: flex;
+            gap: var(--spacing-2);
+        }
+
+        .btn {
+            height: 36px;
+            padding: 0 var(--spacing-3);
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.2px;
+            border: 1px solid var(--field-border);
+            cursor: pointer;
+            transition: all 0.18s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-2);
+            outline: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:focus {
+            box-shadow: 0 0 0 6px var(--field-focus);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--white);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--accent);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+            box-shadow:
+                0 14px 28px rgba(108,225,255,0.18),
+                0 4px 10px var(--shadow-1),
+                inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 16px 32px rgba(108,225,255,0.22),
+                0 6px 14px var(--shadow-1);
+        }
+
+        .btn-success {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: rgba(91,140,255,0.55);
+            box-shadow:
+                0 14px 28px rgba(108,225,255,0.18),
+                0 4px 10px var(--shadow-1),
+                inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 16px 32px rgba(108,225,255,0.22),
+                0 6px 14px var(--shadow-1);
+        }
+
+        /* SQL Result */
+        .sql-result {
+            margin-top: var(--spacing-4);
+            padding: var(--spacing-4);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--field-border);
+            background: rgba(255,255,255,0.03);
+            display: none;
+        }
+
+        .sql-result.show {
+            display: block;
+        }
+
+        .sql-result-title {
+            color: var(--white);
+            font-weight: 600;
+            margin-bottom: var(--spacing-3);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .sql-result.success {
+            border-color: var(--accent);
+        }
+
+        .sql-result.error {
+            border-color: var(--danger);
+        }
+
+        .table-responsive {
+            background: var(--field);
+            border-radius: var(--radius-md);
+            overflow: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table th, .table td {
+            padding: var(--spacing-2) var(--spacing-3);
+            text-align: left;
+            border-bottom: 1px solid var(--field-border);
+            color: var(--white);
+        }
+
+        .table th {
+            background: rgba(255,255,255,0.05);
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .table tbody tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* Question Navigation */
+        .question-nav {
+            position: fixed;
+            top: 50%;
+            right: var(--spacing-4);
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-2);
+        }
+
+        .question-nav-item {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid var(--field-border);
+            background: var(--panel);
+            color: var(--text-dim);
+        }
+
+        .question-nav-item:hover {
+            transform: scale(1.1);
+            border-color: var(--accent);
+        }
+
+        .question-nav-item.current {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            color: #0b0f14;
+            border-color: var(--accent);
+        }
+
+        .question-nav-item.answered {
+            background: rgba(91, 140, 255, 0.2);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Submit Section */
+        .submit-section {
+            background: var(--panel);
+            border: 2px dashed var(--field-border);
+            backdrop-filter: saturate(140%) blur(14px);
+            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-6);
+            text-align: center;
+            margin-top: var(--spacing-6);
+        }
+
+        .submit-title {
+            color: var(--white);
+            font-weight: 600;
+            margin-bottom: var(--spacing-2);
+            font-size: 18px;
+        }
+
+        .submit-description {
+            color: var(--muted);
+            margin-bottom: var(--spacing-5);
+        }
+
+        .submit-actions {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-3);
+            flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .topbar {
+                flex-direction: column;
+                gap: var(--spacing-3);
+                position: relative;
+                top: 0;
+            }
+
+            .question-nav {
+                position: fixed;
+                bottom: var(--spacing-4);
+                top: auto;
+                right: auto;
+                left: 50%;
+                transform: translateX(-50%);
+                flex-direction: row;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .actions-left, .actions-right {
+                width: 100%;
+            }
+
+            .submit-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="left">
+                <div class="title">
+                    <i class="fas fa-pencil-alt"></i>
+                    Taking Quiz
+                </div>
+                <div class="chips">
+                    <div class="chip">
+                        <i class="fas fa-database"></i>
+                        MySQL Quiz
+                    </div>
+                    <div class="chip code">
+                        <span class="chip-dot"></span>
+                        Programming Question
+                    </div>
+                    <div class="chip">
+                        <span th:text="${quiz.title}">测试名称</span>
+                    </div>
+                </div>
+            </div>
+            <div class="right">
+                <div class="chip">
+                    <i class="fas fa-list"></i>
+                    <span>Progress: <span id="progressText">0/<span th:text="${#lists.size(questions)}">0</span></span>
+                    </div>
+                <div class="clock" id="timerDisplay" th:if="${timeRemaining >= 0}">
+                    <i class="fas fa-clock"></i>
+                    <span id="timeRemaining" th:attr="data-time=${timeRemaining}">60:00</span>
+                </div>
+                <div class="clock" th:if="${timeRemaining < 0}">
+                    <i class="fas fa-infinity"></i>
+                    No time limit
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Container -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="overallProgress" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">
+                <span>Overall Progress</span>
+                <span id="progressPercentage">0%</span>
+            </div>
+        </div>
+
+        <!-- Questions Container -->
+        <div id="questionsContainer">
+            <div class="question-card" th:each="question,questionStat : ${questions}" th:attr="data-question-id=${question.id}">
+                <div class="question-header">
+                    <div class="question-title">
+                        <i class="fas fa-question-circle"></i>
+                        Question <span th:text="${questionStat.count}">1</span>: <span th:text="${question.content}">Question Title</span>
+                    </div>
+                    <div class="question-meta">
+                        <span class="badge badge-primary" th:text="${question.questionType.englishName}">SQL编程题</span>
+                        <span class="badge badge-warning" th:text="${question.score} + ' points'">10 points</span>
+                        <span class="badge"
+                              th:classappend="${question.difficultyLevel != null ? (question.difficultyLevel.name() == 'EASY' ? 'badge-success' : (question.difficultyLevel.name() == 'MEDIUM' ? 'badge-warning' : 'badge-danger')) : 'badge-primary'}"
+                              th:text="${question.difficultyLevel != null ? question.difficultyLevel.englishName : 'Unknown'}">简单</span>
+                    </div>
+                </div>
+                <div class="question-body">
+                    <div class="question-description" th:if="${question.description}">
+                        <div th:text="${question.description}">题目描述</div>
+                    </div>
+
+                    <div class="table-structure" th:if="${question.databaseContext}">
+                        <div class="table-structure-container" th:attr="data-context=${question.databaseContext}">
+                            <div class="bg-light p-3 rounded">
+                                <pre th:text="${question.databaseContext}"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sql-editor-container">
+                        <div class="sql-label">
+                            <i class="fas fa-code"></i>
+                            Enter your SQL statement:
+                        </div>
+                        <textarea class="sql-editor"
+                                  placeholder="Enter your SQL statement here..."
+                                  th:attr="data-question-id=${question.id}"></textarea>
+                    </div>
+
+                    <div class="actions">
+                        <div class="actions-left">
+                            <button class="btn btn-outline" th:onclick="'testSQL(' + ${question.id} + ')'">
+                                <i class="fas fa-play"></i>
+                                Test SQL
+                            </button>
+                            <button class="btn btn-outline" th:onclick="'clearSQL(' + ${question.id} + ')'">
+                                <i class="fas fa-eraser"></i>
+                                Clear
+                            </button>
+                        </div>
+                        <div class="actions-right">
+                            <button class="btn btn-primary" th:onclick="'saveAnswer(' + ${question.id} + ')'">
+                                <i class="fas fa-save"></i>
+                                Save Answer
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SQL测试结果 -->
+                    <div th:id="'sqlResult' + ${question.id}" class="sql-result">
+                        <div class="sql-result-title">
+                            <i class="fas fa-terminal"></i>
+                            Execution Result:
+                        </div>
+                        <div th:id="'sqlResultContent' + ${question.id}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Section -->
+        <div class="submit-section">
+            <div class="submit-title">
+                <i class="fas fa-flag-checkered"></i>
+                Complete Quiz
+            </div>
+            <div class="submit-description">
+                Please confirm all questions have been answered
+            </div>
+            <div class="submit-actions">
+                <button class="btn btn-outline" onclick="saveAsDraft()">
+                    <i class="fas fa-save"></i>
+                    Save Draft
+                </button>
+                <button class="btn btn-outline" onclick="reviewAnswers()">
+                    <i class="fas fa-eye"></i>
+                    Review Answers
+                </button>
+                <button class="btn btn-success" onclick="submitQuiz()">
+                    <i class="fas fa-paper-plane"></i>
+                    Submit Quiz
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Navigation -->
+    <div class="question-nav">
+        <div class="question-nav-item"
+             th:each="question,questionStat : ${questions}"
+             th:classappend="${questionStat.first ? 'current' : ''}"
+             th:onclick="'scrollToQuestion(' + ${question.id} + ')'"
+             th:text="${questionStat.count}">1</div>
+    </div>
+
+    <script th:inline="javascript">
+        // 获取提交ID（从模板传递）
+        const submissionId = /*[[${submission.id}]]*/ 1;
+
+        // 初始化倒计时
+        let timeRemaining = /*[[${timeRemaining >= 0 ? timeRemaining * 60 : -1}]]*/ 3600; // 秒数
+        let timerInterval;
+
+        // 启动倒计时
+        function startTimer() {
+            if (timeRemaining <= 0) return; // 无时间限制
+
+            timerInterval = setInterval(function() {
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    showToast('Time\'s up! The system will automatically submit your answers.', 'warning');
+                    setTimeout(() => {
+                        submitQuiz();
+                    }, 2000);
+                }
+            }, 1000);
+        }
+
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+
+            let display = '';
+            if (hours > 0) {
+                display = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            document.getElementById('timeRemaining').textContent = display;
+
+            // 时间警告
+            const timerElement = document.getElementById('timerDisplay');
+            if (timeRemaining <= 300) { // 最后5分钟
+                timerElement.className = 'clock timer-danger';
+            } else if (timeRemaining <= 600) { // 最后10分钟
+                timerElement.className = 'clock timer-warning';
+            }
+        }
+
+        // 测试SQL
+        function testSQL(questionId) {
+            const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`);
+            const sql = textarea.value.trim();
+
+            if (!sql) {
+                showToast('Please enter SQL statement first', 'warning');
+                return;
+            }
+
+            // 显示加载状态
+            const resultDiv = document.getElementById(`sqlResult${questionId}`);
+            const contentDiv = document.getElementById(`sqlResultContent${questionId}`);
+            resultDiv.classList.add('show');
+            contentDiv.innerHTML = `
+                <div class="sql-result-title">
+                    <div class="spinner-border spinner-border-sm me-2" style="border-color: var(--accent);" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    Executing SQL statement...
+                </div>
+            `;
+
+            // 发送AJAX请求测试SQL
+            fetch('/student/sql-practice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'sql=' + encodeURIComponent(sql)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displaySQLResult(questionId, data);
+                })
+                .catch(error => {
+                    console.error('SQL测试失败:', error);
+                    contentDiv.innerHTML = `
+                        <div style="color: var(--danger);">
+                            <i class="fas fa-times-circle"></i>
+                            Test failed: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // 显示SQL执行结果
+        function displaySQLResult(questionId, result) {
+            const contentDiv = document.getElementById(`sqlResultContent${questionId}`);
+            const resultDiv = document.getElementById(`sqlResult${questionId}`);
+
+            if (result.success) {
+                resultDiv.className = 'sql-result success';
+                let html = '<div style="color: var(--accent);"><i class="fas fa-check-circle"></i>SQL execution successful</div>';
+
+                if (result.resultData && result.resultData.length > 0) {
+                    html += '<div class="table-responsive">';
+                    html += '<table class="table">';
+
+                    // 表头
+                    html += '<thead><tr>';
+                    Object.keys(result.resultData[0]).forEach(key => {
+                        html += `<th>${key}</th>`;
+                    });
+                    html += '</tr></thead>';
+
+                    // 数据行（最多显示5行）
+                    html += '<tbody>';
+                    result.resultData.slice(0, 5).forEach(row => {
+                        html += '<tr>';
+                        Object.values(row).forEach(value => {
+                            html += `<td>${value || ''}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+
+                    if (result.resultData.length > 5) {
+                        html += `<small style="color: var(--muted);">Showing first 5 rows of ${result.resultData.length} total rows</small>`;
+                    }
+
+                    html += '</div>';
+                } else {
+                    html += '<div style="color: var(--muted); margin-top: var(--spacing-2);">Query executed successfully but returned no data</div>';
+                }
+
+                contentDiv.innerHTML = html;
+            } else {
+                resultDiv.className = 'sql-result error';
+                contentDiv.innerHTML = `<div style="color: var(--danger);"><i class="fas fa-times-circle"></i>SQL execution failed: ${result.errorMessage}</div>`;
+            }
+        }
+
+        // 清空SQL
+        function clearSQL(questionId) {
+            showToast('Are you sure you want to clear current SQL content?', 'warning', false);
+            
+            // 延迟显示确认按钮，让用户看到提示
+            setTimeout(() => {
+                // 创建确认按钮
+                const confirmToast = document.createElement('div');
+                confirmToast.style.cssText = `
+                    position: fixed;
+                    top: 160px;
+                    right: 20px;
+                    z-index: 9999;
+                    display: flex;
+                    gap: var(--spacing-2);
+                `;
+                
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-success';
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm';
+                confirmBtn.style.cssText = 'padding: 8px 16px; font-size: 13px;';
+                confirmBtn.onclick = () => {
+                    // 移除所有提示
+                    document.querySelectorAll('.custom-toast').forEach(toast => toast.remove());
+                    confirmToast.remove();
+                    
+                    const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`);
+                    textarea.value = '';
+                    document.getElementById(`sqlResult${questionId}`).classList.remove('show');
+                    
+                    showToast('SQL content cleared', 'success');
+                };
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn btn-outline';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+                cancelBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; color: var(--white);';
+                cancelBtn.onclick = () => {
+                    // 移除所有提示
+                    document.querySelectorAll('.custom-toast').forEach(toast => toast.remove());
+                    confirmToast.remove();
+                };
+                
+                confirmToast.appendChild(confirmBtn);
+                confirmToast.appendChild(cancelBtn);
+                document.body.appendChild(confirmToast);
+            }, 500);
+        }
+
+        // 保存答案
+        function saveAnswer(questionId) {
+            const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`);
+            const sql = textarea.value.trim();
+
+            if (!sql) {
+                showToast('Please enter SQL statement before saving', 'warning');
+                return;
+            }
+
+            // 显示保存中状态
+            const saveBtn = event.target;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            // 发送AJAX请求保存答案
+            fetch(`/student/submission/${submissionId}/answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `questionId=${questionId}&sql=${encodeURIComponent(sql)}`
+            })
+                .then(response => response.text())
+                .then(data => {
+                    if (data === 'success') {
+                        // 更新导航状态
+                        const navItem = document.querySelector(`.question-nav-item:nth-child(${questionId})`);
+                        if (navItem) {
+                            navItem.className = 'question-nav-item answered';
+                        }
+
+                        // 更新进度
+                        updateProgress();
+
+                        // 显示保存成功提示
+                        showToast('Answer saved', 'success');
+                    } else {
+                        showToast('Save failed: ' + data, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('保存失败:', error);
+                    showToast('Save failed: ' + error.message, 'error');
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                });
+        }
+
+        // 更新进度
+        function updateProgress() {
+            const totalQuestions = document.querySelectorAll('.question-card').length;
+            const answeredQuestions = document.querySelectorAll('.question-nav-item.answered').length;
+            const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+
+            document.getElementById('progressText').textContent = `${answeredQuestions}/${totalQuestions}`;
+            document.getElementById('progressPercentage').textContent = `${percentage}%`;
+            document.getElementById('overallProgress').style.width = `${percentage}%`;
+        }
+
+        // 解析表结构并显示为表格
+        function parseTableStructure() {
+            document.querySelectorAll('.table-structure-container').forEach(container => {
+                const contextText = container.getAttribute('data-context');
+                if (!contextText) return;
+
+                let html = '';
+
+                // 检查是否包含固定开头"数据库表结构如下："
+                if (contextText.includes('数据库表结构如下：')) {
+                    // 分离题目描述和表结构
+                    const parts = contextText.split('数据库表结构如下：');
+                    const description = parts[0].trim();
+                    const structureContent = parts[1].trim();
+
+                    // 更新题目描述部分
+                    const descriptionElement = container.closest('.question-body').querySelector('.question-description div');
+                    if (descriptionElement && description) {
+                        descriptionElement.textContent = description;
+                    }
+
+                    html = '<div class="table-structure-container">' + parseStructuredFormat(structureContent) + '</div>';
+                } else {
+                    // 兼容旧格式，保持原有解析逻辑
+                    html = parseOldFormat(contextText);
+                }
+
+                if (html) {
+                    container.innerHTML = html;
+                } else {
+                    // 如果解析失败，保持原始显示
+                    container.innerHTML = `<div class="table-responsive"><pre style="color: var(--white); background: var(--field); padding: var(--spacing-3); border-radius: var(--radius-md);">${contextText}</pre></div>`;
+                }
+            });
+        }
+
+        // 解析新的结构化格式
+        function parseStructuredFormat(content) {
+            let html = '';
+            const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+
+            let currentTable = null;
+            let columns = [];
+
+            for (let line of lines) {
+                // 检查是否是表名行（以"表："结尾或包含"表"字符）
+                if (line.endsWith('表：') || (line.includes('表') && !line.startsWith('-'))) {
+                    // 如果之前有表的信息，先生成HTML
+                    if (currentTable && columns.length > 0) {
+                        html += generateTableHTML(currentTable, columns);
+                    }
+
+                    // 提取表名
+                    currentTable = line.replace('表：', '').replace('表', '').trim();
+                    columns = [];
+                } else if (line.startsWith('-')) {
+                    // 字段行，格式：- 字段名 (数据类型) - 说明
+                    const fieldMatch = line.match(/^-\s*(\w+)\s*\(([^()]*(?:\([^()]*\)[^()]*)*)\)\s*-?\s*(.*)$/);
+                    if (fieldMatch) {
+                        const [, fieldName, dataType, description] = fieldMatch;
+                        columns.push({
+                            name: fieldName.trim(),
+                            type: dataType.trim(),
+                            description: description.trim() || '-'
+                        });
+                    }
+                } else if (line.includes('(') && line.includes(')')) {
+                    // 尝试解析其他格式的字段定义
+                    const fieldMatch = line.match(/(\w+)\s*\(([^)]+)\)\s*(.*)/);
+                    if (fieldMatch) {
+                        const [, fieldName, dataType, description] = fieldMatch;
+                        columns.push({
+                            name: fieldName.trim(),
+                            type: dataType.trim(),
+                            description: description.replace(/^-\s*/, '').trim() || '-'
+                        });
+                    }
+                }
+            }
+
+            // 处理最后一个表
+            if (currentTable && columns.length > 0) {
+                html += generateTableHTML(currentTable, columns);
+            }
+
+            return html;
+        }
+
+        // 解析旧格式（保持兼容性）
+        function parseOldFormat(contextText) {
+            let html = '';
+
+            // 处理多种表结构格式
+            // 格式1: TableName(field1 TYPE, field2 TYPE, ...)
+            const tableMatches1 = contextText.match(/(\w+)\s*\(([^)]+)\)/g);
+
+            // 格式2: CREATE TABLE 或类似语法
+            const createTableMatch = contextText.match(/CREATE\s+TABLE\s+(\w+)\s*\([^)]+\)/gi);
+
+            // 格式3: 表名：字段列表
+            const colonFormat = contextText.match(/(\w+)\s*[:\uff1a]([^\n]+)/g);
+
+            if (tableMatches1) {
+                // 处理格式1
+                tableMatches1.forEach(match => {
+                    const tableName = match.match(/(\w+)\s*\(/)[1];
+                    const columnsStr = match.match(/\(([^)]+)\)/)[1];
+                    const columns = columnsStr.split(',').map(col => {
+                        const parts = col.trim().split(/\s+/);
+                        return {
+                            name: parts[0] || '',
+                            type: parts[1] || 'VARCHAR',
+                            description: parts.slice(2).join(' ') || '-'
+                        };
+                    });
+
+                    html += generateTableHTML(tableName, columns);
+                });
+            } else if (createTableMatch) {
+                // 处理CREATE TABLE语法
+                createTableMatch.forEach(match => {
+                    const tableName = match.match(/CREATE\s+TABLE\s+(\w+)/i)[1];
+                    const columnsStr = match.match(/\(([^)]+)\)/)[1];
+                    const columns = columnsStr.split(',').map(col => {
+                        const parts = col.trim().split(/\s+/);
+                        return {
+                            name: parts[0] || '',
+                            type: parts[1] || 'VARCHAR',
+                            description: parts.slice(2).join(' ') || '-'
+                        };
+                    });
+
+                    html += generateTableHTML(tableName, columns);
+                });
+            } else if (colonFormat) {
+                // 处理冒号格式
+                colonFormat.forEach(match => {
+                    const parts = match.split(':');
+                    const tableName = parts[0].trim();
+                    const columnsStr = parts[1].trim();
+                    const columns = columnsStr.split(/[,，]/).map(col => {
+                        const colParts = col.trim().split(/\s+/);
+                        return {
+                            name: colParts[0] || '',
+                            type: colParts[1] || 'VARCHAR',
+                            description: colParts.slice(2).join(' ') || '-'
+                        };
+                    });
+
+                    html += generateTableHTML(tableName, columns);
+                });
+            } else {
+                // 尝试自动检测表名和字段
+                const lines = contextText.split('\n').filter(line => line.trim());
+                let currentTable = null;
+                let columns = [];
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (line.includes('表') || line.toLowerCase().includes('table')) {
+                        if (currentTable && columns.length > 0) {
+                            html += generateTableHTML(currentTable, columns);
+                        }
+                        currentTable = line.replace(/表.*/, '').replace(/.*table\s*/i, '').trim();
+                        columns = [];
+                    } else if (line.includes(':') || line.includes('：')) {
+                        const parts = line.split(/[:：]/);
+                        columns.push({
+                            name: parts[0].trim(),
+                            type: parts[1] ? parts[1].trim().split(/\s+/)[0] || 'VARCHAR' : 'VARCHAR',
+                            description: parts[1] ? parts[1].trim().split(/\s+/).slice(1).join(' ') || '-' : '-'
+                        });
+                    } else if (line.match(/\w+\s+\w+/)) {
+                        const parts = line.split(/\s+/);
+                        columns.push({
+                            name: parts[0] || '',
+                            type: parts[1] || 'VARCHAR',
+                            description: parts.slice(2).join(' ') || '-'
+                        });
+                    }
+                });
+
+                if (currentTable && columns.length > 0) {
+                    html += generateTableHTML(currentTable, columns);
+                }
+            }
+
+            return html;
+        }
+
+        // 生成表格 HTML
+        function generateTableHTML(tableName, columns) {
+            let html = `<h6>${tableName} Table</h6>`;
+            html += '<div class="table-responsive"><table class="table">';
+            html += '<thead><tr><th>Field Name</th><th>Data Type</th><th>Description</th></tr></thead>';
+            html += '<tbody>';
+
+            columns.forEach(column => {
+                let parts;
+                if (typeof column === 'object') {
+                    // 新的结构化数据
+                    parts = {
+                        name: column.name,
+                        type: column.type,
+                        description: column.description
+                    };
+                } else {
+                    // 兼容旧格式
+                    parts = parseColumnInfo(column);
+                }
+                html += `<tr><td>${parts.name}</td><td>${parts.type}</td><td>${parts.description}</td></tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        // 解析字段信息
+        function parseColumnInfo(columnStr) {
+            columnStr = columnStr.trim();
+
+            // 处理各种格式
+            if (columnStr.includes(':') || columnStr.includes('：')) {
+                const parts = columnStr.split(/[:：]/);
+                return {
+                    name: parts[0].trim(),
+                    type: parts[1] ? parts[1].trim().split(/\s+/)[0] || 'VARCHAR' : 'VARCHAR',
+                    description: parts[1] ? parts[1].trim().split(/\s+/).slice(1).join(' ') || '-' : '-'
+                };
+            } else {
+                const parts = columnStr.split(/\s+/);
+                return {
+                    name: parts[0] || '',
+                    type: parts[1] || 'VARCHAR',
+                    description: parts.slice(2).join(' ') || '-'
+                };
+            }
+        }
+
+        // 滚动到指定题目
+        function scrollToQuestion(questionId) {
+            const questionCard = document.querySelector(`[data-question-id="${questionId}"]`);
+            if (questionCard) {
+                questionCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // 更新当前题目状态
+                document.querySelectorAll('.question-nav-item').forEach(item => {
+                    item.classList.remove('current');
+                    if (!item.classList.contains('answered')) {
+                        item.classList.add('unanswered');
+                    }
+                });
+
+                // 找到对应的导航项
+                const navItems = document.querySelectorAll('.question-nav-item');
+                const questions = document.querySelectorAll('.question-card');
+                for (let i = 0; i < questions.length; i++) {
+                    if (questions[i].getAttribute('data-question-id') == questionId) {
+                        if (navItems[i] && !navItems[i].classList.contains('answered')) {
+                            navItems[i].classList.remove('unanswered');
+                            navItems[i].classList.add('current');
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 保存草稿
+        function saveAsDraft() {
+                showToast('Draft saved', 'success');
+        }
+
+        // 检查答案
+        function reviewAnswers() {
+            showToast('Please check if all questions have been answered', 'info');
+        }
+
+        // 提交测试
+        function submitQuiz() {
+            // 显示确认提示（使用成功样式，不自动隐藏）
+            showToast('Are you sure you want to submit the quiz?', 'success', false);
+            
+            // 延迟显示确认按钮，让用户看到提示
+            setTimeout(() => {
+                // 创建确认按钮
+                const confirmToast = document.createElement('div');
+                confirmToast.style.cssText = `
+                    position: fixed;
+                    top: 160px;
+                    right: 20px;
+                    z-index: 9999;
+                    display: flex;
+                    gap: var(--spacing-2);
+                `;
+                
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'btn btn-success';
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Submit';
+                confirmBtn.style.cssText = 'padding: 8px 16px; font-size: 13px;';
+                confirmBtn.onclick = () => {
+                    // 移除所有提示
+                    document.querySelectorAll('.custom-toast').forEach(toast => toast.remove());
+                    confirmToast.remove();
+                    
+                    // 停止计时器
+                    clearInterval(timerInterval);
+
+                    // 直接提交表单，跳转页面
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/student/submission/${submissionId}/submit`;
+                    document.body.appendChild(form);
+                    form.submit();
+                };
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'btn btn-outline';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+                cancelBtn.style.cssText = 'padding: 8px 16px; font-size: 13px; color: var(--white);';
+                cancelBtn.onclick = () => {
+                    // 移除所有提示
+                    document.querySelectorAll('.custom-toast').forEach(toast => toast.remove());
+                    confirmToast.remove();
+                };
+                
+                confirmToast.appendChild(confirmBtn);
+                confirmToast.appendChild(cancelBtn);
+                document.body.appendChild(confirmToast);
+            }, 500);
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info', autoHide = true) {
+            // 移除之前的提示
+            const existingToasts = document.querySelectorAll('.custom-toast');
+            existingToasts.forEach(toast => toast.remove());
+
+            const bgColor = type === 'success' ? 'rgba(91, 140, 255, 0.1)' :
+                type === 'error' ? 'rgba(255, 95, 138, 0.1)' :
+                    type === 'warning' ? 'rgba(255, 200, 87, 0.1)' : 'rgba(108, 225, 255, 0.1)';
+            
+            const borderColor = type === 'success' ? 'var(--accent)' :
+                type === 'error' ? 'var(--danger)' :
+                    type === 'warning' ? 'var(--warning)' : 'var(--accent)';
+            
+            const icon = type === 'success' ? 'fa-check-circle' :
+                type === 'error' ? 'fa-times-circle' :
+                type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+
+            const toast = document.createElement('div');
+            toast.className = 'custom-toast alert-dismissible fade show';
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                background: ${bgColor};
+                border: 1px solid ${borderColor};
+                backdrop-filter: saturate(140%) blur(14px);
+                -webkit-backdrop-filter: saturate(140%) blur(14px);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-1);
+                padding: var(--spacing-3) var(--spacing-4);
+                color: var(--white);
+                font-size: 14px;
+                font-weight: 500;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            toast.innerHTML = `
+                <i class="fas ${icon} me-2"></i>${message}
+                <button type="button" style="background: none; border: none; color: var(--white); opacity: 0.7; cursor: pointer; float: right; margin-left: var(--spacing-2);" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            // 添加动画样式
+            if (!document.getElementById('toast-styles')) {
+                const style = document.createElement('style');
+                style.id = 'toast-styles';
+                style.textContent = `
+                    @keyframes slideInRight {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(toast);
+
+            // 自动消失（除非指定不自动隐藏）
+            if (autoHide) {
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.style.animation = 'slideInRight 0.3s ease-out reverse';
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 4000);
+            }
+        }
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 解析表结构
+            parseTableStructure();
+
+            if (timeRemaining > 0) {
+                startTimer();
+            }
+
+            // 防止意外离开页面 - 注释掉，避免与自定义确认提示冲突
+            // window.addEventListener('beforeunload', function(e) {
+            //     e.preventDefault();
+            //     e.returnValue = 'You are currently taking a quiz, are you sure you want to leave?';
+            // });
+        });
+    </script>
+</body>
+</html>
