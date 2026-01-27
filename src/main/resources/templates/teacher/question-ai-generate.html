@@ -578,10 +578,16 @@
                     <label class="label">Question Type</label>
                     <select class="select" id="questionType" required>
                         <option value="">Select type...</option>
-                        <option value="SINGLE_TABLE">Single Table Query (单表查询)</option>
-                        <option value="GROUP_AGGREGATE">Group & Aggregate (分组聚合)</option>
-                        <option value="MULTI_JOIN">Multi-table JOIN (多表JOIN)</option>
-                        <option value="SUBQUERY">Subquery (子查询)</option>
+                        <option value="SELECT_BASIC">Basic SELECT (基础查询)</option>
+                        <option value="SELECT_JOIN">JOIN Queries (表连接)</option>
+                        <option value="SELECT_SUBQUERY">Subqueries (子查询)</option>
+                        <option value="SELECT_AGGREGATE">Aggregate Functions (聚合函数)</option>
+                        <option value="SELECT_COMPLEX">Complex Queries (复杂查询)</option>
+                        <option value="DML_INSERT">INSERT Statements (插入数据)</option>
+                        <option value="DML_UPDATE">UPDATE Statements (更新数据)</option>
+                        <option value="DML_DELETE">DELETE Statements (删除数据)</option>
+                        <option value="DDL_CREATE">CREATE TABLE (创建表)</option>
+                        <option value="DDL_ALTER">ALTER TABLE (修改表结构)</option>
                         <option value="COMPREHENSIVE">Comprehensive Query (综合查询)</option>
                         <option value="UPDATE_DELETE">UPDATE/DELETE (更新删除)</option>
                     </select>
@@ -724,6 +730,8 @@
                 if (result.success) {
                     currentQuestionData = result.data;
                     currentQuestionData.quizId = quizId;
+                    currentQuestionData.questionType = questionType; // 保存用户选择的题目类型
+                    currentQuestionData.difficulty = difficulty; // 保存用户选择的难度
                     renderPreview(result.data);
                     showAlert('Question generated successfully!', 'success');
                 } else {
