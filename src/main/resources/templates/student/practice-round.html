@@ -272,7 +272,10 @@
                     <h2 id="q-title">Question Title</h2>
                     <div class="question-desc" id="q-desc">Description text...</div>
 
-                    <h3 style="font-size: 14px; margin-bottom: 10px; font-weight: 600; margin-top: 24px;">Database Schema</h3>
+                                        <h3 style="font-size: 14px; margin-bottom: 10px; font-weight: 600; margin-top: 24px; display: flex; align-items: center; gap: 8px;">
+                                            <i class="fas fa-database" style="color: var(--accent);"></i>
+                                            <span>Sample Data Tables</span>
+                                        </h3>
                     <div class="db-context" id="q-db">
                         <!-- DB Schema will be rendered as table -->
                     </div>
@@ -564,77 +567,100 @@
 
         // 解析数据库上下文为表格，支持Markdown表格渲染
         function parseDatabaseContext(text) {
-            if (!text) return '<p style="color: #999;">No database schema available.</p>';
-            
-            // 查找Markdown表格 - 使用字符串拼接避免换行符问题
+            if (!text) return '<p style="color: var(--text-secondary);">No database schema available.</p>';
+                    
+            // 查找Markdown表格
             const tablePattern = '(\\|[^\\n]+\\|\\n\\|[-|\\s]+\\|\\n(?:\\|[^\\n]+\\|\\n?)+)';
             const tableRegex = new RegExp(tablePattern, 'g');
             const hasTables = tableRegex.test(text);
-            
+                    
             if (hasTables) {
-                // 如果包含Markdown表格，进行渲染
-                let html = text;
-                const replaceRegex = new RegExp(tablePattern, 'g');
-                
-                html = html.replace(replaceRegex, (match) => {
-                    const lines = match.trim().split('\n');
-                    if (lines.length < 3) return match;
-                    
-                    // 第一行是表头
-                    const headers = lines[0].split('|').filter(h => h.trim()).map(h => h.trim());
-                    // 第二行是分隔线（忽略）
-                    // 剩余行是数据
-                    const dataRows = lines.slice(2).map(line => 
-                        line.split('|').filter(c => c.trim()).map(c => c.trim())
-                    );
-                    
-                    let tableHtml = '<table style="width:100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
-                    tableHtml += '<thead><tr>';
-                    headers.forEach(h => {
-                        tableHtml += `<th style="border: 1px solid var(--glass-border); padding: 10px; background: rgba(136, 160, 150, 0.1); text-align: left; font-weight: 600;">${h}</th>`;
-                    });
-                    tableHtml += '</tr></thead><tbody>';
-                    
-                    dataRows.forEach((row, idx) => {
-                        if (row.length > 0) {
-                            const bgColor = idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)';
-                            tableHtml += `<tr style="background: ${bgColor};">`;
-                            row.forEach(cell => {
-                                tableHtml += `<td style="border: 1px solid var(--glass-border); padding: 10px;">${cell}</td>`;
-                            });
-                            tableHtml += '</tr>';
+                let result = '';
+                let lastIndex = 0;
+                const regex = new RegExp(tablePattern, 'g');
+                let match;
+                        
+                while ((match = regex.exec(text)) !== null) {
+                    // 获取表格之前的文本
+                    const beforeText = text.substring(lastIndex, match.index);
+                            
+                    // 查找表名（在表格前的最后一行，以table:或表:结尾）
+                    let tableName = '';
+                    const lines = beforeText.trim().split('\n');
+                    if (lines.length > 0) {
+                        const lastLine = lines[lines.length - 1].trim();
+                        // 匹配 "xxx table:" 或 "xxx:" 或 "xxx表：" 或仅"xxx table"
+                        if (lastLine.match(/table:?\s*$/i) || lastLine.match(/表[:：]?\s*$/)) {
+                            tableName = lastLine;
+                            // 添加表名之前的文本
+                            result += lines.slice(0, -1).map(l => `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>`).join('');
+                        } else {
+                            result += beforeText.split('\n').map(l => l.trim() ? `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>` : '').join('');
                         }
-                    });
-                    
-                    tableHtml += '</tbody></table>';
-                    return tableHtml;
-                });
-                
-                // 将换行符转换为<br>
-                html = html.replace(/\n/g, '<br>');
-                
-                return html;
+                    }
+                            
+                    // 渲染表名标题
+                    if (tableName) {
+                        result += `<div style="margin: 16px 0 8px 0; font-size: 14px; font-weight: 600; color: var(--accent);">${tableName}</div>`;
+                    }
+                            
+                    // 渲染表格
+                    const tableMarkdown = match[0];
+                    const tableLines = tableMarkdown.trim().split('\n');
+                    if (tableLines.length >= 3) {
+                        const headers = tableLines[0].split('|').filter(h => h.trim()).map(h => h.trim());
+                        const dataRows = tableLines.slice(2).map(line => 
+                            line.split('|').filter(c => c.trim()).map(c => c.trim())
+                        );
+                                
+                        let tableHtml = '<table style="width:100%; border-collapse: collapse; margin: 8px 0 16px 0; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+                        tableHtml += '<thead><tr>';
+                        headers.forEach(h => {
+                            tableHtml += `<th style="border: 1px solid var(--glass-border); padding: 10px; background: rgba(136, 160, 150, 0.1); text-align: left; font-weight: 600;">${h}</th>`;
+                        });
+                        tableHtml += '</tr></thead><tbody>';
+                                
+                        dataRows.forEach((row, idx) => {
+                            if (row.length > 0) {
+                                const bgColor = idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)';
+                                tableHtml += `<tr style="background: ${bgColor};">`;
+                                row.forEach(cell => {
+                                    tableHtml += `<td style="border: 1px solid var(--glass-border); padding: 10px;">${cell}</td>`;
+                                });
+                                tableHtml += '</tr>';
+                            }
+                        });
+                                
+                        tableHtml += '</tbody></table>';
+                        result += tableHtml;
+                    }
+                            
+                    lastIndex = regex.lastIndex;
+                }
+                        
+                // 添加最后一部分文本
+                if (lastIndex < text.length) {
+                    const remaining = text.substring(lastIndex).trim();
+                    if (remaining) {
+                        result += remaining.split('\n').map(l => l.trim() ? `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>` : '').join('');
+                    }
+                }
+                        
+                return result;
             } else {
-                // 原来的逻辑：解析表结构列表
                 const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-                
                 let html = '<div style="font-size: 12px;">';
                 let currentTable = null;
-                
+                        
                 for (let line of lines) {
-                    // 检测表名（以"table:""Table:""表:"结尾）
                     if (line.match(/table:?$/i) || line.match(/表:?$/)) {
                         if (currentTable) html += '</ul></div>';
                         html += `<div style="margin-bottom: 16px;"><strong style="color: var(--accent); font-size: 13px;">${line}</strong><ul style="margin: 8px 0; padding-left: 20px; list-style: none;">`;
                         currentTable = true;
-                    } 
-                    // 检测字段行（以-开头）
-                    else if (line.startsWith('-')) {
+                    } else if (line.startsWith('-')) {
                         const fieldInfo = line.substring(1).trim();
                         html += `<li style="margin: 4px 0; color: var(--text-secondary);"><i class="fas fa-chevron-right" style="font-size: 10px; margin-right: 8px; color: var(--accent); opacity: 0.5;"></i>${fieldInfo}</li>`;
-                    }
-                    // 其他文本
-                    else {
+                    } else {
                         if (currentTable) {
                             html += '</ul></div>';
                             currentTable = null;
@@ -642,10 +668,9 @@
                         html += `<p style="margin: 8px 0; color: var(--text-primary);">${line}</p>`;
                     }
                 }
-                
+                        
                 if (currentTable) html += '</ul></div>';
                 html += '</div>';
-                
                 return html;
             }
         }

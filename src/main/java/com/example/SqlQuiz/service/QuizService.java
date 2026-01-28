@@ -203,6 +203,7 @@ public class QuizService {
         Optional<Submission> inProgressSubmission = submissionRepository
                 .findByStudentAndQuizAndStatus(student, quiz, Submission.SubmissionStatus.IN_PROGRESS);
         if (inProgressSubmission.isPresent()) {
+            System.out.println("[StartQuiz] Found existing IN_PROGRESS submission: " + inProgressSubmission.get().getId());
             return inProgressSubmission.get();
         }
 
@@ -215,12 +216,16 @@ public class QuizService {
         // 创建新的提交记录
         Submission submission = new Submission(student, quiz, (int)(attemptCount + 1));
         submission = submissionRepository.save(submission);
+        System.out.println("[StartQuiz] Created new submission: " + submission.getId());
 
         // 为每道题目创建答题记录
         List<Question> questions = questionRepository.findByQuizOrderByOrderIndexAsc(quiz);
+        System.out.println("[StartQuiz] Creating QuestionAnswer records for " + questions.size() + " questions");
+        
         for (Question question : questions) {
             QuestionAnswer questionAnswer = new QuestionAnswer(question, submission);
-            questionAnswerRepository.save(questionAnswer);
+            questionAnswer = questionAnswerRepository.save(questionAnswer);
+            System.out.println("[StartQuiz] Created QuestionAnswer id=" + questionAnswer.getId() + " for question=" + question.getId());
         }
 
         return submission;
@@ -228,16 +233,18 @@ public class QuizService {
 
     // 提交答案
     public void submitAnswer(Long submissionId, Long questionId, String sql) {
-        System.out.println("subID:"+submissionId);
-        System.out.println("QSID:"+questionId);
+        System.out.println("[SubmitAnswer] submissionId:" + submissionId + ", questionId:" + questionId);
+        
         Optional<Submission> submissionOpt = submissionRepository.findById(submissionId);
         Optional<Question> questionOpt = questionRepository.findById(questionId);
 
         if (!submissionOpt.isPresent()) {
+            System.err.println("[SubmitAnswer] ERROR: Submission not found: " + submissionId);
             throw new RuntimeException("提交记录不存在");
         }
 
         if (!questionOpt.isPresent()) {
+            System.err.println("[SubmitAnswer] ERROR: Question not found: " + questionId);
             throw new RuntimeException("题目不存在");
         }
 
@@ -246,6 +253,7 @@ public class QuizService {
 
         // 检查提交状态
         if (!submission.isInProgress()) {
+            System.err.println("[SubmitAnswer] ERROR: Submission is not IN_PROGRESS, status: " + submission.getStatus());
             throw new RuntimeException("测试已结束，无法提交答案");
         }
 
@@ -255,9 +263,20 @@ public class QuizService {
 
         if (qaOpt.isPresent()) {
             QuestionAnswer questionAnswer = qaOpt.get();
+            System.out.println("[SubmitAnswer] Found QuestionAnswer id=" + questionAnswer.getId() + ", updating...");
             questionAnswer.submitAnswer(sql);
             questionAnswerRepository.save(questionAnswer);
+            System.out.println("[SubmitAnswer] Successfully saved answer for QuestionAnswer id=" + questionAnswer.getId());
         } else {
+            System.err.println("[SubmitAnswer] ERROR: QuestionAnswer not found for submission=" + submissionId + ", question=" + questionId);
+            
+            // 列出当前 submission 的所有 QuestionAnswer
+            List<QuestionAnswer> allQAs = questionAnswerRepository.findBySubmission(submission);
+            System.err.println("[SubmitAnswer] Available QuestionAnswers for this submission:");
+            for (QuestionAnswer qa : allQAs) {
+                System.err.println("  - QuestionAnswer id=" + qa.getId() + ", questionId=" + qa.getQuestion().getId());
+            }
+            
             throw new RuntimeException("答题记录不存在");
         }
     }

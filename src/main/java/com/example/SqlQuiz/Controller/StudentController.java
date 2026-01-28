@@ -191,19 +191,67 @@ public class StudentController {
         }
     }
 
+    // 答案检查页面
+    @GetMapping("/submission/{id}/review")
+    public String reviewAnswers(@PathVariable Long id, Model model, Authentication auth) {
+        User student = (User) auth.getPrincipal();
+
+        // 获取提交记录
+        Optional<Submission> submissionOpt = submissionRepository.findById(id);
+        if (!submissionOpt.isPresent()) {
+            return "redirect:/student/quizzes";
+        }
+
+        Submission submission = submissionOpt.get();
+
+        // 验证权限
+        if (!submission.getStudent().getId().equals(student.getId())) {
+            return "redirect:/student/quizzes";
+        }
+
+        // 检查提交状态
+        if (!submission.isInProgress()) {
+            return "redirect:/student/submission/" + id + "/result";
+        }
+
+        // 获取答题记录
+        List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
+        
+        // 统计已答题数量
+        long answeredCount = questionAnswers.stream()
+            .filter(qa -> qa.getStudentSql() != null && !qa.getStudentSql().trim().isEmpty())
+            .count();
+
+        model.addAttribute("submission", submission);
+        model.addAttribute("questionAnswers", questionAnswers);
+        model.addAttribute("answeredCount", answeredCount);
+        model.addAttribute("student", student);
+
+        return "student/quiz-review";
+    }
+
     // 提交测试
     @PostMapping("/submission/{id}/submit")
-    public String submitQuiz(@PathVariable Long id, Authentication auth, RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public String submitQuiz(@PathVariable Long id, Authentication auth) {
         try {
-
             User student = (User) auth.getPrincipal();
-            Submission submission = quizService.submitQuiz(id);
-            System.out.println("sub:"+submission);
-            redirectAttributes.addFlashAttribute("message", "测试提交成功！");
-            return "redirect:/student/submission/" + id + "/result";
+            
+            // 验证权限
+            Optional<Submission> submissionOpt = submissionRepository.findById(id);
+            if (!submissionOpt.isPresent()) {
+                return "error: Submission not found";
+            }
+            
+            Submission submission = submissionOpt.get();
+            if (!submission.getStudent().getId().equals(student.getId())) {
+                return "error: Access denied";
+            }
+            
+            quizService.submitQuiz(id);
+            return "success";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "提交失败: " + e.getMessage());
-            return "redirect:/student/submission/" + id;
+            return "error: " + e.getMessage();
         }
     }
 

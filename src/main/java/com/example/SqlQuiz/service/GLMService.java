@@ -150,7 +150,7 @@ public class GLMService {
                 "{\n" +
                 "  \"questionTitle\": \"Question title\",\n" +
                 "  \"questionDescription\": \"Detailed question description and requirements\",\n" +
-                "  \"databaseContext\": \"Database table structure description, including table names and field information\",\n" +
+                "  \"databaseContext\": \"Database table structure with SAMPLE DATA in Markdown table format\",\n" +
                 "  \"expectedSql\": \"Correct answer SQL statement\",\n" +
                 "  \"setupSql\": \"SQL statements for creating table structure and inserting sample data\",\n" +
                 "  \"hints\": \"Optional tips for students\"\n" +
@@ -158,18 +158,20 @@ public class GLMService {
                 "\n" +
                 "Question requirements:\n" +
                 "1. questionTitle: Concise question title\n" +
-                "2. questionDescription: Detailed description of the query task, e.g., 'Query names and scores of all students with math scores greater than 80'\n" +
-                "3. databaseContext: **IMPORTANT** Must start with 'Database table structure is as follows:', then describe table structure in standard format. Each table must follow this format:\n" +
-                "   Table name:\n" +
-                "   - field_name1 (data_type) - field description\n" +
-                "   - field_name2 (data_type) - field description\n" +
-                "   Example:\n" +
-                "   Database table structure is as follows:\n" +
+                "2. questionDescription: Detailed description of the query task\n" +
+                "3. **CRITICAL - databaseContext Format:**\n" +
+                "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "   Use this exact format:\n" +
+                "   \n" +
                 "   " + tablePrefix + "_students table:\n" +
-                "   - id (INT) - Student ID, primary key, auto increment\n" +
-                "   - name (VARCHAR(50)) - Student name\n" +
-                "   - age (INT) - Student age\n" +
-                "   - score (DECIMAL(5,2)) - Student score\n" +
+                "   \n" +
+                "   | id | name | age | score |\n" +
+                "   |----|------|-----|-------|\n" +
+                "   | 1  | John | 20  | 85.5  |\n" +
+                "   | 2  | Mary | 21  | 92.0  |\n" +
+                "   | 3  | Bob  | 19  | 78.5  |\n" +
+                "   \n" +
+                "   The sample data should match the INSERT statements in setupSql.\n" +
                 "4. setupSql: **IMPORTANT** Please provide complete SQL statements for creating table structure and inserting sample data, including:\n" +
                 "   - CREATE TABLE statements: Create required table structure for the question, use the following unique prefix: `" + tablePrefix + "_`\n" +
                 "   - Table name format: `" + tablePrefix + "_[table_name]`, e.g., `" + tablePrefix + "_students`, `" + tablePrefix + "_orders`\n" +
@@ -180,9 +182,6 @@ public class GLMService {
                 "5. expectedSql: Standard answer SQL statement, use the actual generated table names\n" +
                 "6. hints: Optional solving tips\n" +
                 "\n" +
-                "Ensure the databaseContext field strictly follows the above format and starts with 'Database table structure is as follows:' to facilitate automatic parsing and table display.\n" +
-                "Ensure the setupSql field contains complete table creation and data insertion statements so the system can correctly initialize the test environment.\n" +
-                "Ensure all table primary keys are set to AUTO_INCREMENT to avoid primary key conflicts.\n" +
                 "Ensure you return standard JSON format without any additional text.\n";
         List<Map<String, String>> message_creat_quiz = List.of(
                 Map.of("role", "user", "content", create_promtp + "\n\n" + description)
@@ -397,7 +396,7 @@ public class GLMService {
                 "{\n" +
                 "  \"title\": \"Question Title\",\n" +
                 "  \"description\": \"Detailed question description\",\n" +
-                "  \"databaseContext\": \"Database table structure description in Markdown table format\",\n" +
+                "  \"databaseContext\": \"Database table structure with SAMPLE DATA in Markdown table format\",\n" +
                 "  \"setupSql\": \"Complete SQL statements for creating tables and inserting sample data\",\n" +
                 "  \"expectedSql\": \"Standard answer SQL statement\",\n" +
                 "  \"answer\": \"Detailed answer explanation in Markdown format\",\n" +
@@ -410,7 +409,18 @@ public class GLMService {
                 "2. All table names must follow format: `" + tablePrefix + "_[table_name]`\n" +
                 "3. All primary keys must use AUTO_INCREMENT\n" +
                 "4. Provide 3-5 sample records in setupSql\n" +
-                "5. databaseContext must be in Markdown table format with columns: Field, Type, Description\n" +
+                "5. **CRITICAL - databaseContext Format:**\n" +
+                "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "   Use this exact format:\n" +
+                "   \n" +
+                "   employees table:\n" +
+                "   \n" +
+                "   | id | name | department | salary |\n" +
+                "   |----|------|------------|--------|\n" +
+                "   | 1  | John | IT         | 5000   |\n" +
+                "   | 2  | Mary | HR         | 4500   |\n" +
+                "   \n" +
+                "   The sample data should match the INSERT statements in setupSql.\n" +
                 "6. Return valid JSON only, no additional text\n" +
                 "7. The answer field should include step-by-step solution explanation in Markdown\n" +
                 "8. Infer appropriate questionType and difficulty from the input question";
@@ -510,13 +520,27 @@ public class GLMService {
                 "{\n" +
                 "  \"title\": \"Question title\",\n" +
                 "  \"description\": \"Detailed question description\",\n" +
-                "  \"databaseContext\": \"Table structure in Markdown table format\",\n" +
+                "  \"databaseContext\": \"Table structure with SAMPLE DATA in Markdown table format\",\n" +
                 "  \"setupSql\": \"CREATE TABLE and INSERT statements\",\n" +
                 "  \"expectedSql\": \"Correct answer SQL\",\n" +
                 "  \"answer\": \"Detailed solution explanation in Markdown\",\n" +
                 "  \"questionType\": \"" + questionType + "\",\n" +
                 "  \"difficulty\": \"" + difficulty + "\"\n" +
                 "}\n" +
+                "\n" +
+                "**CRITICAL - databaseContext Format:**\n" +
+                "The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "Use this exact format:\n" +
+                "\n" +
+                "employees table:\n" +
+                "\n" +
+                "| id | name | department | salary |\n" +
+                "|----|------|------------|--------|\n" +
+                "| 1  | John | IT         | 5000   |\n" +
+                "| 2  | Mary | HR         | 4500   |\n" +
+                "| 3  | Bob  | IT         | 5500   |\n" +
+                "\n" +
+                "The sample data in databaseContext should match the INSERT statements in setupSql.\n" +
                 "\n" +
                 "Table naming requirements:\n" +
                 "- Use unique prefix: `" + tablePrefix + "_`\n" +
@@ -624,11 +648,23 @@ public class GLMService {
                 "{\n" +
                 "  \"title\": \"Brief question title\",\n" +
                 "  \"description\": \"Detailed question description\",\n" +
-                "  \"databaseContext\": \"Table structure in Markdown format\",\n" +
+                "  \"databaseContext\": \"Table structure with SAMPLE DATA in Markdown table format\",\n" +
                 "  \"setupSql\": \"CREATE TABLE and INSERT statements\",\n" +
                 "  \"expectedSql\": \"Correct SQL answer\",\n" +
                 "  \"hints\": \"Optional hints for students\"\n" +
                 "}\n\n" +
+                "**CRITICAL - databaseContext Format:**\n" +
+                "The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "Use this exact format:\n" +
+                "\n" +
+                "employees table:\n" +
+                "\n" +
+                "| id | name | department | salary |\n" +
+                "|----|------|------------|--------|\n" +
+                "| 1  | John | IT         | 5000   |\n" +
+                "| 2  | Mary | HR         | 4500   |\n" +
+                "\n" +
+                "The sample data should match the INSERT statements in setupSql.\n\n" +
                 "Table naming: Use prefix `" + tablePrefix + "_`\n" +
                 "All primary keys: AUTO_INCREMENT\n" +
                 "Insert 3-5 sample records\n" +

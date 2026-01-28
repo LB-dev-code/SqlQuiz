@@ -5,65 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taking Quiz - MySQL Knowledge Testing Platform</title>
     
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <!-- Font Awesome - Using jsdelivr CDN to avoid Tracking Prevention -->
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <!-- CodeMirror for SQL Editor -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/neo.min.css">
 
     <style>
         :root {
-            /* Dark theme with glassmorphism colors matching register page */
-            --bg: #0b0f14;
-            --bg-grad-1: #0b0f14;
-            --bg-grad-2: #0e1219;
-            --panel: rgba(18, 22, 29, 0.55);
-            --panel-strong: rgba(18, 22, 29, 0.75);
-            --white: #e8edf7;
-            --muted: #9aa6b2;
-            --text-dim: #6b7280;
-            --field: rgba(255,255,255,0.06);
-            --field-border: rgba(255,255,255,0.12);
-            --field-focus: rgba(100, 180, 255, 0.25);
-            --accent-1: #6e74ff;
-            --accent-2: #6ce1ff;
-            --accent: #5b8cff;
-            --accent-hover: #4979ff;
-            --danger: #ff5f8a;
-            --success: #4ff0a7;
-            --warning: #ffc857;
-            --shadow-1: rgba(0, 0, 0, 0.35);
-            --shadow-2: rgba(0, 20, 60, 0.35);
-            --heart: #ff6aa2;
+            /* Morandi Light Theme like practice-round */
+            --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            --morandi-blue: #a3b8c8;
+            --morandi-grey: #9ca3af;
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-primary: #475569;
+            --text-secondary: #64748b;
+            --accent: #7c9aaf;
+            --success: #88a096;
+            --danger: #c48b8b;
+            --warning: #d4a373;
             --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             --spacing-1: 8px;
             --spacing-2: 12px;
             --spacing-3: 16px;
             --spacing-4: 24px;
             --spacing-5: 32px;
             --spacing-6: 40px;
-            --spacing-7: 48px;
-            --spacing-8: 64px;
-
-            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
-            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+            --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+            --font-display: 'Montserrat', 'PingFang SC', 'Microsoft YaHei', var(--font-sans);
+            --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         html, body {
             height: 100%;
-            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
-            color: var(--white);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-primary);
             font-family: var(--font-sans);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             margin: 0;
             padding: 0;
+            min-height: 100vh;
         }
 
         .page {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: var(--spacing-4);
+            padding: 30px 20px;
+        }
+
+        /* Glass Card Effect */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
         }
 
         /* Top Bar */
@@ -71,17 +80,14 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-1);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
             padding: var(--spacing-3) var(--spacing-4);
             margin-bottom: var(--spacing-4);
-            position: sticky;
-            top: var(--spacing-4);
-            z-index: 100;
         }
 
         .left {
@@ -95,7 +101,7 @@
             font-weight: 700;
             font-size: 20px;
             letter-spacing: 0.3px;
-            color: var(--white);
+            color: var(--text-primary);
         }
 
         .chips {
@@ -109,9 +115,9 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: var(--field);
-            border: 1px solid var(--field-border);
-            color: var(--white);
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
             border-radius: var(--radius-sm);
             font-size: 12px;
             backdrop-filter: blur(8px);
@@ -123,7 +129,6 @@
             border-radius: 999px;
             background: var(--accent);
             opacity: 0.9;
-            box-shadow: 0 0 12px rgba(91,140,255,0.8);
         }
 
         .chip.code .chip-dot {
@@ -142,32 +147,32 @@
 
         .clock {
             font-weight: 600;
-            color: var(--white);
-            padding: 6px 10px;
+            color: var(--text-primary);
+            padding: 6px 12px;
             border-radius: var(--radius-sm);
-            background: var(--field);
-            border: 1px solid var(--field-border);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--glass-border);
+            font-family: var(--font-mono);
         }
 
         .timer-warning {
-            background: rgba(255, 200, 87, 0.1);
+            background: rgba(212, 163, 115, 0.2);
             border-color: var(--warning);
             color: var(--warning);
         }
 
         .timer-danger {
-            background: rgba(255, 95, 138, 0.1);
+            background: rgba(196, 139, 139, 0.2);
             border-color: var(--danger);
             color: var(--danger);
         }
 
         /* Progress Container */
         .progress-container {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-radius: var(--radius-md);
             padding: var(--spacing-3);
             margin-bottom: var(--spacing-4);
@@ -175,17 +180,17 @@
 
         .progress-bar {
             height: 8px;
-            background: var(--field);
-            border-radius: var(--radius-sm);
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
             overflow: hidden;
             margin-bottom: var(--spacing-2);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+            background: var(--accent);
             transition: width 0.3s ease;
-            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+            box-shadow: 0 0 10px rgba(124, 154, 175, 0.4);
         }
 
         .progress-text {
@@ -193,17 +198,17 @@
             justify-content: space-between;
             align-items: center;
             font-size: 12px;
-            color: var(--muted);
+            color: var(--text-secondary);
         }
 
         /* Question Cards */
         .question-card {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-1);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
             margin-bottom: var(--spacing-4);
             transition: transform 0.15s ease, box-shadow 0.15s ease;
             overflow: hidden;
@@ -211,21 +216,19 @@
 
         .question-card:hover {
             transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
+            border-color: var(--accent);
         }
 
         .question-header {
-            background: linear-gradient(180deg, rgba(91, 140, 255, 0.15), rgba(108, 225, 255, 0.08));
-            border-bottom: 1px solid var(--field-border);
+            background: rgba(136, 160, 150, 0.1);
+            border-bottom: 1px solid var(--glass-border);
             padding: var(--spacing-4);
         }
 
         .question-title {
             font-weight: 600;
             font-size: 18px;
-            color: var(--white);
+            color: var(--text-primary);
             margin-bottom: var(--spacing-2);
         }
 
@@ -250,22 +253,22 @@
         }
 
         .badge-primary {
-            background: rgba(91, 140, 255, 0.2);
+            background: rgba(124, 154, 175, 0.2);
             color: var(--accent);
         }
 
         .badge-success {
-            background: rgba(91, 140, 255, 0.2);
-            color: var(--accent);
+            background: rgba(136, 160, 150, 0.2);
+            color: var(--success);
         }
 
         .badge-warning {
-            background: rgba(255, 200, 87, 0.2);
+            background: rgba(212, 163, 115, 0.2);
             color: var(--warning);
         }
 
         .badge-danger {
-            background: rgba(255, 95, 138, 0.2);
+            background: rgba(196, 139, 139, 0.2);
             color: var(--danger);
         }
 
@@ -274,22 +277,22 @@
         }
 
         .question-description {
-            color: var(--muted);
+            color: var(--text-secondary);
             font-size: 14px;
             line-height: 1.6;
             margin-bottom: var(--spacing-4);
         }
 
         .table-structure {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
             padding: var(--spacing-4);
             margin-bottom: var(--spacing-4);
         }
 
         .table-structure h6 {
-            color: var(--white);
+            color: var(--text-primary);
             margin-bottom: var(--spacing-2);
             font-weight: 600;
         }
@@ -303,7 +306,7 @@
             display: flex;
             align-items: center;
             gap: var(--spacing-2);
-            color: var(--white);
+            color: var(--text-primary);
             font-weight: 500;
             font-size: 14px;
             margin-bottom: var(--spacing-2);
@@ -312,14 +315,14 @@
         .sql-editor {
             width: 100%;
             min-height: 180px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--white);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.5);
+            color: var(--text-primary);
             padding: var(--spacing-3);
             outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            font-family: var(--font-mono);
             font-size: 14px;
             line-height: 1.6;
             resize: vertical;
@@ -327,12 +330,21 @@
 
         .sql-editor:focus {
             border-color: var(--accent);
-            box-shadow: 0 0 0 6px var(--field-focus);
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+            box-shadow: 0 0 0 3px rgba(124, 154, 175, 0.2);
         }
 
         .sql-editor::placeholder {
-            color: var(--text-dim);
+            color: var(--text-secondary);
+        }
+
+        /* CodeMirror Styles */
+        .CodeMirror {
+            height: 200px;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.5) !important;
         }
 
         /* Action Buttons */
@@ -355,82 +367,66 @@
         }
 
         .btn {
-            height: 36px;
-            padding: 0 var(--spacing-3);
-            border-radius: var(--radius-md);
+            min-height: 44px;
+            padding: 0 24px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
             font-size: 14px;
-            letter-spacing: 0.2px;
-            border: 1px solid var(--field-border);
+            border: none;
             cursor: pointer;
-            transition: all 0.18s ease;
+            transition: all 0.2s ease;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: var(--spacing-2);
-            outline: none;
+            gap: 8px;
         }
 
         .btn:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
-        .btn:focus {
-            box-shadow: 0 0 0 6px var(--field-focus);
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-outline {
             background: transparent;
-            color: var(--white);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
         }
 
         .btn-outline:hover {
-            background: rgba(255,255,255,0.08);
-            border-color: var(--accent);
+            background: rgba(255,255,255,0.3);
         }
 
         .btn-primary {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91,140,255,0.55);
-            box-shadow:
-                0 14px 28px rgba(108,225,255,0.18),
-                0 4px 10px var(--shadow-1),
-                inset 0 1px 0 rgba(255,255,255,0.45);
+            background: var(--accent);
+            color: white;
         }
 
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow:
-                0 16px 32px rgba(108,225,255,0.22),
-                0 6px 14px var(--shadow-1);
+            background: #6b8a9f;
         }
 
         .btn-success {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91,140,255,0.55);
-            box-shadow:
-                0 14px 28px rgba(108,225,255,0.18),
-                0 4px 10px var(--shadow-1),
-                inset 0 1px 0 rgba(255,255,255,0.45);
+            background: var(--success);
+            color: white;
         }
 
         .btn-success:hover {
-            transform: translateY(-1px);
-            box-shadow:
-                0 16px 32px rgba(108,225,255,0.22),
-                0 6px 14px var(--shadow-1);
+            background: #7a9289;
         }
 
         /* SQL Result */
         .sql-result {
             margin-top: var(--spacing-4);
             padding: var(--spacing-4);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: rgba(255,255,255,0.03);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.2);
             display: none;
         }
 
@@ -439,7 +435,7 @@
         }
 
         .sql-result-title {
-            color: var(--white);
+            color: var(--text-primary);
             font-weight: 600;
             margin-bottom: var(--spacing-3);
             display: flex;
@@ -448,7 +444,7 @@
         }
 
         .sql-result.success {
-            border-color: var(--accent);
+            border-color: var(--success);
         }
 
         .sql-result.error {
@@ -456,8 +452,8 @@
         }
 
         .table-responsive {
-            background: var(--field);
-            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-sm);
             overflow: auto;
         }
 
@@ -470,18 +466,18 @@
         .table th, .table td {
             padding: var(--spacing-2) var(--spacing-3);
             text-align: left;
-            border-bottom: 1px solid var(--field-border);
-            color: var(--white);
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-primary);
         }
 
         .table th {
-            background: rgba(255,255,255,0.05);
+            background: rgba(136, 160, 150, 0.1);
             font-weight: 600;
-            color: var(--muted);
+            color: var(--text-secondary);
         }
 
         .table tbody tr:hover td {
-            background: rgba(255,255,255,0.02);
+            background: rgba(0, 0, 0, 0.02);
         }
 
         /* Question Navigation */
@@ -507,9 +503,9 @@
             font-size: 14px;
             cursor: pointer;
             transition: all 0.2s ease;
-            border: 2px solid var(--field-border);
-            background: var(--panel);
-            color: var(--text-dim);
+            border: 2px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--text-secondary);
         }
 
         .question-nav-item:hover {
@@ -518,38 +514,38 @@
         }
 
         .question-nav-item.current {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
+            background: var(--accent);
+            color: white;
             border-color: var(--accent);
         }
 
         .question-nav-item.answered {
-            background: rgba(91, 140, 255, 0.2);
-            color: var(--accent);
-            border-color: var(--accent);
+            background: rgba(136, 160, 150, 0.2);
+            color: var(--success);
+            border-color: var(--success);
         }
 
         /* Submit Section */
         .submit-section {
-            background: var(--panel);
-            border: 2px dashed var(--field-border);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
+            background: var(--glass-bg);
+            border: 2px dashed var(--glass-border);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: var(--radius-md);
             padding: var(--spacing-6);
             text-align: center;
             margin-top: var(--spacing-6);
         }
 
         .submit-title {
-            color: var(--white);
+            color: var(--text-primary);
             font-weight: 600;
             margin-bottom: var(--spacing-2);
             font-size: 18px;
         }
 
         .submit-description {
-            color: var(--muted);
+            color: var(--text-secondary);
             margin-bottom: var(--spacing-5);
         }
 
@@ -596,6 +592,9 @@
             }
         }
     </style>
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sql/sql.min.js"></script>
 </head>
 <body>
     <div class="page">
@@ -649,7 +648,9 @@
 
         <!-- Questions Container -->
         <div id="questionsContainer">
-            <div class="question-card" th:each="question,questionStat : ${questions}" th:data-question-id="${question.id}">
+            <div class="question-card" th:each="question,questionStat : ${questions}" 
+                 th:data-question-id="${question.id}"
+                 th:data-setup-sql="${question.setupSql}">
                 <div class="question-header">
                     <div class="question-title">
                         <i class="fas fa-question-circle"></i>
@@ -664,15 +665,20 @@
                     </div>
                 </div>
                 <div class="question-body">
+                    <!-- 题目描述 -->
                     <div class="question-description" th:if="${question.description}">
-                        <div th:text="${question.description}">题目描述</div>
+                        <div class="question-desc-content" th:data-desc="${question.description}"></div>
                     </div>
 
+                    <!-- 数据库表结构 / 数据表 -->
                     <div class="table-structure" th:if="${question.databaseContext}">
-                        <div class="table-structure-container" th:data-context="${question.databaseContext}">
-                            <div class="bg-light p-3 rounded">
-                                <pre th:text="${question.databaseContext}"></pre>
-                            </div>
+                        <h3 style="font-size: 14px; margin-bottom: 10px; font-weight: 600; margin-top: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-database" style="color: var(--accent);"></i>
+                            <span>Sample Data Tables</span>
+                        </h3>
+                        <div class="table-structure-container" 
+                             th:data-context="${question.databaseContext}"
+                             th:data-setup-sql-attr="${question.setupSql}">
                         </div>
                     </div>
 
@@ -688,59 +694,26 @@
 
                     <div class="actions">
                         <div class="actions-left">
-                            <button class="btn btn-outline" th:onclick="|testSQL(${question.id})|">
-                                <i class="fas fa-play"></i>
-                                Test SQL
-                            </button>
                             <button class="btn btn-outline" th:onclick="|clearSQL(${question.id})|">
                                 <i class="fas fa-eraser"></i>
                                 Clear
                             </button>
                         </div>
-                        <div class="actions-right">
-                            <button class="btn btn-primary" th:onclick="|saveAnswer(${question.id})|">
-                                <i class="fas fa-save"></i>
-                                Save Answer
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- SQL测试结果 -->
-                    <div th:id="|sqlResult${question.id}|" class="sql-result">
-                        <div class="sql-result-title">
-                            <i class="fas fa-terminal"></i>
-                            Execution Result:
-                        </div>
-                        <div th:id="|sqlResultContent${question.id}|"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Submit Section -->
+        <!-- Save All and Review Section -->
         <div class="submit-section">
-            <div class="submit-title">
-                <i class="fas fa-flag-checkered"></i>
-                Complete Quiz
-            </div>
-            <div class="submit-description">
-                Please confirm all questions have been answered
-            </div>
-            <div class="submit-actions">
-                <button class="btn btn-outline" onclick="saveAsDraft()">
-                    <i class="fas fa-save"></i>
-                    Save Draft
-                </button>
-                <button class="btn btn-outline" onclick="reviewAnswers()">
-                    <i class="fas fa-eye"></i>
-                    Review Answers
-                </button>
-                <button class="btn btn-success" onclick="submitQuiz()">
-                    <i class="fas fa-paper-plane"></i>
-                    Submit Quiz
-                </button>
-            </div>
+            <button class="btn btn-primary btn-lg" onclick="saveAllAnswers()">
+                <i class="fas fa-save"></i>
+                Save All Answers
+            </button>
         </div>
+
+        <!-- Submit Section -->
+        <!-- 移除 Complete Quiz 区域 -->
     </div>
 
     <!-- Question Navigation -->
@@ -759,6 +732,9 @@
         // 初始化倒计时
         let timeRemaining = /*[[${timeRemaining ge 0 ? timeRemaining * 60 : -1}]]*/ 3600; // 秒数
         let timerInterval;
+        
+        // 存储每个题目的表前缀（从 setupSql 中提取）
+        const questionTablePrefixes = new Map();
 
         // 启动倒计时
         function startTimer() {
@@ -802,14 +778,43 @@
             }
         }
 
+        // 表名映射函数：将学生SQL中的表名替换为带前缀的表名
+        function addTablePrefix(sql, prefix) {
+            if (!prefix) return sql;
+            
+            // 匹配 FROM/JOIN 后的表名
+            const pattern = /\b(FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+            return sql.replace(pattern, (match, keyword, tableName) => {
+                // 如果表名已经有前缀，不再添加
+                if (tableName.startsWith(prefix)) {
+                    return match;
+                }
+                return `${keyword} ${prefix}_${tableName}`;
+            });
+        }
+        
+        // 从 setupSql 中提取表前缀
+        function extractTablePrefix(setupSql) {
+            if (!setupSql) return null;
+            // 匹配 CREATE TABLE quiz_q_xxx_tablename
+            const match = setupSql.match(/CREATE\s+TABLE\s+(quiz_q_\d+)_/i);
+            return match ? match[1] : null;
+        }
+
         // 测试SQL
         function testSQL(questionId) {
             const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`);
-            const sql = textarea.value.trim();
+            let sql = textarea.value.trim();
 
             if (!sql) {
                 showToast('Please enter SQL statement first', 'warning');
                 return;
+            }
+            
+            // 获取表前缀并添加到SQL中
+            const prefix = questionTablePrefixes.get(questionId);
+            if (prefix) {
+                sql = addTablePrefix(sql, prefix);
             }
 
             // 显示加载状态
@@ -949,13 +954,33 @@
             }, 500);
         }
 
-        // 保存答案
-        function saveAnswer(questionId) {
-            const textarea = document.querySelector(`textarea[data-question-id="${questionId}"]`);
-            const sql = textarea.value.trim();
+        // 保存单个答案(内部函数)
+        function saveAnswer(questionId, sql) {
+            return fetch(`/student/submission/${submissionId}/answer`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `questionId=${questionId}&sql=${encodeURIComponent(sql)}`
+            }).then(response => response.text());
+        }
 
-            if (!sql) {
-                showToast('Please enter SQL statement before saving', 'warning');
+        // 批量保存所有答案
+        function saveAllAnswers() {
+            const textareas = document.querySelectorAll('textarea[data-question-id]');
+            const answers = [];
+            
+            // 收集所有答案
+            textareas.forEach(textarea => {
+                const questionId = textarea.getAttribute('data-question-id');
+                const sql = textarea.value.trim();
+                if (sql) {
+                    answers.push({ questionId, sql });
+                }
+            });
+
+            if (answers.length === 0) {
+                showToast('Please answer at least one question', 'warning');
                 return;
             }
 
@@ -965,41 +990,51 @@
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
-            // 发送AJAX请求保存答案
-            fetch(`/student/submission/${submissionId}/answer`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `questionId=${questionId}&sql=${encodeURIComponent(sql)}`
-            })
-                .then(response => response.text())
-                .then(data => {
-                    if (data === 'success') {
-                        // 更新导航状态
-                        const navItem = document.querySelector(`.question-nav-item:nth-child(${questionId})`);
-                        if (navItem) {
-                            navItem.className = 'question-nav-item answered';
+            // 依次保存所有答案
+            let savedCount = 0;
+            let failedCount = 0;
+
+            const savePromises = answers.map(answer => 
+                saveAnswer(answer.questionId, answer.sql)
+                    .then(data => {
+                        if (data === 'success') {
+                            savedCount++;
+                            // 更新导航状态
+                            const navItems = document.querySelectorAll('.question-nav-item');
+                            const index = parseInt(answer.questionId) - 1;
+                            if (navItems[index]) {
+                                navItems[index].classList.add('answered');
+                            }
+                        } else {
+                            failedCount++;
+                            console.error(`Failed to save question ${answer.questionId}: ${data}`);
                         }
+                    })
+                    .catch(error => {
+                        failedCount++;
+                        console.error(`Error saving question ${answer.questionId}:`, error);
+                    })
+            );
 
-                        // 更新进度
-                        updateProgress();
+            Promise.all(savePromises).then(() => {
+                // 更新进度
+                updateProgress();
 
-                        // 显示保存成功提示
-                        showToast('Answer saved', 'success');
-                    } else {
-                        showToast('Save failed: ' + data, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('保存失败:', error);
-                    showToast('Save failed: ' + error.message, 'error');
-                })
-                .finally(() => {
-                    // 恢复按钮状态
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = originalText;
-                });
+                // 显示结果
+                if (failedCount === 0) {
+                    showToast(`Successfully saved ${savedCount} answer(s)`, 'success');
+                    // 跳转到review页面
+                    setTimeout(() => {
+                        window.location.href = `/student/submission/${submissionId}/review`;
+                    }, 1000);
+                } else {
+                    showToast(`Saved ${savedCount} answer(s), ${failedCount} failed`, 'warning');
+                }
+            }).finally(() => {
+                // 恢复按钮状态
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            });
         }
 
         // 更新进度
@@ -1013,44 +1048,255 @@
             document.getElementById('overallProgress').style.width = `${percentage}%`;
         }
 
-        // 解析表结构并显示为表格
+        // 渲染题目描述(Markdown)
+        function renderQuestionContent() {
+            document.querySelectorAll('.question-desc-content').forEach(element => {
+                const description = element.getAttribute('data-desc');
+                if (description) {
+                    element.innerHTML = marked.parse(description);
+                }
+            });
+        }
+        
+        // 从setupSql中提取表名映射: {原始表名: 带前缀表名}
+        function extractTableMapping(setupSql) {
+            if (!setupSql) return {};
+                    
+            const mapping = {};
+            // 匹配 CREATE TABLE quiz_q_xxx_tablename
+            const tableRegex = /CREATE\s+TABLE\s+(quiz_q_\d+)_([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+            let match;
+                    
+            while ((match = tableRegex.exec(setupSql)) !== null) {
+                const fullTableName = match[1] + '_' + match[2]; // quiz_q_123_users
+                const simpleTableName = match[2]; // users
+                mapping[simpleTableName] = fullTableName;
+            }
+                    
+            return mapping;
+        }
+        
+        // 解析表结构并显示为表格（复用practice-round的parseDatabaseContext）
         function parseTableStructure() {
             document.querySelectorAll('.table-structure-container').forEach(container => {
                 const contextText = container.getAttribute('data-context');
                 if (!contextText) return;
-
-                let html = '';
-
-                // 检查是否包含固定开头"数据库表结构如下："
-                if (contextText.includes('数据库表结构如下：')) {
-                    // 分离题目描述和表结构
-                    const parts = contextText.split('数据库表结构如下：');
-                    const description = parts[0].trim();
-                    const structureContent = parts[1].trim();
-
-                    // 更新题目描述部分
-                    const descriptionElement = container.closest('.question-body').querySelector('.question-description div');
-                    if (descriptionElement && description) {
-                        descriptionElement.textContent = description;
-                    }
-
-                    html = '<div class="table-structure-container">' + parseStructuredFormat(structureContent) + '</div>';
-                } else {
-                    // 兼容旧格式，保持原有解析逻辑
-                    html = parseOldFormat(contextText);
-                }
-
-                if (html) {
-                    container.innerHTML = html;
-                } else {
-                    // 如果解析失败，保持原始显示
-                    container.innerHTML = `<div class="table-responsive"><pre style="color: var(--white); background: var(--field); padding: var(--spacing-3); border-radius: var(--radius-md);">${contextText}</pre></div>`;
-                }
+                
+                const html = parseDatabaseContext(contextText);
+                container.innerHTML = html;
             });
+        }
+        
+        // 解析数据库上下文（与practice-round.html一致）
+        function parseDatabaseContext(text) {
+            if (!text) return '<p style="color: var(--text-secondary);">No database schema available.</p>';
+            
+            // 查找Markdown表格
+            const tablePattern = '(\\|[^\\n]+\\|\\n\\|[-|\\s]+\\|\\n(?:\\|[^\\n]+\\|\\n?)+)';
+            const tableRegex = new RegExp(tablePattern, 'g');
+            const hasTables = tableRegex.test(text);
+            
+            if (hasTables) {
+                let result = '';
+                let lastIndex = 0;
+                const regex = new RegExp(tablePattern, 'g');
+                let match;
+                
+                while ((match = regex.exec(text)) !== null) {
+                    // 获取表格之前的文本
+                    const beforeText = text.substring(lastIndex, match.index);
+                    
+                    // 查找表名（在表格前的最后一行，以table:或表:结尾）
+                    let tableName = '';
+                    const lines = beforeText.trim().split('\n');
+                    if (lines.length > 0) {
+                        const lastLine = lines[lines.length - 1].trim();
+                        // 匹配 "xxx table:" 或 "xxx:" 或 "xxx表：" 或仅“xxx table"
+                        if (lastLine.match(/table:?\s*$/i) || lastLine.match(/表[:：]?\s*$/)) {
+                            tableName = lastLine;
+                            // 添加表名之前的文本
+                            result += lines.slice(0, -1).map(l => `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>`).join('');
+                        } else {
+                            result += beforeText.split('\n').map(l => l.trim() ? `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>` : '').join('');
+                        }
+                    }
+                    
+                    // 渲染表名标题
+                    if (tableName) {
+                        result += `<div style="margin: 16px 0 8px 0; font-size: 14px; font-weight: 600; color: var(--accent);">${tableName}</div>`;
+                    }
+                    
+                    // 渲染表格
+                    const tableMarkdown = match[0];
+                    const tableLines = tableMarkdown.trim().split('\n');
+                    if (tableLines.length >= 3) {
+                        const headers = tableLines[0].split('|').filter(h => h.trim()).map(h => h.trim());
+                        const dataRows = tableLines.slice(2).map(line => 
+                            line.split('|').filter(c => c.trim()).map(c => c.trim())
+                        );
+                        
+                        let tableHtml = '<table style="width:100%; border-collapse: collapse; margin: 8px 0 16px 0; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+                        tableHtml += '<thead><tr>';
+                        headers.forEach(h => {
+                            tableHtml += `<th style="border: 1px solid var(--glass-border); padding: 10px; background: rgba(136, 160, 150, 0.1); text-align: left; font-weight: 600;">${h}</th>`;
+                        });
+                        tableHtml += '</tr></thead><tbody>';
+                        
+                        dataRows.forEach((row, idx) => {
+                            if (row.length > 0) {
+                                const bgColor = idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)';
+                                tableHtml += `<tr style="background: ${bgColor};">`;
+                                row.forEach(cell => {
+                                    tableHtml += `<td style="border: 1px solid var(--glass-border); padding: 10px;">${cell}</td>`;
+                                });
+                                tableHtml += '</tr>';
+                            }
+                        });
+                        
+                        tableHtml += '</tbody></table>';
+                        result += tableHtml;
+                    }
+                    
+                    lastIndex = regex.lastIndex;
+                }
+                
+                // 添加最后一部分文本
+                if (lastIndex < text.length) {
+                    const remaining = text.substring(lastIndex).trim();
+                    if (remaining) {
+                        result += remaining.split('\n').map(l => l.trim() ? `<p style="margin: 4px 0; color: var(--text-primary);">${l}</p>` : '').join('');
+                    }
+                }
+                
+                return result;
+            } else {
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                let html = '<div style="font-size: 12px;">';
+                let currentTable = null;
+                
+                for (let line of lines) {
+                    if (line.match(/table:?$/i) || line.match(/表:?$/)) {
+                        if (currentTable) html += '</ul></div>';
+                        html += `<div style="margin-bottom: 16px;"><strong style="color: var(--accent); font-size: 13px;">${line}</strong><ul style="margin: 8px 0; padding-left: 20px; list-style: none;">`;
+                        currentTable = true;
+                    } else if (line.startsWith('-')) {
+                        const fieldInfo = line.substring(1).trim();
+                        html += `<li style="margin: 4px 0; color: var(--text-secondary);"><i class="fas fa-chevron-right" style="font-size: 10px; margin-right: 8px; color: var(--accent); opacity: 0.5;"></i>${fieldInfo}</li>`;
+                    } else {
+                        if (currentTable) {
+                            html += '</ul></div>';
+                            currentTable = null;
+                        }
+                        html += `<p style="margin: 8px 0; color: var(--text-primary);">${line}</p>`;
+                    }
+                }
+                
+                if (currentTable) html += '</ul></div>';
+                html += '</div>';
+                return html;
+            }
+        }
+        
+        // 渲染 Markdown 表格(带表名映射)
+        function renderMarkdownTablesWithMapping(text, tableMapping) {
+            const tablePattern = '(\\|[^\\n]+\\|\\n\\|[-|\\s]+\\|\\n(?:\\|[^\\n]+\\|\\n?)+)';
+            const replaceRegex = new RegExp(tablePattern, 'g');
+            
+            let result = '';
+            let lastIndex = 0;
+            let match;
+            const regex = new RegExp(tablePattern, 'g');
+            
+            while ((match = regex.exec(text)) !== null) {
+                // 添加表格之前的文本
+                const beforeText = text.substring(lastIndex, match.index);
+                
+                // 查找表名(在表格前的最后一行,以冒号或"table:"结尾)
+                let tableName = '';
+                const lines = beforeText.trim().split('\n');
+                if (lines.length > 0) {
+                    const lastLine = lines[lines.length - 1].trim();
+                    // 匹配 "xxx table:" 或 "xxx:" 或 "xxx表："
+                    const titleMatch = lastLine.match(/^([^:]+?)(?:\s+table)?[:：]\s*$/i);
+                    if (titleMatch) {
+                        tableName = titleMatch[1].trim();
+                        // 移除表名中的前缀
+                        Object.keys(tableMapping).forEach(simpleN => {
+                            const prefixPattern = new RegExp(`^${tableMapping[simpleN]}_`, 'i');
+                            tableName = tableName.replace(prefixPattern, '');
+                            // 也匹配直接包含的情况
+                            if (tableName.toLowerCase() === tableMapping[simpleN].toLowerCase()) {
+                                tableName = simpleN;
+                            }
+                        });
+                        // 不再添加这一行到结果中
+                        result += lines.slice(0, -1).join('\n');
+                        if (result && !result.endsWith('\n')) result += '\n';
+                    } else {
+                        result += beforeText;
+                    }
+                } else {
+                    result += beforeText;
+                }
+                
+                // 渲染表格
+                const tableMarkdown = match[0];
+                const tableLines = tableMarkdown.trim().split('\n');
+                if (tableLines.length < 3) {
+                    result += tableMarkdown;
+                    lastIndex = regex.lastIndex;
+                    continue;
+                }
+                
+                // 第一行是表头
+                const headers = tableLines[0].split('|').filter(h => h.trim()).map(h => h.trim());
+                // 第二行是分隔线（忽略）
+                // 剩余行是数据
+                const dataRows = tableLines.slice(2).map(line => 
+                    line.split('|').filter(c => c.trim()).map(c => c.trim())
+                );
+                
+                let tableHtml = '';
+                
+                // 在表格上方显示表名
+                if (tableName) {
+                    tableHtml += `<div style="margin: 12px 0 8px 0; font-size: 14px; font-weight: 500; color: var(--muted);">${tableName} table:</div>`;
+                }
+                
+                tableHtml += '<table style="width:100%; border-collapse: collapse; margin: 0 0 16px 0; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: var(--radius-md); overflow: hidden;">';
+                tableHtml += '<thead><tr>';
+                headers.forEach(h => {
+                    tableHtml += `<th style="border: 1px solid var(--field-border); padding: 12px; background: rgba(91, 140, 255, 0.1); text-align: left; font-weight: 600; color: var(--white);">${h}</th>`;
+                });
+                tableHtml += '</tr></thead><tbody>';
+                
+                dataRows.forEach((row, idx) => {
+                    if (row.length > 0) {
+                        const bgColor = idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)';
+                        tableHtml += `<tr style="background: ${bgColor};">`;
+                        row.forEach(cell => {
+                            tableHtml += `<td style="border: 1px solid var(--field-border); padding: 10px; color: var(--muted);">${cell}</td>`;
+                        });
+                        tableHtml += '</tr>';
+                    }
+                });
+                
+                tableHtml += '</tbody></table>';
+                result += tableHtml;
+                lastIndex = regex.lastIndex;
+            }
+            
+            // 添加最后一部分文本
+            result += text.substring(lastIndex);
+            
+            // 将换行符转换为<br>
+            result = result.replace(/\n/g, '<br>');
+            
+            return result;
         }
 
         // 解析新的结构化格式
-        function parseStructuredFormat(content) {
+        function parseStructuredFormat(content, tableMapping = {}) {
             let html = '';
             const lines = content.split('\n').map(line => line.trim()).filter(line => line);
 
@@ -1062,11 +1308,17 @@
                 if (line.endsWith('表：') || (line.includes('表') && !line.startsWith('-'))) {
                     // 如果之前有表的信息，先生成HTML
                     if (currentTable && columns.length > 0) {
-                        html += generateTableHTML(currentTable, columns);
+                        html += generateTableHTML(currentTable, columns, tableMapping);
                     }
 
                     // 提取表名
                     currentTable = line.replace('表：', '').replace('表', '').trim();
+                    // 移除表名中的前缀
+                    Object.keys(tableMapping).forEach(simpleN => {
+                        if (currentTable.toLowerCase().includes(simpleN.toLowerCase())) {
+                            currentTable = simpleN;
+                        }
+                    });
                     columns = [];
                 } else if (line.startsWith('-')) {
                     // 字段行，格式：- 字段名 (数据类型) - 说明
@@ -1095,14 +1347,14 @@
 
             // 处理最后一个表
             if (currentTable && columns.length > 0) {
-                html += generateTableHTML(currentTable, columns);
+                html += generateTableHTML(currentTable, columns, tableMapping);
             }
 
             return html;
         }
 
         // 解析旧格式（保持兼容性）
-        function parseOldFormat(contextText) {
+        function parseOldFormat(contextText, tableMapping = {}) {
             let html = '';
 
             // 处理多种表结构格式
@@ -1129,7 +1381,7 @@
                         };
                     });
 
-                    html += generateTableHTML(tableName, columns);
+                    html += generateTableHTML(tableName, columns, tableMapping);
                 });
             } else if (createTableMatch) {
                 // 处理CREATE TABLE语法
@@ -1145,7 +1397,7 @@
                         };
                     });
 
-                    html += generateTableHTML(tableName, columns);
+                    html += generateTableHTML(tableName, columns, tableMapping);
                 });
             } else if (colonFormat) {
                 // 处理冒号格式
@@ -1162,7 +1414,7 @@
                         };
                     });
 
-                    html += generateTableHTML(tableName, columns);
+                    html += generateTableHTML(tableName, columns, tableMapping);
                 });
             } else {
                 // 尝试自动检测表名和字段
@@ -1174,7 +1426,7 @@
                     line = line.trim();
                     if (line.includes('表') || line.toLowerCase().includes('table')) {
                         if (currentTable && columns.length > 0) {
-                            html += generateTableHTML(currentTable, columns);
+                            html += generateTableHTML(currentTable, columns, tableMapping);
                         }
                         currentTable = line.replace(/表.*/, '').replace(/.*table\s*/i, '').trim();
                         columns = [];
@@ -1196,7 +1448,7 @@
                 });
 
                 if (currentTable && columns.length > 0) {
-                    html += generateTableHTML(currentTable, columns);
+                    html += generateTableHTML(currentTable, columns, tableMapping);
                 }
             }
 
@@ -1204,13 +1456,21 @@
         }
 
         // 生成表格 HTML
-        function generateTableHTML(tableName, columns) {
-            let html = `<h6>${tableName} Table</h6>`;
-            html += '<div class="table-responsive"><table class="table">';
-            html += '<thead><tr><th>Field Name</th><th>Data Type</th><th>Description</th></tr></thead>';
+        function generateTableHTML(tableName, columns, tableMapping = {}) {
+            // 移除表名中的前缀
+            let displayTableName = tableName;
+            Object.keys(tableMapping).forEach(simpleN => {
+                if (tableName.toLowerCase().includes(simpleN.toLowerCase())) {
+                    displayTableName = simpleN;
+                }
+            });
+            
+            let html = `<div style="margin: 20px 0 8px 0; font-size: 15px; font-weight: 600; color: var(--accent); display: flex; align-items: center;"><i class="fas fa-table" style="margin-right: 8px;"></i>${displayTableName}</div>`;
+            html += '<div class="table-responsive"><table class="table" style="width:100%; border-collapse: collapse; margin: 0 0 16px 0; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: var(--radius-md); overflow: hidden;">';
+            html += '<thead><tr><th style="border: 1px solid var(--field-border); padding: 12px; background: rgba(91, 140, 255, 0.1); text-align: left; font-weight: 600; color: var(--white);">Field Name</th><th style="border: 1px solid var(--field-border); padding: 12px; background: rgba(91, 140, 255, 0.1); text-align: left; font-weight: 600; color: var(--white);">Data Type</th><th style="border: 1px solid var(--field-border); padding: 12px; background: rgba(91, 140, 255, 0.1); text-align: left; font-weight: 600; color: var(--white);">Description</th></tr></thead>';
             html += '<tbody>';
 
-            columns.forEach(column => {
+            columns.forEach((column, idx) => {
                 let parts;
                 if (typeof column === 'object') {
                     // 新的结构化数据
@@ -1223,7 +1483,8 @@
                     // 兼容旧格式
                     parts = parseColumnInfo(column);
                 }
-                html += `<tr><td>${parts.name}</td><td>${parts.type}</td><td>${parts.description}</td></tr>`;
+                const bgColor = idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)';
+                html += `<tr style="background: ${bgColor};"><td style="border: 1px solid var(--field-border); padding: 10px; color: var(--white);">${parts.name}</td><td style="border: 1px solid var(--field-border); padding: 10px; color: var(--muted);">${parts.type}</td><td style="border: 1px solid var(--field-border); padding: 10px; color: var(--muted);">${parts.description}</td></tr>`;
             });
 
             html += '</tbody></table></div>';
@@ -1424,8 +1685,24 @@
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 渲染题目内容(Markdown)
+            renderQuestionContent();
+            
             // 解析表结构
             parseTableStructure();
+            
+            // 提取每个题目的表前缀
+            document.querySelectorAll('.question-card').forEach(card => {
+                const questionId = card.getAttribute('data-question-id');
+                const setupSql = card.getAttribute('data-setup-sql');
+                if (setupSql) {
+                    const prefix = extractTablePrefix(setupSql);
+                    if (prefix) {
+                        questionTablePrefixes.set(parseInt(questionId), prefix);
+                        console.log(`Question ${questionId} table prefix: ${prefix}`);
+                    }
+                }
+            });
 
             if (timeRemaining > 0) {
                 startTimer();
