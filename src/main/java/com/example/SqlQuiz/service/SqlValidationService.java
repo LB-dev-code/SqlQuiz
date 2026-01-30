@@ -46,7 +46,7 @@ public class SqlValidationService {
         public void setRowCount(int rowCount) { this.rowCount = rowCount; }
     }
 
-    // 执行SQL语句
+    // 执行SQL语句（支持所有SQL类型）
     public SqlExecutionResult executeSQL(String sql) {
         SqlExecutionResult result = new SqlExecutionResult(false);
 
@@ -55,55 +55,64 @@ public class SqlValidationService {
             return result;
         }
 
-        // 安全检查：只允许SELECT语句
-//        String trimmedSql = sql.trim().toLowerCase();
-//        if (!trimmedSql.startsWith("select")) {
-//            result.setError("只允许执行SELECT查询语句");
-//            return result;
-//        }
-
-        // 检查危险关键字
-//        if (containsDangerousKeywords(trimmedSql)) {
-//            result.setError("SQL语句包含不允许的操作");
-//            return result;
-//        }
-
         try (Connection connection = dataSource.getConnection()) {
             long startTime = System.currentTimeMillis();
 
-            try (PreparedStatement statement = connection.prepareStatement(sql);
-                 ResultSet resultSet = statement.executeQuery()) {
+            // 判断SQL类型
+            String trimmedSql = sql.trim().toUpperCase();
+            boolean isQuery = trimmedSql.startsWith("SELECT") || 
+                            trimmedSql.startsWith("SHOW") || 
+                            trimmedSql.startsWith("DESCRIBE") ||
+                            trimmedSql.startsWith("DESC");
 
-                long endTime = System.currentTimeMillis();
-                result.setExecutionTimeMs(endTime - startTime);
+            if (isQuery) {
+                // 查询语句：使用executeQuery
+                try (PreparedStatement statement = connection.prepareStatement(sql);
+                     ResultSet resultSet = statement.executeQuery()) {
 
-                // 获取结果集元数据
-                ResultSetMetaData metaData = resultSet.getMetaData();
-                int columnCount = metaData.getColumnCount();
+                    long endTime = System.currentTimeMillis();
+                    result.setExecutionTimeMs(endTime - startTime);
 
-                List<Map<String, Object>> data = new ArrayList<>();
-                int rowCount = 0;
+                    // 获取结果集元数据
+                    ResultSetMetaData metaData = resultSet.getMetaData();
+                    int columnCount = metaData.getColumnCount();
 
-                // 限制返回的行数，避免内存溢出
-                final int MAX_ROWS = 1000;
+                    List<Map<String, Object>> data = new ArrayList<>();
+                    int rowCount = 0;
 
-                while (resultSet.next() && rowCount < MAX_ROWS) {
-                    Map<String, Object> row = new LinkedHashMap<>();
+                    // 限制返回的行数，避免内存溢出
+                    final int MAX_ROWS = 1000;
 
-                    for (int i = 1; i <= columnCount; i++) {
-                        String columnName = metaData.getColumnLabel(i);
-                        Object value = resultSet.getObject(i);
-                        row.put(columnName, value);
+                    while (resultSet.next() && rowCount < MAX_ROWS) {
+                        Map<String, Object> row = new LinkedHashMap<>();
+
+                        for (int i = 1; i <= columnCount; i++) {
+                            String columnName = metaData.getColumnLabel(i);
+                            Object value = resultSet.getObject(i);
+                            row.put(columnName, value);
+                        }
+
+                        data.add(row);
+                        rowCount++;
                     }
 
-                    data.add(row);
-                    rowCount++;
+                    result.setData(data);
+                    result.setRowCount(rowCount);
+                    result.setSuccess(true);
                 }
+            } else {
+                // DML语句（INSERT, UPDATE, DELETE等）：使用executeUpdate
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    int affectedRows = statement.executeUpdate();
 
-                result.setData(data);
-                result.setRowCount(rowCount);
-                result.setSuccess(true);
-
+                    long endTime = System.currentTimeMillis();
+                    result.setExecutionTimeMs(endTime - startTime);
+                    result.setRowCount(affectedRows);
+                    result.setSuccess(true);
+                    
+                    // DML语句不返回结果集，只返回受影响的行数
+                    result.setData(new ArrayList<>());
+                }
             }
         } catch (SQLException e) {
             result.setError("SQL执行错误: " + e.getMessage());

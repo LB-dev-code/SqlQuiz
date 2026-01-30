@@ -248,7 +248,7 @@
                 <a href="/student/practice/dashboard"
                     style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-chevron-left" style="font-size: 14px; opacity: 0.6;"></i>
-                    <span style="font-weight: 700; font-size: 18px;">Round #<span th:text="${roundNumber}">1</span></span>
+                    <span style="font-weight: 700; font-size: 18px;">Practice</span>
                 </a>
             </div>
             <div class="steps-container" id="round-steps">
@@ -403,6 +403,9 @@
                 
                 const data = await response.json();
                 console.log('Question data received:', data);
+                console.log('=== databaseContext raw value ===');
+                console.log(data.databaseContext);
+                console.log('=================================');
 
                 if (data.success && data.hasMore) {
                     currentAnswerId = data.answerId;
@@ -453,37 +456,61 @@
             let sql = editor.getValue();
             if (!sql.trim()) return;
 
-            // 自动替换表名：添加前缀
-            if (tablePrefix) {
-                sql = addTablePrefix(sql, tablePrefix);
-            }
-
             document.getElementById('execution-result').innerText = 'Running...';
             const btn = document.getElementById('run-btn');
             btn.disabled = true;
 
             try {
-                const formData = new FormData();
-                formData.append('sql', sql);
-
-                const response = await fetch('/student/sql-practice', {
+                // 调用沙库执行接口（保护主数据库）
+                const response = await fetch('/student/practice/api/run-sql', {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        answerId: currentAnswerId,
+                        sql: sql  // 后端会自动处理表名前缀映射
+                    })
                 });
-                const data = await response.json();
 
                 const resultBox = document.getElementById('execution-result');
+
+                // 检查HTTP状态
+                if (!response.ok) {
+                    // 尝试读取错误响应
+                    let errorMsg = 'HTTP Error ' + response.status;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (e) {
+                        // 无法解析JSON，使用默认错误信息
+                    }
+                    resultBox.innerHTML = `<span style="color:var(--danger)">${errorMsg}</span>`;
+                    return;
+                }
+
+                const data = await response.json();
+
                 if (data.success) {
-                    if (data.data && data.data.length > 0) {
-                        resultBox.innerHTML = formatTable(data.data);
+                    if (data.data !== undefined) {
+                        // SELECT查询：data存在说明是查询结果
+                        if (data.data && data.data.length > 0) {
+                            resultBox.innerHTML = formatTable(data.data);
+                        } else {
+                            // 空结果集 - 返回空数组或null
+                            resultBox.innerHTML = '<span style="color:var(--success)">✓ Query executed successfully. Empty result set (0 rows returned).</span>';
+                        }
+                    } else if (data.rowCount !== undefined && data.rowCount >= 0) {
+                        // DML语句（INSERT/UPDATE/DELETE/DROP等）：显示受影响的行数
+                        resultBox.innerHTML = `<span style="color:var(--success)">✓ Query executed successfully. ${data.rowCount} row(s) affected.</span>`;
                     } else {
-                        resultBox.innerText = 'Success. No rows returned.';
+                        // 其他情况：无结果返回
+                        resultBox.innerHTML = '<span style="color:var(--success)">✓ Query executed successfully. No rows returned.</span>';
                     }
                 } else {
-                    resultBox.innerHTML = `<span style="color:var(--danger)">${data.error || 'Syntax Error'}</span>`;
+                    resultBox.innerHTML = `<span style="color:var(--danger)">${data.error || 'Query execution failed'}</span>`;
                 }
             } catch (err) {
-                document.getElementById('execution-result').innerText = 'Network Error';
+                console.error('runCode error:', err);
+                document.getElementById('execution-result').innerHTML = `<span style="color:var(--danger)">Network Error: ${err.message}</span>`;
             } finally {
                 btn.disabled = false;
             }
@@ -539,19 +566,56 @@
         }
 
         // 表名映射函数：将学生SQL中的表名替换为带前缀的表名
+        // 支持的SQL语句类型：
+        // - SELECT ... FROM table
+        // - JOIN table
+        // - INSERT INTO table
+        // - UPDATE table
+        // - DELETE FROM table
+        // - DROP TABLE table
+        // - CREATE TABLE table
+        // - ALTER TABLE table
+        // - TRUNCATE TABLE table
         function addTablePrefix(sql, prefix) {
             if (!prefix) return sql;
-            
-            // 简单的表名替换逻辑
-            // 匹配 FROM/JOIN 后的表名
-            const pattern = /\b(FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
-            return sql.replace(pattern, (match, keyword, tableName) => {
-                // 如果表名已经有前缀，不再添加
-                if (tableName.startsWith(prefix)) {
-                    return match;
-                }
-                return `${keyword} ${prefix}_${tableName}`;
+
+            let result = sql;
+
+            // 匹配模式：关键字 + 表名
+            // 使用正则表达式的顺序很重要，更具体的模式要先匹配
+            const patterns = [
+                // DROP TABLE table_name
+                /\b(DROP\s+TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // CREATE TABLE table_name (暂时不处理，因为CREATE通常不用于练习)
+                // /\b(CREATE\s+TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // ALTER TABLE table_name
+                /\b(ALTER\s+TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // TRUNCATE TABLE table_name
+                /\b(TRUNCATE\s+TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // INSERT INTO table_name
+                /\b(INSERT\s+INTO)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // UPDATE table_name
+                /\bUPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // DELETE FROM table_name
+                /\b(DELETE\s+FROM)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // FROM table_name
+                /\b(FROM)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
+                // JOIN table_name
+                /\b(JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi
+            ];
+
+            // 对每个模式进行替换
+            patterns.forEach(pattern => {
+                result = result.replace(pattern, (match, keyword, tableName) => {
+                    // 如果表名已经有前缀，不再添加
+                    if (tableName.startsWith(prefix)) {
+                        return match;
+                    }
+                    return `${keyword} ${prefix}_${tableName}`;
+                });
             });
+
+            return result;
         }
 
         async function finishRound() {

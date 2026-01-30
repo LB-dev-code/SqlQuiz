@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
   <style>
         :root{
             --bg: #0b0f14;
@@ -200,26 +202,54 @@
         .question-content {
             font-size: 14px;
             color: var(--muted);
-            line-height: 1.6;
-            white-space: pre-wrap;
+            line-height: 1.8;
+        }
+
+        .question-content p {
+            margin-bottom: var(--spacing-2);
+        }
+
+        .question-content code {
+            background: rgba(0,0,0,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
         }
 
         /* Table Display */
         .table-display {
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.15);
             border: 1px solid var(--field-border);
             border-radius: var(--radius-md);
             padding: var(--spacing-4);
             margin-bottom: var(--spacing-4);
-            max-height: 300px;
+            max-height: 400px;
             overflow: auto;
         }
 
         .table-title {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--accent-2);
-            margin-bottom: var(--spacing-2);
+            margin-bottom: var(--spacing-3);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+        }
+
+        .database-tables {
+            margin-top: var(--spacing-4);
+        }
+
+        .database-title {
+            font-size: 14px;
+            color: var(--accent-2);
+            font-weight: 600;
+            margin-bottom: var(--spacing-3);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
         }
 
         /* SQL Editor */
@@ -394,8 +424,8 @@
         </div>
 
         <div class="content-wrapper">
-            <!-- Left: Main Content -->
-            <div>
+            <!-- Main Content (Full Width) -->
+            <div style="grid-column: 1 / -1;">
                 <!-- Quiz and Question Selectors -->
                 <div class="card">
                     <div class="card-header">
@@ -476,32 +506,6 @@
                         </div>
                         
                         <div id="resultContainer"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right: Info -->
-            <div>
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">
-                            <i class="fas fa-info-circle"></i>
-                            使用说明
-                        </h2>
-                    </div>
-                    <div class="card-body">
-                        <p style="color: var(--muted); line-height: 1.6; margin-bottom: var(--spacing-3);">
-                            1. 从上方选择一个Quiz<br>
-                            2. 选择要练习的题目<br>
-                            3. 查看题目内容和表格数据<br>
-                            4. 在编辑器中编写SQL语句<br>
-                            5. 点击"验证SQL"查看结果
-                        </p>
-                        
-                        <div style="background: rgba(255, 200, 87, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: var(--spacing-3); border-radius: var(--radius-md);">
-                            <i class="fas fa-lightbulb" style="margin-right: var(--spacing-2);"></i>
-                            <strong>提示:</strong> 系统会自动验证你的SQL语句是否正确
-                        </div>
                     </div>
                 </div>
             </div>
@@ -605,48 +609,89 @@
 
     // 显示题目和表格
     function displayQuestion(data) {
-        // 显示题目
-        let questionHtml = '<div class="question-title">' + data.content + '</div>';
+        // 1. 显示题目标题和描述（只显示文字描述，不包含表结构）
+        let questionHtml = '<div class="question-title">' + escapeHtml(data.content) + '</div>';
+        
+        // 2. 如果有description字段，使用Markdown渲染
         if (data.description) {
-            questionHtml += '<div class="question-content">' + data.description + '</div>';
+            try {
+                // 使用marked渲染Markdown
+                const renderedDescription = marked.parse(data.description || '');
+                questionHtml += '<div class="question-content">' + renderedDescription + '</div>';
+            } catch (e) {
+                console.error('Markdown rendering error:', e);
+                questionHtml += '<div class="question-content">' + escapeHtml(data.description) + '</div>';
+            }
         }
+        
         document.getElementById('questionDisplay').innerHTML = questionHtml;
 
-        // 显示表格
+        // 3. 显示数据库表格（带实际数据的Markdown表格，移除前缀）
         let tableHtml = '';
+        
         if (data.tables && data.tables.length > 0) {
+            tableHtml += '<div class="database-tables">';
+            tableHtml += '<div class="database-title"><i class="fas fa-database"></i> Sample Data Tables</div>';
+            
             data.tables.forEach(tableInfo => {
                 tableInfo.data.forEach(table => {
+                    // 移除表名前缀（如 quiz_q_123_students -> students）
+                    const displayTableName = removeTablePrefix(table.tableName);
+                    
                     tableHtml += '<div class="table-display">';
-                    tableHtml += '<div class="table-title">表: ' + table.tableName + '</div>';
+                    tableHtml += '<div class="table-title"><i class="fas fa-table"></i> ' + escapeHtml(displayTableName) + '</div>';
                     tableHtml += '<table class="table">';
                     
                     // 表头
                     tableHtml += '<thead><tr>';
                     table.columns.forEach(col => {
-                        tableHtml += '<th>' + col + '</th>';
+                        tableHtml += '<th>' + escapeHtml(col) + '</th>';
                     });
                     tableHtml += '</tr></thead>';
                     
-                    // 表体
+                    // 表体数据
                     tableHtml += '<tbody>';
-                    table.rows.forEach(row => {
-                        tableHtml += '<tr>';
-                        table.columns.forEach(col => {
-                            tableHtml += '<td>' + (row[col] || '') + '</td>';
+                    if (table.rows && table.rows.length > 0) {
+                        table.rows.forEach(row => {
+                            tableHtml += '<tr>';
+                            table.columns.forEach(col => {
+                                const value = row[col];
+                                tableHtml += '<td>' + (value !== null && value !== undefined ? escapeHtml(String(value)) : '') + '</td>';
+                            });
+                            tableHtml += '</tr>';
                         });
-                        tableHtml += '</tr>';
-                    });
+                    } else {
+                        tableHtml += '<tr><td colspan="' + table.columns.length + '" style="text-align:center; color: var(--muted);">No data</td></tr>';
+                    }
                     tableHtml += '</tbody></table></div>';
                 });
             });
+            
+            tableHtml += '</div>';
         }
         
         if (!tableHtml) {
-            tableHtml = '<div style="color: var(--muted);">该题目没有关联表格</div>';
+            tableHtml = '<div style="color: var(--muted); text-align: center; padding: var(--spacing-4);"><i class="fas fa-info-circle"></i> 该题目没有关联表格数据</div>';
         }
         
         document.getElementById('tableDisplay').innerHTML = tableHtml;
+    }
+
+    // 移除表名前缀（quiz_q_123_tablename -> tablename）
+    function removeTablePrefix(tableName) {
+        // 匹配模式：quiz_q_数字_表名
+        const match = tableName.match(/^quiz_q_\d+_(.+)$/);
+        if (match && match[1]) {
+            return match[1];
+        }
+        return tableName;
+    }
+
+    // HTML转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // 验证SQL
@@ -714,13 +759,14 @@
         
         // 显示用户结果
         if (result.userResult && result.userResult.length > 0) {
+            // SELECT查询：显示结果表格
             html += '<h3 style="color: var(--white); margin: var(--spacing-3) 0 var(--spacing-2);">你的结果:</h3>';
             html += '<div class="result-table">';
             html += '<table class="table">';
             
             html += '<thead><tr>';
             Object.keys(result.userResult[0]).forEach(key => {
-                html += '<th>' + key + '</th>';
+                html += '<th>' + escapeHtml(key) + '</th>';
             });
             html += '</tr></thead>';
             
@@ -728,11 +774,17 @@
             result.userResult.forEach(row => {
                 html += '<tr>';
                 Object.values(row).forEach(value => {
-                    html += '<td>' + (value || '') + '</td>';
+                    html += '<td>' + (value !== null && value !== undefined ? escapeHtml(String(value)) : '') + '</td>';
                 });
                 html += '</tr>';
             });
             html += '</tbody></table></div>';
+        } else if (result.rowCount !== undefined && result.rowCount >= 0) {
+            // DML语句：显示受影响的行数
+            html += '<div class="success-message">';
+            html += '<i class="fas fa-info-circle"></i> ';
+            html += '<strong>' + result.rowCount + ' row(s) affected.</strong>';
+            html += '</div>';
         }
 
         // 如果不正确，显示期望结果
@@ -743,7 +795,7 @@
             
             html += '<thead><tr>';
             Object.keys(result.expectedResult[0]).forEach(key => {
-                html += '<th>' + key + '</th>';
+                html += '<th>' + escapeHtml(key) + '</th>';
             });
             html += '</tr></thead>';
             
@@ -751,7 +803,7 @@
             result.expectedResult.forEach(row => {
                 html += '<tr>';
                 Object.values(row).forEach(value => {
-                    html += '<td>' + (value || '') + '</td>';
+                    html += '<td>' + (value !== null && value !== undefined ? escapeHtml(String(value)) : '') + '</td>';
                 });
                 html += '</tr>';
             });

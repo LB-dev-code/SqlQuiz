@@ -2,10 +2,12 @@ package com.example.SqlQuiz.Controller;
 
 import com.example.SqlQuiz.entity.Question;
 import com.example.SqlQuiz.entity.Quiz;
+import com.example.SqlQuiz.entity.SandboxContext;
 import com.example.SqlQuiz.entity.User;
 import com.example.SqlQuiz.service.GLMService;
 import com.example.SqlQuiz.service.QuizService;
 import com.example.SqlQuiz.service.QuizTableMetadataService;
+import com.example.SqlQuiz.service.SandboxDatabaseService;
 import com.example.SqlQuiz.service.SetupSqlExecutorService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,6 +43,9 @@ public class AIQuestionController {
     @Autowired
     private SetupSqlExecutorService setupSqlExecutorService;
 
+    @Autowired
+    private SandboxDatabaseService sandboxService;
+
     @PostMapping("/normalize")
     public ResponseEntity<?> normalizeQuestion(
             @RequestBody Map<String, String> request,
@@ -63,6 +68,22 @@ public class AIQuestionController {
             String jsonResponse = glmService.normalizeQuestion(input, inputType);
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(jsonResponse);
+
+            // 在沙库中验证AI规范后的SQL（防止错误的SQL破坏数据库）
+            if (jsonNode.has("setupSql") && jsonNode.has("expectedSql")) {
+                String setupSql = jsonNode.get("setupSql").asText();
+                String expectedSql = jsonNode.get("expectedSql").asText();
+
+                if (setupSql != null && !setupSql.trim().isEmpty()) {
+                    boolean isValid = glmService.verifyQuestionInSandbox(setupSql, expectedSql);
+                    if (!isValid) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "success", false,
+                                "error", "AI规范后的SQL验证失败：setupSql或expectedSql存在错误，请重新规范"
+                        ));
+                    }
+                }
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -272,6 +293,23 @@ public class AIQuestionController {
                 }
             } else {
                 System.err.println("[AI Question] difficulty is null or empty");
+            }
+
+            // 在沙库中验证AI生成的SQL（防止错误的SQL破坏数据库）
+            SandboxContext sandbox = null;
+            try {
+                if (setupSql != null && !setupSql.trim().isEmpty()) {
+                    // 使用沙库验证setupSql和expectedSql
+                    boolean isValid = glmService.verifyQuestionInSandbox(setupSql, expectedSql);
+                    if (!isValid) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "success", false,
+                                "error", "AI生成的SQL验证失败：setupSql或expectedSql存在错误，请重新生成"
+                        ));
+                    }
+                }
+            } finally {
+                // 沙库已在verifyQuestionInSandbox中清理
             }
 
             String tablePrefix = null;

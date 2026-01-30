@@ -38,6 +38,9 @@ public class SqlPracticeController {
     @Qualifier("testDataSource")
     private DataSource testDataSource;
 
+    @Autowired
+    private com.example.SqlQuiz.service.SandboxDatabaseService sandboxService;
+
     /**
      * 获取可用的Quiz列表
      */
@@ -164,12 +167,15 @@ public class SqlPracticeController {
     }
 
     /**
-     * 执行SQL并验证答案
+     * 执行SQL并验证答案（使用沙库环境，支持表名前缀自动映射）
      */
     @PostMapping("/question/{questionId}/validate")
     public ResponseEntity<?> validateSql(
             @PathVariable Long questionId,
             @RequestBody Map<String, String> request) {
+        
+        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
+        
         try {
             String userSql = request.get("sql");
             if (userSql == null || userSql.trim().isEmpty()) {
@@ -179,7 +185,7 @@ public class SqlPracticeController {
                 ));
             }
 
-            Optional<Question> questionOpt = quizService.getQuestionById(questionId);
+            Optional<com.example.SqlQuiz.entity.Question> questionOpt = quizService.getQuestionById(questionId);
             if (!questionOpt.isPresent()) {
                 return ResponseEntity.ok(Map.of(
                     "success", false,
@@ -187,37 +193,83 @@ public class SqlPracticeController {
                 ));
             }
 
-            Question question = questionOpt.get();
+            com.example.SqlQuiz.entity.Question question = questionOpt.get();
 
-            // 在testdb中执行用户的SQL
-            SqlValidationService.SqlExecutionResult userResult = sqlValidationService.executeSQL(userSql);
+            // 1. 创建教师验证沙库
+            sandbox = sandboxService.createAISandbox();
+
+            // 2. 执行setupSQL创建表和数据（如果有）
+            String setupSql = question.getSetupSql();
+            String tablePrefix = null;
+
+            if (setupSql != null && !setupSql.trim().isEmpty()) {
+                sandboxService.executeSetupSql(sandbox, setupSql);
+                // 从setupSQL中提取表前缀
+                tablePrefix = extractTablePrefixFromSetupSql(setupSql);
+            } else {
+                // 没有setupSQL时的处理：
+                // 尝试从QuizTableMetadata获取表结构并在沙库中创建
+                List<QuizTableMetadata> metadataList = tableMetadataService.getByQuestionId(questionId);
+                if (!metadataList.isEmpty()) {
+                    for (QuizTableMetadata metadata : metadataList) {
+                        // 从主数据库复制表结构和数据到沙库
+                        copyTableToSandbox(metadata.getTablePrefix(), sandbox);
+                    }
+                    // 使用第一个表的前缀
+                    tablePrefix = metadataList.get(0).getTablePrefix();
+                    // 移除表名中的时间戳部分，只保留基础前缀
+                    if (tablePrefix != null && tablePrefix.matches("quiz_q_\\d+_\\d+_")) {
+                        tablePrefix = tablePrefix.replaceAll("_\\d+$", "");
+                    }
+                }
+                // 如果也没有QuizTableMetadata，允许在空沙库中执行
+                // 学生可以使用CREATE TABLE等DDL语句自己创建表
+            }
+
+            // 4. 添加表前缀到用户SQL（如果有前缀）
+            String actualUserSql = userSql;
+            if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                actualUserSql = addTablePrefixToSql(userSql, tablePrefix);
+            }
+
+            // 5. 在沙库中执行用户的SQL
+            com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult userResult = 
+                sandboxService.executeInSandbox(sandbox, actualUserSql);
 
             if (!userResult.isSuccess()) {
                 return ResponseEntity.ok(Map.of(
                     "success", false,
                     "error", "SQL执行错误",
-                    "errorMessage", userResult.getError()
+                    "errorMessage", userResult.getErrorMessage()
                 ));
             }
 
-            // 获取期望的答案并执行
+            // 6. 执行期望SQL（如果有）
             String expectedSql = question.getExpectedSql();
             boolean isCorrect = false;
             List<Map<String, Object>> expectedData = null;
 
             if (expectedSql != null && !expectedSql.trim().isEmpty()) {
-                SqlValidationService.SqlExecutionResult expectedResult = sqlValidationService.executeSQL(expectedSql);
+                String actualExpectedSql = expectedSql;
+                if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                    actualExpectedSql = addTablePrefixToSql(expectedSql, tablePrefix);
+                }
+                
+                com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult expectedResult = 
+                    sandboxService.executeInSandbox(sandbox, actualExpectedSql);
+                    
                 if (expectedResult.isSuccess()) {
-                    expectedData = expectedResult.getData();
+                    expectedData = expectedResult.getResultData();
                     // 比较结果
-                    isCorrect = compareResults(userResult.getData(), expectedData);
+                    isCorrect = compareResults(userResult.getResultData(), expectedData);
                 }
             }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("isCorrect", isCorrect);
-            response.put("userResult", userResult.getData());
+            response.put("userResult", userResult.getResultData());
+            response.put("rowCount", userResult.getRowCount());
             response.put("executionTime", userResult.getExecutionTimeMs());
 
             if (!isCorrect && expectedData != null) {
@@ -225,16 +277,172 @@ public class SqlPracticeController {
                 response.put("message", "语句错误，请查看结果差异");
             } else if (isCorrect) {
                 response.put("message", "✓ 语句正确！");
+            } else {
+                response.put("message", "SQL执行成功");
             }
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.ok(Map.of(
                 "success", false,
-                "error", e.getMessage()
+                "error", "执行失败: " + e.getMessage()
             ));
+        } finally {
+            // 7. 清理沙库
+            if (sandbox != null) {
+                try {
+                    sandboxService.closeConnection(sandbox);
+                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+                } catch (Exception e) {
+                    System.err.println("Failed to cleanup sandbox: " + e.getMessage());
+                }
+            }
         }
+    }
+
+    /**
+     * 从setupSQL中提取表前缀（quiz_q_数字_）
+     */
+    private String extractTablePrefixFromSetupSql(String setupSql) {
+        if (setupSql == null || setupSql.trim().isEmpty()) {
+            return null;
+        }
+
+        // 匹配 CREATE TABLE quiz_q_123_tablename 模式
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "CREATE\\s+TABLE\\s+(quiz_q_\\d+)_",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(setupSql);
+
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return null;
+    }
+
+    /**
+     * 从主数据库复制表结构和数据到沙库
+     */
+    private void copyTableToSandbox(String tablePrefix, com.example.SqlQuiz.entity.SandboxContext sandbox) {
+        try (Connection mainDbConnection = testDataSource.getConnection()) {
+            // 查找所有以该前缀开头的表
+            String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                         "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME LIKE '" + tablePrefix + "%'";
+
+            try (Statement statement = mainDbConnection.createStatement();
+                 ResultSet rs = statement.executeQuery(query)) {
+
+                while (rs.next()) {
+                    String tableName = rs.getString("TABLE_NAME");
+                    copySingleTableToSandbox(tableName, sandbox, mainDbConnection);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("复制表到沙库失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 复制单个表到沙库（包括结构和数据）
+     */
+    private void copySingleTableToSandbox(String sourceTableName,
+                                          com.example.SqlQuiz.entity.SandboxContext sandbox,
+                                          Connection mainDbConnection) {
+        try {
+            // 获取建表语句
+            String showCreateTableSql = "SHOW CREATE TABLE " + sourceTableName;
+            String createTableSql = null;
+
+            try (Statement stmt = mainDbConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(showCreateTableSql)) {
+                if (rs.next()) {
+                    createTableSql = rs.getString(2);
+                }
+            }
+
+            if (createTableSql != null) {
+                // 在沙库中创建表（去掉数据库名前缀，只保留表名）
+                String simplifiedTableName = sourceTableName;
+                if (sourceTableName.contains(".")) {
+                    simplifiedTableName = sourceTableName.substring(sourceTableName.lastIndexOf('.') + 1);
+                }
+
+                // 替换建表语句中的表名为简化表名
+                createTableSql = createTableSql.replaceAll(
+                    "CREATE\\s+TABLE\\s+`?" + sourceTableName + "`?",
+                    "CREATE TABLE `" + simplifiedTableName + "`"
+                );
+
+                // 在沙库中执行建表语句
+                try (Statement sandboxStmt = sandbox.getConnection().createStatement()) {
+                    sandboxStmt.execute(createTableSql);
+                }
+
+                // 复制数据
+                String insertSql = "INSERT INTO `" + simplifiedTableName + "` SELECT * FROM " + sourceTableName;
+                try (Statement sandboxStmt = sandbox.getConnection().createStatement()) {
+                    sandboxStmt.execute(insertSql);
+                }
+
+                System.out.println("成功复制表 " + sourceTableName + " 到沙库");
+            }
+        } catch (Exception e) {
+            System.err.println("复制单个表失败 " + sourceTableName + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * 为SQL语句中的表名添加前缀
+     */
+    private String addTablePrefixToSql(String sql, String prefix) {
+        if (prefix == null || prefix.isEmpty()) {
+            return sql;
+        }
+
+        String result = sql;
+
+        // 匹配各种SQL语句中的表名
+        // 注意：这是一个简化版本，可能不能处理所有复杂的SQL语句
+        String[] patterns = {
+            "\\b(DROP\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(ALTER\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(TRUNCATE\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(INSERT\\s+INTO)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\bUPDATE\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(DELETE\\s+FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+            "\\b(JOIN)\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+        };
+
+        for (String pattern : patterns) {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher m = p.matcher(result);
+            StringBuffer sb = new StringBuffer();
+            
+            while (m.find()) {
+                String keyword = m.group(1);
+                String tableName = m.group(m.groupCount());
+                
+                // 如果表名已经有前缀，不再添加
+                if (!tableName.startsWith(prefix + "_")) {
+                    String replacement = (m.groupCount() == 2) 
+                        ? keyword + " " + prefix + "_" + tableName
+                        : keyword.toUpperCase() + " " + prefix + "_" + tableName;
+                    m.appendReplacement(sb, replacement);
+                } else {
+                    m.appendReplacement(sb, m.group(0));
+                }
+            }
+            m.appendTail(sb);
+            result = sb.toString();
+        }
+
+        return result;
     }
 
     /**
