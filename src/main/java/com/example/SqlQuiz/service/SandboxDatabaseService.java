@@ -188,6 +188,110 @@ public class SandboxDatabaseService {
     }
 
     /**
+     * 完整克隆testdb的所有表到沙库（1:1克隆）
+     * 用于教师端SQL验证，确保沙库与testdb完全一致
+     *
+     * @param context 沙库上下文
+     * @throws SQLException SQL异常
+     */
+    public void cloneEntireTestDB(SandboxContext context) throws SQLException {
+        log.info("========== 完整克隆testdb到沙库 ==========");
+        log.info("沙库数据库名: {}", context.getDatabaseName());
+
+        // 1. 从testdb获取所有表
+        List<String> tablesToClone = getAllTablesFromTestDB();
+        log.info("找到 {} 个表需要克隆", tablesToClone.size());
+
+        if (tablesToClone.isEmpty()) {
+            log.warn("testdb中没有找到任何表");
+            return;
+        }
+
+        // 2. 使用两步法克隆每个表
+        try (Connection testConn = testDataSource.getConnection();
+             Statement sandboxStmt = context.getConnection().createStatement()) {
+
+            for (String tableName : tablesToClone) {
+                log.info("克隆表: {}", tableName);
+
+                try {
+                    // 2.1 从testdb获取表结构（CREATE TABLE语句）
+                    String createTableSql = getCreateTableSql(testConn, tableName);
+                    if (createTableSql == null || createTableSql.isEmpty()) {
+                        log.warn("  - 无法获取表结构，跳过: {}", tableName);
+                        continue;
+                    }
+
+                    // 2.2 在沙库中创建表
+                    log.debug("执行: {}", createTableSql);
+                    sandboxStmt.execute(createTableSql);
+                    log.info("  - 表结构创建成功");
+
+                    // 2.3 从testdb读取数据并在沙库中插入
+                    String insertDataSql = generateInsertFromTestDB(testConn, context, tableName);
+                    if (insertDataSql != null && !insertDataSql.isEmpty()) {
+                        log.debug("执行: {}", insertDataSql);
+                        int copiedRows = sandboxStmt.executeUpdate(insertDataSql);
+                        log.info("  - 数据复制成功，复制 {} 行", copiedRows);
+                    } else {
+                        log.info("  - 表无数据，跳过数据复制");
+                    }
+                } catch (SQLException e) {
+                    log.error("  - 克隆表 {} 失败: {}", tableName, e.getMessage());
+                    throw e;
+                }
+            }
+        } catch (SQLException e) {
+            log.error("克隆表失败，整个操作中止", e);
+            throw e;
+        }
+
+        // 3. 验证沙库中的表
+        log.info("========== 验证沙库中的克隆表 ==========");
+        try (Statement checkStmt = context.getConnection().createStatement();
+             ResultSet rs = checkStmt.executeQuery("SHOW TABLES")) {
+            while (rs.next()) {
+                String tableName = rs.getString(1);
+                log.info("沙库中的表: {}", tableName);
+
+                // 查询每个表的行数
+                try (Statement countStmt = context.getConnection().createStatement();
+                     ResultSet countRs = countStmt.executeQuery("SELECT COUNT(*) FROM `" + tableName + "`")) {
+                    if (countRs.next()) {
+                        log.info("  - 行数: {}", countRs.getInt(1));
+                    }
+                }
+            }
+        }
+        log.info("========== 完整克隆完成 ==========\n");
+    }
+
+    /**
+     * 从testdb获取所有表名
+     * @return 所有表名列表
+     */
+    private List<String> getAllTablesFromTestDB() throws SQLException {
+        List<String> tables = new ArrayList<>();
+
+        try (Connection conn = testDataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                 "WHERE TABLE_SCHEMA = 'mysql_test_db' " +
+                 "ORDER BY TABLE_NAME"
+             )) {
+            while (rs.next()) {
+                tables.add(rs.getString("TABLE_NAME"));
+            }
+        } catch (SQLException e) {
+            log.error("Failed to get all tables from testdb", e);
+            throw e;
+        }
+
+        return tables;
+    }
+
+    /**
      * 从testdb获取表的CREATE TABLE语句
      */
     private String getCreateTableSql(Connection testConn, String tableName) throws SQLException {

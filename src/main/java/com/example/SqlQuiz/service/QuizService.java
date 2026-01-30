@@ -116,6 +116,15 @@ public class QuizService {
                                       String description, String databaseContext, String expectedSql,
                                       String testData, String expectedResult, Double score,
                                       Question.DifficultyLevel difficultyLevel) {
+        return addQuestionToQuiz(quizId, content, questionType, description, databaseContext,
+                expectedSql, null, testData, expectedResult, score, difficultyLevel);
+    }
+
+    // 添加题目到测试（包含setupSql）
+    public Question addQuestionToQuiz(Long quizId, String content, Question.QuestionType questionType,
+                                      String description, String databaseContext, String expectedSql,
+                                      String setupSql, String testData, String expectedResult, Double score,
+                                      Question.DifficultyLevel difficultyLevel) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (quizOpt.isPresent()) {
             Quiz quiz = quizOpt.get();
@@ -126,6 +135,7 @@ public class QuizService {
             question.setDescription(description);
             question.setDatabaseContext(databaseContext);
             question.setExpectedSql(expectedSql);
+            question.setSetupSql(setupSql);  // 设置setupSql
             question.setTestData(testData);
             question.setExpectedResult(expectedResult);
             question.setScore(score);
