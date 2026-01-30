@@ -24,6 +24,7 @@ import com.example.SqlQuiz.entity.PracticeAnswer;
 import com.example.SqlQuiz.entity.PracticeRound;
 import com.example.SqlQuiz.entity.PracticeSession;
 import com.example.SqlQuiz.entity.Question;
+import com.example.SqlQuiz.entity.SandboxContext;
 import com.example.SqlQuiz.entity.User;
 import com.example.SqlQuiz.repository.ErrorTypeStatisticsRepository;
 import com.example.SqlQuiz.repository.PracticeAnswerRepository;
@@ -64,6 +65,9 @@ public class PracticeService {
 
     @Autowired
     private SetupSqlExecutorService setupSqlExecutorService;
+
+    @Autowired
+    private SandboxDatabaseService sandboxService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -262,23 +266,46 @@ public class PracticeService {
 
                 // 解析题目信息
                 JsonNode questionNode = objectMapper.readTree(cleanJsonResponse(questionJson));
-                
-                answer.setQuestionInfo(
+
+                // 提取setupSql（空字符串转为null）
+                String setupSql = getJsonFieldOrNull(questionNode, "setupSql");
+                log.info("[题目生成] AI返回的JSON - index: {}, hasSetupSql: {}, setupSql长度: {}",
+                        i, setupSql != null, setupSql != null ? setupSql.length() : 0);
+
+                // 执行setupSQL并获取表前缀（与步骤7逻辑保持一致）
+                String tablePrefix = null;
+                if (setupSql != null && !setupSql.trim().isEmpty()) {
+                    try {
+                        log.info("[题目生成-批量] 执行setupSQL - questionIndex: {}", i);
+                        tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
+                        log.info("[题目生成-批量] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
+                    } catch (Exception ex) {
+                        log.error("[题目生成-批量] setupSQL执行失败 - questionIndex: {}, error: {}", i, ex.getMessage());
+                        // 继续保存题目，但没有表前缀
+                    }
+                }
+
+                // 使用setQuestionInfoWithSetup来保存setupSql和tablePrefix
+                answer.setQuestionInfoWithSetup(
                         getJsonField(questionNode, "title"),
                         getJsonField(questionNode, "description"),
                         getJsonField(questionNode, "databaseContext"),
                         getJsonField(questionNode, "expectedSql"),
+                        setupSql,
+                        tablePrefix,  // 使用执行setupSQL后获取的tablePrefix
                         selected.questionType,
                         selected.difficulty
                 );
 
             } catch (Exception e) {
-                // 生成失败时使用默认题目
-                answer.setQuestionInfo(
+                // 生成失败时使用默认题目（没有setupSql）
+                answer.setQuestionInfoWithSetup(
                         "SQL Practice Question " + (i + 1),
                         "Practice question for " + selected.questionType.getDisplayName(),
                         "Please write the correct SQL query.",
                         "SELECT * FROM table",
+                        null, // setupSql
+                        null, // tablePrefix
                         selected.questionType,
                         selected.difficulty
                 );
@@ -433,6 +460,14 @@ public class PracticeService {
                 String batchJson = glmService.generatePracticeQuestionsBatch(distribution, blacklistContent);
                 log.info("[步骤6] AI生成完成 - 返回长度: {}字符, 耗时: {}ms",
                         batchJson != null ? batchJson.length() : 0, System.currentTimeMillis() - aiStart);
+                
+                // 增加详细日志：输出AI返回的原始JSON（前500字符）
+                if (batchJson != null && !batchJson.isEmpty()) {
+                    log.info("[步骤6] AI返回JSON预览(前500字符): {}", 
+                            batchJson.substring(0, Math.min(500, batchJson.length())));
+                } else {
+                    log.warn("[步骤6] AI返回的JSON为空!");
+                }
 
                 // 步骤7: 解析并去重
                 long parseStart = System.currentTimeMillis();
@@ -441,6 +476,15 @@ public class PracticeService {
                         deduplicationService.parseAndDeduplicate(batchJson, blacklist);
                 log.info("[步骤7] 解析完成 - 生成题目数: {}, 去重后: {}, 耗时: {}ms",
                         generatedQuestions.size(), generatedQuestions.size(), System.currentTimeMillis() - parseStart);
+                
+                // 增加详细日志：检查每个题目的setupSql是否存在
+                for (int i = 0; i < generatedQuestions.size(); i++) {
+                    QuestionDeduplicationService.GeneratedQuestion gq = generatedQuestions.get(i);
+                    log.info("[步骤7] 题目[{}] - title: {}, hasSetupSql: {}, hasDbContext: {}",
+                            i, gq.title, 
+                            (gq.setupSql != null && !gq.setupSql.trim().isEmpty()),
+                            (gq.databaseContext != null && !gq.databaseContext.trim().isEmpty()));
+                }
 
                 // 按题型分配题号并保存
                 int questionIndex = 0;
@@ -538,17 +582,39 @@ public class PracticeService {
                                 Question.QuestionType.SELECT_BASIC : selectedTypes.get(0);
 
                         try {
+                            log.info("[步骤7-补齐] 开始单题生成 - index: {}, type: {}", questionIndex, fallbackType);
                             String questionJson = glmService.generatePracticeQuestion(
                                     fallbackType.name(),
                                     Question.DifficultyLevel.MEDIUM.name()
                             );
+                            log.info("[步骤7-补齐] 单题生成返回 - 长度: {}", questionJson != null ? questionJson.length() : 0);
+                            if (questionJson != null && !questionJson.isEmpty()) {
+                                log.info("[步骤7-补齐] 单题JSON预览: {}", questionJson.substring(0, Math.min(300, questionJson.length())));
+                            }
 
                             JsonNode questionNode = objectMapper.readTree(cleanJsonResponse(questionJson));
-                            answer.setQuestionInfo(
+                            String setupSql = getJsonFieldOrNull(questionNode, "setupSql");
+                            log.info("[步骤7-补齐] 解析完成 - hasSetupSql: {}", setupSql != null);
+                            
+                            // 执行setupSql并获取表前缀
+                            String tablePrefix = null;
+                            if (setupSql != null && !setupSql.trim().isEmpty()) {
+                                try {
+                                    log.info("[步骤7-补齐] 执行setupSQL...");
+                                    tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
+                                    log.info("[步骤7-补齐] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
+                                } catch (Exception ex) {
+                                    log.error("[步骤7-补齐] setupSQL执行失败: {}", ex.getMessage());
+                                }
+                            }
+
+                            answer.setQuestionInfoWithSetup(
                                     getJsonField(questionNode, "title"),
                                     getJsonField(questionNode, "description"),
                                     getJsonField(questionNode, "databaseContext"),
                                     getJsonField(questionNode, "expectedSql"),
+                                    setupSql,
+                                    tablePrefix, // 使用执行setupSQL后获取的tablePrefix
                                     fallbackType,
                                     Question.DifficultyLevel.MEDIUM
                             );
@@ -556,11 +622,13 @@ public class PracticeService {
                         } catch (Exception e) {
                             log.warn("[步骤7] 单题生成失败，使用默认题目 - index: {}, error: {}",
                                     questionIndex, e.getMessage());
-                            answer.setQuestionInfo(
+                            answer.setQuestionInfoWithSetup(
                                     "SQL Practice Question " + (questionIndex + 1),
                                     "Practice question for " + fallbackType.getDisplayName(),
                                     "Please write the correct SQL query.",
                                     "SELECT * FROM table",
+                                    null, // setupSql
+                                    null, // tablePrefix
                                     fallbackType,
                                     Question.DifficultyLevel.MEDIUM
                             );
@@ -722,80 +790,155 @@ public class PracticeService {
     // ==================== 答题处理 ====================
 
     /**
-     * 提交答案（不进行AI评分，仅记录）
+     * 提交答案（使用沙库执行，不进行AI评分）
      */
     @Transactional
     public PracticeAnswer submitAnswer(Long answerId, String studentSql) {
         PracticeAnswer answer = answerRepository.findById(answerId)
                 .orElseThrow(() -> new RuntimeException("Answer not found"));
 
-        // 添加表前缀映射
-        String actualSql = studentSql;
-        if (answer.getTablePrefix() != null && !answer.getTablePrefix().isEmpty()) {
-            actualSql = addTablePrefixToSql(studentSql, answer.getTablePrefix());
-        }
-
-        // 执行SQL
-        SqlValidationService.SqlExecutionResult result = sqlValidationService.executeSQL(actualSql);
-
-        // 简单判断是否正确（基于执行结果）
-        boolean isCorrect = result.isSuccess() && (result.getError() == null || result.getError().isEmpty());
-        double score = isCorrect ? 10.0 : 0.0;
-
-        // 更新答案（暂不进行AI评分）
+        SandboxContext sandbox = null;
         try {
-            answer.submitAnswer(
-                    studentSql, // 保存原始SQL
-                    result.isSuccess() ? objectMapper.writeValueAsString(result) : null,
-                    result.getError(),
-                    isCorrect,
-                    score,
-                    "" // AI反馈在轮次结束后统一生成
+            // 1. 创建沙库
+            sandbox = sandboxService.createPracticeSandbox(
+                answer.getRound().getSession().getStudent().getId(),
+                answerId
             );
+
+            // 2. 从testdb克隆表结构和数据到沙库（新方案：确保100%一致）
+            String tablePrefix = answer.getTablePrefix();
+            if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                sandboxService.cloneTablesFromTestDB(sandbox, tablePrefix);
+            } else {
+                // 兼容旧数据：如果没有tablePrefix，降级使用setupSql
+                String setupSql = answer.getSetupSql();
+                if (setupSql != null && !setupSql.isEmpty()) {
+                    sandboxService.executeSetupSql(sandbox, setupSql);
+                }
+            }
+
+            // 3. 表名映射：setupSql 中的表名带前缀，学生输入不带前缀
+            // 需要系统映射：teacher -> quiz_q_123_teacher
+            log.debug("[学生答题] 表前缀: {}", tablePrefix);
+
+            // 4. 在沙库中执行SQL，传入 tablePrefix 进行自动映射
+            SandboxDatabaseService.SqlExecutionResult result =
+                sandboxService.executeInSandbox(sandbox, studentSql, tablePrefix);
+
+            // 5. 简单判断是否正确（基于执行结果）
+            boolean isCorrect = result.isSuccess() && 
+                (result.getErrorMessage() == null || result.getErrorMessage().isEmpty());
+            double score = isCorrect ? 10.0 : 0.0;
+
+            // 6. 更新答案（暂不进行AI评分）
+            try {
+                answer.submitAnswer(
+                        studentSql, // 保存原始SQL
+                        result.isSuccess() ? objectMapper.writeValueAsString(result) : null,
+                        result.getErrorMessage(),
+                        isCorrect,
+                        score,
+                        "" // AI反馈在轮次结束后统一生成
+                );
+            } catch (Exception e) {
+                answer.submitAnswer(
+                        studentSql,
+                        null,
+                        result.getErrorMessage(),
+                        isCorrect,
+                        score,
+                        ""
+                );
+            }
+            answer = answerRepository.save(answer);
+
+            // 7. 更新轮次统计
+            PracticeRound round = answer.getRound();
+            round.recordAnswer(isCorrect);
+            roundRepository.save(round);
+
+            // 8. 更新错误类型统计
+            updateErrorStatistics(round.getSession().getStudent(), answer.getQuestionType(), isCorrect);
+
+            return answer;
+
         } catch (Exception e) {
-            answer.submitAnswer(
-                    studentSql,
-                    null,
-                    result.getError(),
-                    isCorrect,
-                    score,
-                    ""
-            );
+            log.error("Practice answer submission failed", e);
+            throw new RuntimeException("答题失败: " + e.getMessage());
+        } finally {
+            // 9. 清理沙库
+            if (sandbox != null) {
+                sandboxService.closeConnection(sandbox);
+                sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+            }
         }
-        answer = answerRepository.save(answer);
-
-        // 更新轮次统计
-        PracticeRound round = answer.getRound();
-        round.recordAnswer(isCorrect);
-        roundRepository.save(round);
-
-        // 更新错误类型统计
-        updateErrorStatistics(round.getSession().getStudent(), answer.getQuestionType(), isCorrect);
-
-        return answer;
     }
 
     /**
      * 为SQL添加表前缀
      * 将学生输入的原始表名（如employees）映射到数据库中的带前缀表名（如quiz_q_1234_employees）
+     * 支持的SQL语句类型：
+     * - SELECT ... FROM table
+     * - JOIN table
+     * - INSERT INTO table
+     * - UPDATE table
+     * - DELETE FROM table
+     * - DROP TABLE table
+     * - ALTER TABLE table
+     * - TRUNCATE TABLE table
      */
-    private String addTablePrefixToSql(String sql, String prefix) {
+    public String addTablePrefixToSql(String sql, String prefix) {
         if (prefix == null || prefix.isEmpty()) {
             return sql;
         }
-        
+
         log.debug("表名映射 - 原始SQL: {}", sql);
         log.debug("表名映射 - 使用前缀: {}", prefix);
-        
-        // 正则替换：FROM/JOIN后的表名前添加前缀
-        // 使用(?i)表示不区分大小写
-        // \b表示单词边界
-        // ([a-zA-Z_][a-zA-Z0-9_]*)匹配表名
-        String result = sql.replaceAll(
-                "(?i)\\b(FROM|JOIN)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+
+        String result = sql;
+
+        // 按顺序匹配并替换表名，更具体的模式先匹配
+        // DROP TABLE table_name
+        result = result.replaceAll(
+                "(?i)\\b(DROP\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
-        
+        // ALTER TABLE table_name
+        result = result.replaceAll(
+                "(?i)\\b(ALTER\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+        // TRUNCATE TABLE table_name
+        result = result.replaceAll(
+                "(?i)\\b(TRUNCATE\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+        // INSERT INTO table_name
+        result = result.replaceAll(
+                "(?i)\\b(INSERT\\s+INTO)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+        // UPDATE table_name
+        result = result.replaceAll(
+                "(?i)\\bUPDATE\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "UPDATE " + prefix + "_$1"
+        );
+        // DELETE FROM table_name
+        result = result.replaceAll(
+                "(?i)\\b(DELETE\\s+FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+        // FROM table_name
+        result = result.replaceAll(
+                "(?i)\\b(FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+        // JOIN table_name
+        result = result.replaceAll(
+                "(?i)\\b(JOIN)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "$1 " + prefix + "_$2"
+        );
+
         log.debug("表名映射 - 映射后SQL: {}", result);
         return result;
     }
@@ -967,7 +1110,17 @@ public class PracticeService {
 
     private String getJsonField(JsonNode node, String field) {
         if (node == null || !node.has(field)) return "";
-        return node.get(field).asText();
+        JsonNode fieldNode = node.get(field);
+        if (fieldNode.isNull()) return "";
+        return fieldNode.asText();
+    }
+
+    /**
+     * 获取JSON字段，空字符串返回null（用于可选字段如setupSql）
+     */
+    private String getJsonFieldOrNull(JsonNode node, String field) {
+        String value = getJsonField(node, field);
+        return (value == null || value.trim().isEmpty()) ? null : value;
     }
 
     // 优先级数据类
@@ -981,5 +1134,19 @@ public class PracticeService {
             this.difficulty = difficulty;
             this.priorityScore = priorityScore;
         }
+    }
+
+    /**
+     * 获取沙库服务（供Controller调用）
+     */
+    public SandboxDatabaseService getSandboxService() {
+        return sandboxService;
+    }
+
+    /**
+     * 获取答案仓库（供Controller调用）
+     */
+    public PracticeAnswerRepository getAnswerRepository() {
+        return answerRepository;
     }
 }

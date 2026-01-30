@@ -83,34 +83,89 @@ public class QuestionDeduplicationService {
      */
     public List<GeneratedQuestion> parseAndDeduplicate(String batchJson, List<QuestionBlacklistItem> blacklist) {
         List<GeneratedQuestion> questions = new ArrayList<>();
+        
+        System.out.println("[parseAndDeduplicate] ========== 开始解析AI返回的JSON ==========");
+        System.out.println("[parseAndDeduplicate] batchJson长度: " + (batchJson != null ? batchJson.length() : "null"));
+        if (batchJson != null && batchJson.length() > 0) {
+            System.out.println("[parseAndDeduplicate] batchJson前500字符: " + 
+                    batchJson.substring(0, Math.min(500, batchJson.length())));
+        }
 
         try {
             // 清理JSON响应
             String cleanedJson = cleanJsonResponse(batchJson);
+            System.out.println("[parseAndDeduplicate] 清理后JSON长度: " + cleanedJson.length());
 
             // 解析JSON数组
             JsonNode rootNode = objectMapper.readTree(cleanedJson);
+            System.out.println("[parseAndDeduplicate] JSON解析成功 - isArray: " + rootNode.isArray() + 
+                    ", size: " + rootNode.size());
 
             if (!rootNode.isArray()) {
                 // 如果不是数组，尝试包装成单元素数组
+                System.out.println("[parseAndDeduplicate] JSON不是数组，尝试包装...");
                 JsonNode wrapper = objectMapper.createArrayNode();
                 ((com.fasterxml.jackson.databind.node.ArrayNode) wrapper).add(rootNode);
                 rootNode = wrapper;
             }
 
             // 遍历生成的题目
+            int index = 0;
             for (JsonNode questionNode : rootNode) {
-                GeneratedQuestion q = parseQuestion(questionNode);
-                if (q != null && !isDuplicate(q, blacklist)) {
-                    questions.add(q);
+                System.out.println("[parseAndDeduplicate] 解析题目 #" + index);
+                System.out.println("[parseAndDeduplicate]   - 节点字段: " + getNodeFieldNames(questionNode));
+                System.out.println("[parseAndDeduplicate]   - hasSetupSql: " + questionNode.has("setupSql"));
+                if (questionNode.has("setupSql")) {
+                    JsonNode setupSqlNode = questionNode.get("setupSql");
+                    System.out.println("[parseAndDeduplicate]   - setupSql isNull: " + setupSqlNode.isNull());
+                    if (!setupSqlNode.isNull()) {
+                        String setupSql = setupSqlNode.asText();
+                        System.out.println("[parseAndDeduplicate]   - setupSql长度: " + setupSql.length());
+                        System.out.println("[parseAndDeduplicate]   - setupSql前100字符: " + 
+                                setupSql.substring(0, Math.min(100, setupSql.length())));
+                    }
                 }
+                
+                GeneratedQuestion q = parseQuestion(questionNode);
+                if (q != null) {
+                    System.out.println("[parseAndDeduplicate]   - 解析成功: title=" + q.title + 
+                            ", hasSetupSql=" + (q.setupSql != null && !q.setupSql.isEmpty()));
+                    if (!isDuplicate(q, blacklist)) {
+                        questions.add(q);
+                        System.out.println("[parseAndDeduplicate]   - 添加到结果列表");
+                    } else {
+                        System.out.println("[parseAndDeduplicate]   - 跳过(重复题目)");
+                    }
+                } else {
+                    System.out.println("[parseAndDeduplicate]   - 解析返回null");
+                }
+                index++;
             }
 
         } catch (Exception e) {
-            System.err.println("Failed to parse batch questions: " + e.getMessage());
+            System.err.println("[parseAndDeduplicate] ========== 解析失败 ==========");
+            System.err.println("[parseAndDeduplicate] 异常类型: " + e.getClass().getName());
+            System.err.println("[parseAndDeduplicate] 异常信息: " + e.getMessage());
+            e.printStackTrace();
         }
-
+        
+        System.out.println("[parseAndDeduplicate] ========== 解析完成 - 返回题目数: " + questions.size() + " ==========");
         return questions;
+    }
+    
+    /**
+     * 获取JSON节点的所有字段名（用于调试）
+     */
+    private String getNodeFieldNames(JsonNode node) {
+        if (node == null || !node.isObject()) return "(not object)";
+        StringBuilder sb = new StringBuilder("[");
+        java.util.Iterator<String> it = node.fieldNames();
+        while (it.hasNext()) {
+            sb.append(it.next());
+            if (it.hasNext()) sb.append(", ");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     /**

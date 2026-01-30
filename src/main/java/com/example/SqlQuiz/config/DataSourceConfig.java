@@ -60,4 +60,36 @@ public class DataSourceConfig {
     public JdbcTemplate testJdbcTemplate(@Qualifier("testDataSource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
+
+    /**
+     * 沙库管理用户数据源（用于创建/删除临时库）
+     */
+    @Bean
+    @ConfigurationProperties("spring.datasource.sandbox-admin")
+    public DataSourceProperties sandboxAdminDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    @Bean("sandboxAdminDataSource")
+    @ConfigurationProperties("spring.datasource.sandbox-admin.hikari")
+    public HikariDataSource sandboxAdminDataSource() {
+        return sandboxAdminDataSourceProperties().initializeDataSourceBuilder()
+                .type(HikariDataSource.class).build();
+    }
+
+    /**
+     * 学生沙库执行用户数据源（受限权限）
+     */
+    @Bean
+    @ConfigurationProperties("spring.datasource.sandbox-user")
+    public DataSourceProperties sandboxUserDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    @Bean("sandboxUserDataSource")
+    @ConfigurationProperties("spring.datasource.sandbox-user.hikari")
+    public HikariDataSource sandboxUserDataSource() {
+        return sandboxUserDataSourceProperties().initializeDataSourceBuilder()
+                .type(HikariDataSource.class).build();
+    }
 }

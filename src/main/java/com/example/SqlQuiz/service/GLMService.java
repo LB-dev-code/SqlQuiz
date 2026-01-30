@@ -17,6 +17,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.SqlQuiz.entity.Question;
+import com.example.SqlQuiz.entity.SandboxContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,9 @@ public class GLMService {
     private  String create_promtp ;
 
     private String score_prompt ;
+
+    @Autowired
+    private SandboxDatabaseService sandboxService;
 
 //    @Autowired
 //    private SetupSqlExecutorService setupSqlExecutorService;
@@ -161,9 +165,10 @@ public class GLMService {
                 "2. questionDescription: Detailed description of the query task\n" +
                 "3. **CRITICAL - databaseContext Format:**\n" +
                 "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "   **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
                 "   Use this exact format:\n" +
                 "   \n" +
-                "   " + tablePrefix + "_students table:\n" +
+                "   students table:\n" +
                 "   \n" +
                 "   | id | name | age | score |\n" +
                 "   |----|------|-----|-------|\n" +
@@ -176,10 +181,15 @@ public class GLMService {
                 "   - CREATE TABLE statements: Create required table structure for the question, use the following unique prefix: `" + tablePrefix + "_`\n" +
                 "   - Table name format: `" + tablePrefix + "_[table_name]`, e.g., `" + tablePrefix + "_students`, `" + tablePrefix + "_orders`\n" +
                 "   - **Key**: All table primary keys must use AUTO_INCREMENT to ensure no duplicate primary key values\n" +
-                "   - INSERT INTO statements: Insert 3-5 sample data records, do not specify primary key values, let database auto-generate\n" +
+                "   - INSERT INTO statements: Insert 5-8 sample data records with APPROPRIATE DISTRACTOR DATA\n" +
+                "   - **CRITICAL - Distractor Data**: The table must include records that test different scenarios:\n" +
+                "     * Some records that MATCH the query criteria (correct answers)\n" +
+                "     * Some records that DON'T match the criteria (distractors/false answers)\n" +
+                "     * Edge cases: NULL values, boundary values, similar but not matching values\n" +
+                "     * Example: If asking for names containing 'United', include 'United States', 'United Kingdom' (match) AND 'Germany', 'France' (distractors)\n" +
                 "   - Ensure SQL statements can be executed directly in MySQL for initializing test database (testdb)\n" +
                 "   - **Important**: Use the provided unique prefix to ensure table names do not conflict\n" +
-                "5. expectedSql: Standard answer SQL statement, use the actual generated table names\n" +
+                "5. expectedSql: **IMPORTANT** Standard answer SQL statement, use simple table names WITHOUT prefix (e.g., SELECT * FROM students, NOT SELECT * FROM " + tablePrefix + "_students)\n" +
                 "6. hints: Optional solving tips\n" +
                 "\n" +
                 "Ensure you return standard JSON format without any additional text.\n";
@@ -408,9 +418,15 @@ public class GLMService {
                 "1. Use this unique table prefix for all tables: `" + tablePrefix + "_`\n" +
                 "2. All table names must follow format: `" + tablePrefix + "_[table_name]`\n" +
                 "3. All primary keys must use AUTO_INCREMENT\n" +
-                "4. Provide 3-5 sample records in setupSql\n" +
-                "5. **CRITICAL - databaseContext Format:**\n" +
+                "4. Provide 5-8 sample records in setupSql with APPROPRIATE DISTRACTOR DATA\n" +
+                "5. **CRITICAL - Distractor Data**: The table must include:\n" +
+                "   * Records that MATCH the query criteria (correct answers)\n" +
+                "   * Records that DON'T match the criteria (distractors)\n" +
+                "   * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
+                "   * Example: For 'names containing United', include 'United States', 'United Kingdom' AND 'Germany', 'France'\n" +
+                "6. **CRITICAL - databaseContext Format:**\n" +
                 "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "   **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
                 "   Use this exact format:\n" +
                 "   \n" +
                 "   employees table:\n" +
@@ -421,9 +437,13 @@ public class GLMService {
                 "   | 2  | Mary | HR         | 4500   |\n" +
                 "   \n" +
                 "   The sample data should match the INSERT statements in setupSql.\n" +
-                "6. Return valid JSON only, no additional text\n" +
-                "7. The answer field should include step-by-step solution explanation in Markdown\n" +
-                "8. Infer appropriate questionType and difficulty from the input question";
+                "7. setupSql: **IMPORTANT** Use table names WITH prefix: `" + tablePrefix + "_[table_name]`\n" +
+                "   - CREATE TABLE format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "   - INSERT INTO format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
+                "8. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "9. Return valid JSON only, no additional text\n" +
+                "10. The answer field should include step-by-step solution explanation in Markdown\n" +
+                "11. Infer appropriate questionType and difficulty from the input question";
         
         List<Map<String, String>> messages = List.of(
                 Map.of("role", "user", "content", normalizePrompt)
@@ -530,6 +550,7 @@ public class GLMService {
                 "\n" +
                 "**CRITICAL - databaseContext Format:**\n" +
                 "The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "**IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
                 "Use this exact format:\n" +
                 "\n" +
                 "employees table:\n" +
@@ -543,10 +564,16 @@ public class GLMService {
                 "The sample data in databaseContext should match the INSERT statements in setupSql.\n" +
                 "\n" +
                 "Table naming requirements:\n" +
-                "- Use unique prefix: `" + tablePrefix + "_`\n" +
-                "- Format: `" + tablePrefix + "_[table_name]`\n" +
+                "- setupSql: Use unique prefix: `" + tablePrefix + "_`\n" +
+                "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
-                "- Insert 3-5 sample records\n" +
+                "- **CRITICAL - Distractor Data**: Insert 5-8 sample records with:\n" +
+                "  * Records matching the query criteria (correct answers)\n" +
+                "  * Records NOT matching the criteria (distractors)\n" +
+                "  * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
+                "  * Example: For 'names containing United', include 'United States', 'United Kingdom' AND 'Germany', 'France'\n" +
                 "\n" +
                 "Return valid JSON only, no extra text.";
         
@@ -655,6 +682,7 @@ public class GLMService {
                 "}\n\n" +
                 "**CRITICAL - databaseContext Format:**\n" +
                 "The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
+                "**IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
                 "Use this exact format:\n" +
                 "\n" +
                 "employees table:\n" +
@@ -665,9 +693,16 @@ public class GLMService {
                 "| 2  | Mary | HR         | 4500   |\n" +
                 "\n" +
                 "The sample data should match the INSERT statements in setupSql.\n\n" +
-                "Table naming: Use prefix `" + tablePrefix + "_`\n" +
-                "All primary keys: AUTO_INCREMENT\n" +
-                "Insert 3-5 sample records\n" +
+                "Table naming requirements:\n" +
+                "- setupSql: Use prefix `" + tablePrefix + "_`\n" +
+                "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "- All primary keys: AUTO_INCREMENT\n" +
+                "- **CRITICAL - Distractor Data**: Insert 5-8 sample records with:\n" +
+                "  * Records matching the query criteria (correct answers)\n" +
+                "  * Records NOT matching the criteria (distractors)\n" +
+                "  * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
                 "Return valid JSON only.";
 
         List<Map<String, String>> messages = List.of(
@@ -779,11 +814,18 @@ public class GLMService {
                 "  ...\n" +
                 "]\n\n" +
                 "**Table Naming:**\n" +
-                "- Use prefix: `" + tablePrefix + "_`\n" +
-                "- Format: `" + tablePrefix + "_[table_name]`\n" +
+                "- setupSql: Use prefix: `" + tablePrefix + "_`\n" +
+                "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
-                "- Insert 3-5 sample records per table\n\n" +
+                "- **CRITICAL - Distractor Data**: Insert 5-8 sample records per table with:\n" +
+                "  * Records matching the query criteria (correct answers)\n" +
+                "  * Records NOT matching the criteria (distractors)\n" +
+                "  * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
+                "  * Example: For 'names containing United', include 'United States', 'United Kingdom' AND 'Germany', 'France'\n\n" +
                 "**databaseContext Format (IMPORTANT):**\n" +
+                "- **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only)\n" +
                 "- Must show ACTUAL DATA in Markdown table format\n" +
                 "- Include table structure description first\n" +
                 "- Then show sample data in table format\n" +
@@ -816,11 +858,22 @@ public class GLMService {
         body.put("tools", List.of(tools));
 
         try {
+            System.out.println("[generatePracticeQuestionsBatch] ========== 开始调用AI生成题目 ==========");
+            System.out.println("[generatePracticeQuestionsBatch] tablePrefix: " + tablePrefix);
+            System.out.println("[generatePracticeQuestionsBatch] 题型分布: " + distribution);
+            System.out.println("[generatePracticeQuestionsBatch] 总题目数: " + totalQuestions);
+            
             String result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
                     .body(body)
                     .retrieve()
                     .body(String.class);
+            
+            System.out.println("[generatePracticeQuestionsBatch] API响应长度: " + (result != null ? result.length() : "null"));
+            if (result != null && result.length() > 0) {
+                System.out.println("[generatePracticeQuestionsBatch] API响应前1000字符: " + 
+                        result.substring(0, Math.min(1000, result.length())));
+            }
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(result);
@@ -841,12 +894,18 @@ public class GLMService {
                         if (contentText.endsWith("```")) {
                             contentText = contentText.substring(0, contentText.length() - 3);
                         }
+                        System.out.println("[generatePracticeQuestionsBatch] 提取到content长度: " + contentText.length());
+                        System.out.println("[generatePracticeQuestionsBatch] content前500字符: " + 
+                                contentText.substring(0, Math.min(500, contentText.length())));
                         return contentText.trim();
                     }
                 }
             }
             return result;
         } catch (Exception e) {
+            System.err.println("[generatePracticeQuestionsBatch] ========== 调用失败 ==========");
+            System.err.println("[generatePracticeQuestionsBatch] 异常: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Batch practice question generation failed: " + e.getMessage());
         }
     }
@@ -918,6 +977,44 @@ public class GLMService {
             return result;
         } catch (Exception e) {
             throw new RuntimeException("Practice feedback generation failed: " + e.getMessage());
+        }
+    }
+
+    // ==================== 沙库验证 ====================
+
+    /**
+     * 在沙库中验证AI生成的题目SQL是否正确
+     * 用于验证setupSql和expectedSql的正确性
+     */
+    public boolean verifyQuestionInSandbox(String setupSql, String expectedSql) {
+        SandboxContext sandbox = null;
+        try {
+            // 1. 创建AI验证沙库
+            sandbox = sandboxService.createAISandbox();
+
+            // 2. 执行setupSql
+            if (setupSql != null && !setupSql.trim().isEmpty()) {
+                sandboxService.executeSetupSql(sandbox, setupSql);
+            }
+
+            // 3. 执行expectedSql验证
+            if (expectedSql != null && !expectedSql.trim().isEmpty()) {
+                SandboxDatabaseService.SqlExecutionResult result = 
+                    sandboxService.executeInSandbox(sandbox, expectedSql);
+                return result.isSuccess();
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("AI question verification failed: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (sandbox != null) {
+                sandboxService.closeConnection(sandbox);
+                sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+            }
         }
     }
 }

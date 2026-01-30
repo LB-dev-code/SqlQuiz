@@ -357,7 +357,10 @@ public class PracticeController {
             if (q.getSetupSql() != null && !q.getSetupSql().trim().isEmpty()) {
                 System.out.println("  - setupSql(前100字符): " + q.getSetupSql().substring(0, Math.min(100, q.getSetupSql().length())));
             }
-            
+
+            // 动态获取真实数据库数据来生成databaseContext（保证前端显示与实际数据一致）
+            String realDatabaseContext = generateRealDatabaseContext(q);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("hasMore", true);
@@ -365,7 +368,7 @@ public class PracticeController {
             response.put("questionIndex", q.getQuestionIndex());
             response.put("title", q.getQuestionTitle());
             response.put("content", q.getQuestionContent());
-            response.put("databaseContext", q.getDatabaseContext());
+            response.put("databaseContext", realDatabaseContext);  // 使用真实数据
             response.put("setupSql", q.getSetupSql());
             response.put("tablePrefix", q.getTablePrefix());
             response.put("studentSql", q.getStudentSql()); // 已提交的SQL
@@ -407,12 +410,50 @@ public class PracticeController {
 
             PracticeAnswer answer = practiceService.submitAnswer(answerId, sql);
 
+            // 解析保存的查询结果
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("isCorrect", answer.getIsCorrect());
             response.put("score", answer.getScore());
             response.put("feedback", answer.getAiFeedback());
             response.put("expectedSql", answer.getExpectedSql());
+
+            // 从保存的executionResult中提取查询结果数据
+            if (answer.getExecutionResult() != null && !answer.getExecutionResult().isEmpty()) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    com.fasterxml.jackson.databind.JsonNode resultNode = mapper.readTree(answer.getExecutionResult());
+
+                    // 添加查询结果数据到响应
+                    if (resultNode.has("resultData")) {
+                        response.put("data", mapper.convertValue(resultNode.get("resultData"), List.class));
+                    } else {
+                        response.put("data", List.of());
+                    }
+
+                    if (resultNode.has("rowCount")) {
+                        response.put("rowCount", resultNode.get("rowCount").asInt());
+                    } else {
+                        response.put("rowCount", 0);
+                    }
+
+                    if (resultNode.has("executionTimeMs")) {
+                        response.put("executionTimeMs", resultNode.get("executionTimeMs").asLong());
+                    }
+
+                    if (resultNode.has("errorMessage") && !resultNode.get("errorMessage").isNull()) {
+                        response.put("error", resultNode.get("errorMessage").asText());
+                    }
+                } catch (Exception e) {
+                    // 解析失败，返回空数据
+                    response.put("data", List.of());
+                    response.put("rowCount", 0);
+                }
+            } else {
+                // 没有结果数据
+                response.put("data", List.of());
+                response.put("rowCount", 0);
+            }
 
             return ResponseEntity.ok(response);
 
@@ -555,4 +596,227 @@ public class PracticeController {
             ));
         }
     }
+
+    /**
+     * 在沙库中运行SQL（用于Run按钮，不保存答案）
+     * 使用沙库机制执行SQL，保护主数据库不被修改
+     */
+    @PostMapping("/api/run-sql")
+    @ResponseBody
+    public ResponseEntity<?> runSqlInSandbox(
+            @RequestBody Map<String, Object> request,
+            Authentication auth) {
+        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
+        try {
+            Long answerId = Long.valueOf(request.get("answerId").toString());
+            String sql = (String) request.get("sql");
+
+            if (sql == null || sql.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "error", "SQL cannot be empty"
+                ));
+            }
+
+            // 获取答案信息
+            PracticeAnswer answer = practiceService.getAnswerRepository().findById(answerId)
+                    .orElseThrow(() -> new RuntimeException("Answer not found"));
+
+            // 创建沙库并执行SQL
+            com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
+                    practiceService.getSandboxService();
+            sandbox = sandboxService.createPracticeSandbox(
+                    answer.getRound().getSession().getStudent().getId(),
+                    answerId
+            );
+
+            // 使用setupSql初始化沙库（确保与题目描述的databaseContext一致）
+            String tablePrefix = answer.getTablePrefix();
+            String setupSql = answer.getSetupSql();
+
+            if (setupSql != null && !setupSql.trim().isEmpty()) {
+                // 使用题目保存时的setupSql来初始化沙库，确保数据一致
+                sandboxService.executeSetupSql(sandbox, setupSql);
+            } else if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                // 兼容旧数据：如果没有setupSql，尝试从testdb克隆
+                sandboxService.cloneTablesFromTestDB(sandbox, tablePrefix);
+            }
+
+            // 获取表前缀并传递给沙库执行方法
+            // setupSql 中的表名带前缀（quiz_q_123_teacher）
+            // 学生输入的表名不带前缀（teacher）
+            // 需要系统映射：teacher -> quiz_q_123_teacher
+
+            // 在沙库中执行SQL，传入 tablePrefix 进行自动映射
+            com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
+                    sandboxService.executeInSandbox(sandbox, sql, tablePrefix);
+
+            // 构建响应
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", result.isSuccess());
+            response.put("data", result.getResultData());
+            response.put("rowCount", result.getRowCount());
+            response.put("executionTimeMs", result.getExecutionTimeMs());
+            if (result.getErrorMessage() != null) {
+                response.put("error", result.getErrorMessage());
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            // 记录详细错误
+            System.err.println("[runSqlInSandbox] SQL执行失败:");
+            System.err.println("  异常类型: " + e.getClass().getName());
+            System.err.println("  异常信息: " + e.getMessage());
+            e.printStackTrace();
+
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "error", "Failed to run SQL: " + e.getMessage()
+            ));
+        } finally {
+            // 清理沙库
+            if (sandbox != null) {
+                try {
+                    com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
+                            practiceService.getSandboxService();
+                    sandboxService.closeConnection(sandbox);
+                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+                } catch (Exception e) {
+                    // 忽略清理错误
+                }
+            }
+        }
+    }
+
+    /**
+     * 从 setupSQL 动态生成真实的数据库表格展示（Markdown格式）
+     * 流程：创建临时沙库 -> 执行setupSQL -> 查询数据 -> 生成Markdown -> 清理沙库
+     * 这样可以保证前端显示的表格数据与学生实际执行SQL时的数据完全一致
+     */
+    private String generateRealDatabaseContext(PracticeAnswer answer) {
+        String setupSql = answer.getSetupSql();
+        String tablePrefix = answer.getTablePrefix();
+        
+        System.out.println("[generateRealDatabaseContext] ======== 开始生成真实数据 ========");
+        System.out.println("[generateRealDatabaseContext] answerId: " + answer.getId());
+        System.out.println("[generateRealDatabaseContext] tablePrefix: " + tablePrefix);
+        System.out.println("[generateRealDatabaseContext] setupSql是否为空: " + (setupSql == null || setupSql.trim().isEmpty()));
+        
+        // 如果没有setupSQL，返回原始的databaseContext
+        if (setupSql == null || setupSql.trim().isEmpty()) {
+            System.out.println("[generateRealDatabaseContext] ⚠️ setupSQL为空，返回原始databaseContext");
+            return answer.getDatabaseContext();
+        }
+        
+        System.out.println("[generateRealDatabaseContext] setupSql前200字符: " + setupSql.substring(0, Math.min(200, setupSql.length())));
+        
+        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
+        try {
+            // 1. 创建临时沙库
+            com.example.SqlQuiz.service.SandboxDatabaseService sandboxService = 
+                    practiceService.getSandboxService();
+            sandbox = sandboxService.createAISandbox();
+            System.out.println("[generateRealDatabaseContext] 沙库创建成功: " + sandbox.getDatabaseName());
+            
+            // 2. 执行setupSQL创建表和数据
+            sandboxService.executeSetupSql(sandbox, setupSql);
+            System.out.println("[generateRealDatabaseContext] setupSQL执行成功");
+            
+            // 3. 查询所有表的数据并生成Markdown
+            StringBuilder markdown = new StringBuilder();
+            java.sql.Connection conn = sandbox.getConnection();
+            
+            // 获取沙库中所有表
+            java.sql.DatabaseMetaData metaData = conn.getMetaData();
+            java.sql.ResultSet tables = metaData.getTables(sandbox.getDatabaseName(), null, "%", new String[]{"TABLE"});
+            
+            int tableCount = 0;
+            while (tables.next()) {
+                String tableName = tables.getString("TABLE_NAME");
+                tableCount++;
+                System.out.println("[generateRealDatabaseContext] 发现表: " + tableName);
+                
+                // 生成无前缀的显示表名（quiz_q_123_students -> students）
+                String displayTableName = tableName;
+                if (tablePrefix != null && tableName.startsWith(tablePrefix + "_")) {
+                    displayTableName = tableName.substring(tablePrefix.length() + 1);
+                }
+                System.out.println("[generateRealDatabaseContext] 显示表名: " + displayTableName);
+                
+                markdown.append(displayTableName).append(" table:\n\n");
+                
+                // 查询表数据
+                try (java.sql.Statement stmt = conn.createStatement();
+                     java.sql.ResultSet rs = stmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
+                    
+                    java.sql.ResultSetMetaData rsmd = rs.getMetaData();
+                    int columnCount = rsmd.getColumnCount();
+                    System.out.println("[generateRealDatabaseContext] 表 " + displayTableName + " 列数: " + columnCount);
+                    
+                    // 生成表头
+                    markdown.append("|");
+                    for (int i = 1; i <= columnCount; i++) {
+                        String colName = rsmd.getColumnName(i);
+                        markdown.append(" ").append(colName).append(" |");
+                        System.out.println("[generateRealDatabaseContext]   列名: " + colName);
+                    }
+                    markdown.append("\n|");
+                    for (int i = 1; i <= columnCount; i++) {
+                        markdown.append("----|" );
+                    }
+                    markdown.append("\n");
+                    
+                    // 生成数据行
+                    int rowCount = 0;
+                    while (rs.next()) {
+                        markdown.append("|");
+                        for (int i = 1; i <= columnCount; i++) {
+                            Object value = rs.getObject(i);
+                            markdown.append(" ").append(value != null ? value.toString() : "NULL").append(" |");
+                        }
+                        markdown.append("\n");
+                        rowCount++;
+                    }
+                    System.out.println("[generateRealDatabaseContext] 表 " + displayTableName + " 数据行数: " + rowCount);
+                }
+                
+                markdown.append("\n");
+            }
+            
+            tables.close();
+            System.out.println("[generateRealDatabaseContext] 总表数: " + tableCount);
+            
+            String result = markdown.toString().trim();
+            System.out.println("[generateRealDatabaseContext] ✅ 生成真实数据成功，长度: " + result.length());
+            System.out.println("[generateRealDatabaseContext] 生成内容前500字符: " + result.substring(0, Math.min(500, result.length())));
+            
+            if (result.isEmpty()) {
+                System.out.println("[generateRealDatabaseContext] ⚠️ 生成结果为空，返回原始databaseContext");
+                return answer.getDatabaseContext();
+            }
+            
+            return result;
+            
+        } catch (Exception e) {
+            System.err.println("[generateRealDatabaseContext] ❌ 生成真实数据失败: " + e.getMessage());
+            e.printStackTrace();
+            // 失败时返回原始的databaseContext
+            return answer.getDatabaseContext();
+        } finally {
+            // 4. 清理沙库
+            if (sandbox != null) {
+                try {
+                    com.example.SqlQuiz.service.SandboxDatabaseService sandboxService = 
+                            practiceService.getSandboxService();
+                    sandboxService.closeConnection(sandbox);
+                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+                    System.out.println("[generateRealDatabaseContext] 沙库清理完成");
+                } catch (Exception e) {
+                    // 忽略清理错误
+                }
+            }
+        }
+    }
+
 }

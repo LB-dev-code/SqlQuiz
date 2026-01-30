@@ -47,9 +47,12 @@ public class TeacherController {
     
     @Autowired
     private SetupSqlExecutorService setupSqlExecutorService;
-    
+
     @Autowired
     private com.example.SqlQuiz.service.QuizTableMetadataService tableMetadataService;
+
+    @Autowired
+    private com.example.SqlQuiz.service.SandboxDatabaseService sandboxService;
 
     // 教师仪表板
     @GetMapping("/dashboard")
@@ -633,8 +636,48 @@ public class TeacherController {
     // 测试SQL执行
     @PostMapping("/sql-test")
     @ResponseBody
-    public SqlValidationService.SqlExecutionResult testSql(@RequestParam String sql) {
-        return sqlValidationService.executeSQL(sql);
+    public Map<String, Object> testSql(@RequestParam String sql, Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+
+        if (sql == null || sql.trim().isEmpty()) {
+            response.put("success", false);
+            response.put("error", "SQL语句不能为空");
+            return response;
+        }
+
+        User teacher = (User) auth.getPrincipal();
+        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
+
+        try {
+            // 创建教师测试专用沙库
+            sandbox = sandboxService.createTeacherTestSandbox(teacher.getId());
+
+            // 在沙库中执行SQL
+            com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
+                sandboxService.executeInSandbox(sandbox, sql);
+
+            response.put("success", result.isSuccess());
+            response.put("data", result.getResultData());
+            response.put("rowCount", result.getRowCount());
+            response.put("executionTimeMs", result.getExecutionTimeMs());
+            response.put("error", result.getErrorMessage());
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "SQL执行错误: " + e.getMessage());
+        } finally {
+            // 清理沙库
+            if (sandbox != null) {
+                try {
+                    sandboxService.closeConnection(sandbox);
+                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
+                } catch (Exception e) {
+                    System.err.println("清理教师测试沙库失败: " + e.getMessage());
+                }
+            }
+        }
+
+        return response;
     }
 
     // 查看学生提交详情页面

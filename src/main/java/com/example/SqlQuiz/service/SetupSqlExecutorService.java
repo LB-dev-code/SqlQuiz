@@ -46,15 +46,21 @@ public class SetupSqlExecutorService {
         System.out.println("=== SetupSqlExecutorService 开始处理 ===");
         System.out.println("原始SQL: " + setupSql.substring(0, Math.min(200, setupSql.length())) + "...");
 
+        // 清理 Markdown 转义字符（AI 生成的 SQL 可能包含 \( \) 这样的转义）
+        String cleanedSql = setupSql.replace("\\(", "(").replace("\\)", ")");
+        if (!cleanedSql.equals(setupSql)) {
+            System.out.println("检测到 Markdown 转义字符，已清理");
+        }
+
         // 提取所有CREATE TABLE语句中的完整表名
-        List<String> allTableNames = extractAllTableNames(setupSql);
+        List<String> allTableNames = extractAllTableNames(cleanedSql);
         System.out.println("提取到的表名: " + allTableNames);
 
         // 检查是否所有表名都已经有quiz_q_前缀
         boolean allHaveQuizPrefix = allTableNames.stream()
             .allMatch(name -> name.matches("quiz_q_.+"));
 
-        String processedSql = setupSql;
+        String processedSql = cleanedSql;
         String tablePrefix = null;
 
         if (!allHaveQuizPrefix && !allTableNames.isEmpty()) {
