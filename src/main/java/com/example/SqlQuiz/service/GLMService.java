@@ -439,6 +439,7 @@ public class GLMService {
                 "   The sample data should match the INSERT statements in setupSql.\n" +
                 "7. setupSql: **IMPORTANT** Use table names WITH prefix: `" + tablePrefix + "_[table_name]`\n" +
                 "   - CREATE TABLE format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "   - **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "   - INSERT INTO format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "8. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "9. Return valid JSON only, no additional text\n" +
@@ -566,6 +567,7 @@ public class GLMService {
                 "Table naming requirements:\n" +
                 "- setupSql: Use unique prefix: `" + tablePrefix + "_`\n" +
                 "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
@@ -696,6 +698,7 @@ public class GLMService {
                 "Table naming requirements:\n" +
                 "- setupSql: Use prefix `" + tablePrefix + "_`\n" +
                 "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
@@ -816,6 +819,7 @@ public class GLMService {
                 "**Table Naming:**\n" +
                 "- setupSql: Use prefix: `" + tablePrefix + "_`\n" +
                 "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +

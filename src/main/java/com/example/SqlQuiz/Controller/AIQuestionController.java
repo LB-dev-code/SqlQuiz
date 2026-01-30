@@ -329,6 +329,7 @@ public class AIQuestionController {
                     fullDescription,
                     databaseContext,
                     expectedSql,
+                    setupSql,  // 传递setupSql参数
                     null,
                     answer,
                     score,
