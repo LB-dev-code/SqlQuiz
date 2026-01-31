@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism Framework - Demo</title>
+    <link rel="stylesheet" href="css/glassmorphism.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .demo-header {
+            padding: var(--space-2xl) var(--space-xl);
+            text-align: center;
+        }
+        .demo-section {
+            padding: var(--space-xl);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .demo-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-md);
+            padding-bottom: var(--space-sm);
+            box-shadow: 0 1px 0 rgba(62,60,56,0.08);
+        }
+    </style>
+</head>
+<body class="glass-root">
+
+    <!-- Header -->
+    <header class="demo-header">
+        <span class="glass-badge">Framework v1.0</span>
+        <h1 class="type-display" style="margin-top: var(--space-md);">
+            <span class="text-gradient">Glassmorphism</span> Framework
+        </h1>
+        <p class="type-body" style="max-width: 500px; margin: var(--space-md) auto 0;">
+            Premium lightweight glass effects with earth tones, asymmetric layouts, and spring-physics animations.
+        </p>
+    </header>
+
+    <!-- Glass Panels -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Glass Panels</h2>
+        <div class="glass-demo-grid">
+            <div class="glass-panel space-lg">
+                <span class="type-label">Default Panel</span>
+                <h3 class="type-heading" style="margin: var(--space-sm) 0;">Base Glass Effect</h3>
+                <p class="type-body">Standard glass panel with backdrop blur and shadow-defined boundaries.</p>
+            </div>
+            <div class="glass-panel glass-panel--warm space-lg">
+                <span class="type-label">Warm Variant</span>
+                <h3 class="type-heading" style="margin: var(--space-sm) 0;">Terracotta Tone</h3>
+                <p class="type-body">Warmer glass variant with earth tone accent.</p>
+            </div>
+            <div class="glass-panel glass-panel--cool space-lg">
+                <span class="type-label">Cool Variant</span>
+                <h3 class="type-heading" style="margin: var(--space-sm) 0;">Sage Tone</h3>
+                <p class="type-body">Cooler glass variant with sage undertones.</p>
+            </div>
+            <div class="glass-panel glass-panel--accent space-lg">
+                <span class="type-label">Accent Variant</span>
+                <h3 class="type-heading" style="margin: var(--space-sm) 0;">Terracotta Accent</h3>
+                <p class="type-body">Highlighted glass with accent tint.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Elevated Panels -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Elevated Panels</h2>
+        <div class="layout-asymmetric layout-asymmetric--hero gap-xl">
+            <div class="glass-elevated space-xl anim-slide-up">
+                <span class="glass-badge" style="margin-bottom: var(--space-md);">Featured</span>
+                <h3 class="type-display" style="font-size: clamp(24px,4vw,36px);">Elevated Glass Card</h3>
+                <p class="type-body" style="margin-top: var(--space-md);">
+                    Higher elevation with increased backdrop blur (24px) and stronger shadows.
+                    Perfect for hero content and primary actions.
+                </p>
+                <button class="glass-button glass-button--primary" style="margin-top: var(--space-lg);">
+                    Primary Action
+                </button>
+            </div>
+            <div class="glass-card-group">
+                <div class="glass-card-group__item">
+                    <span class="type-label">Feature One</span>
+                    <h4 class="type-heading" style="font-size: 18px; margin: var(--space-xs) 0;">Spring Animations</h4>
+                    <p class="type-caption">Physics-based motion</p>
+                </div>
+                <div class="glass-card-group__item glass-card-group__item--accent">
+                    <span class="type-label">Feature Two</span>
+                    <h4 class="type-heading" style="font-size: 18px; margin: var(--space-xs) 0;">No Border Strokes</h4>
+                    <p class="type-caption">Shadow-defined boundaries</p>
+                </div>
+                <div class="glass-card-group__item">
+                    <span class="type-label">Feature Three</span>
+                    <h4 class="type-heading" style="font-size: 18px; margin: var(--space-xs) 0;">Earth Tone Palette</h4>
+                    <p class="type-caption">Terracotta, Sage, Camel</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Form Elements -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Form Elements</h2>
+        <div class="glass-panel space-xl" style="max-width: 500px;">
+            <h3 class="type-heading" style="margin-bottom: var(--space-md);">Glass Inputs</h3>
+
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                <div>
+                    <label class="type-label" style="display: block; margin-bottom: var(--space-xs);">Username</label>
+                    <input type="text" class="glass-input" placeholder="Enter your username">
+                </div>
+
+                <div>
+                    <label class="type-label" style="display: block; margin-bottom: var(--space-xs);">Password</label>
+                    <input type="password" class="glass-input" placeholder="Enter your password">
+                </div>
+
+                <div>
+                    <label class="type-label" style="display: block; margin-bottom: var(--space-xs);">Bio</label>
+                    <textarea class="glass-input glass-textarea" placeholder="Tell us about yourself..."></textarea>
+                </div>
+
+                <div class="glass-divider"></div>
+
+                <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap;">
+                    <button class="glass-button glass-button--primary anim-ripple">
+                        Submit
+                    </button>
+                    <button class="glass-button glass-button--ghost">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Buttons -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Buttons</h2>
+        <div class="glass-demo-grid">
+            <div class="glass-panel space-md" style="grid-column: span 3;">
+                <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center;">
+                    <button class="glass-button glass-button--primary anim-spring">
+                        Primary
+                    </button>
+                    <button class="glass-button glass-button--sage anim-spring">
+                        Sage
+                    </button>
+                    <button class="glass-button glass-button--camel anim-spring">
+                        Camel
+                    </button>
+                    <button class="glass-button glass-button--ghost anim-spring">
+                        Ghost
+                    </button>
+                    <button class="glass-button anim-shimmer">
+                        Shimmer Effect
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Asymmetric Layouts -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Asymmetric Layouts</h2>
+
+        <h4 class="type-label" style="margin-bottom: var(--space-md);">Offset Grid</h4>
+        <div class="layout-asymmetric layout-asymmetric--offset" style="margin-bottom: var(--space-xl);">
+            <div class="glass-elevated space-lg anim-slide-up">
+                <h3 class="type-heading">Main Content</h3>
+                <p class="type-body">Takes 7 columns, spans 2 rows in bento layout.</p>
+            </div>
+            <div class="glass-panel space-lg anim-slide-up">
+                <h4 class="type-heading" style="font-size: 18px;">Sidebar</h4>
+                <p class="type-body">Offset with margin-top for visual interest.</p>
+            </div>
+        </div>
+
+        <h4 class="type-label" style="margin-bottom: var(--space-md);">Bento Grid</h4>
+        <div class="layout-asymmetric layout-asymmetric--bento gap-md" style="margin-bottom: var(--space-xl);">
+            <div class="glass-elevated space-lg">
+                <h3 class="type-heading">Large Card</h3>
+                <p class="type-body">Spans 2 rows in bento layout</p>
+            </div>
+            <div class="glass-panel space-md">
+                <h4 class="type-heading" style="font-size: 16px;">Small A</h4>
+            </div>
+            <div class="glass-panel space-md">
+                <h4 class="type-heading" style="font-size: 16px;">Small B</h4>
+            </div>
+        </div>
+
+        <h4 class="type-label" style="margin-bottom: var(--space-md);">Diagonal Flow</h4>
+        <div class="layout-asymmetric layout-asymmetric--diagonal">
+            <div class="glass-panel space-md" style="max-width: 400px;">
+                <span class="type-caption">Step 01</span>
+                <h4 class="type-heading">Research</h4>
+            </div>
+            <div class="glass-panel space-md" style="max-width: 400px;">
+                <span class="type-caption">Step 02</span>
+                <h4 class="type-heading">Design</h4>
+            </div>
+            <div class="glass-panel space-md" style="max-width: 400px;">
+                <span class="type-caption">Step 03</span>
+                <h4 class="type-heading">Build</h4>
+            </div>
+        </div>
+    </section>
+
+    <!-- Typography -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Typography</h2>
+        <div class="glass-panel space-xl">
+            <h1 class="type-display">Display Heading</h1>
+            <p class="type-caption">font-family: var(--font-serif) | letter-spacing: -0.03em</p>
+
+            <div class="glass-divider"></div>
+
+            <h2 class="type-heading">Section Heading</h2>
+            <p class="type-caption">font-size: clamp(20px, 3vw, 28px) | font-weight: 600</p>
+
+            <div class="glass-divider"></div>
+
+            <p class="type-label">LABEL TEXT</p>
+            <p class="type-caption">uppercase | letter-spacing: 0.08em | font-weight: 500</p>
+
+            <div class="glass-divider"></div>
+
+            <p class="type-body">Body text uses the serif font family for excellent readability. The carefully crafted letter-spacing and line-height (1.7) create a comfortable reading experience.</p>
+            <p class="type-caption">font-size: 15px | line-height: 1.7</p>
+
+            <div class="glass-divider"></div>
+
+            <p class="type-mono">Monospace text for code, numbers, and technical content.</p>
+            <p class="type-caption">font-family: var(--font-mono) | letter-spacing: -0.02em</p>
+
+            <div class="glass-divider"></div>
+
+            <p class="text-gradient type-display" style="font-size: 24px;">Gradient Text Effect</p>
+        </div>
+    </section>
+
+    <!-- Animations -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Animations</h2>
+        <div class="glass-demo-grid">
+            <div class="glass-panel space-md anim-spring">
+                <span class="type-label">Spring Scale</span>
+                <p class="type-body">Scales up on hover with spring physics</p>
+            </div>
+            <div class="glass-panel space-md anim-shimmer">
+                <span class="type-label">Shimmer</span>
+                <p class="type-body">Light sweep effect on hover</p>
+            </div>
+            <div class="glass-panel space-md anim-pulse-subtle">
+                <span class="type-label">Pulse</span>
+                <p class="type-body">Subtle opacity animation</p>
+            </div>
+            <div class="glass-panel space-lg glass-elevated--floating">
+                <span class="type-label">Floating</span>
+                <p class="type-body">Continuous float animation</p>
+            </div>
+        </div>
+
+        <div class="glass-divider" style="margin: var(--space-xl) 0;"></div>
+
+        <h4 class="type-label" style="margin-bottom: var(--space-md);">Staggered Slide Up</h4>
+        <div class="layout-asymmetric anim-stagger" style="display: flex; gap: var(--space-sm);">
+            <div class="glass-panel space-md anim-slide-up">01</div>
+            <div class="glass-panel space-md anim-slide-up">02</div>
+            <div class="glass-panel space-md anim-slide-up">03</div>
+            <div class="glass-panel space-md anim-slide-up">04</div>
+            <div class="glass-panel space-md anim-slide-up">05</div>
+        </div>
+    </section>
+
+    <!-- Modal Demo -->
+    <section class="demo-section">
+        <h2 class="demo-section-title">Modal Component</h2>
+        <button class="glass-button glass-button--primary" onclick="openModal()">
+            Open Modal
+        </button>
+    </section>
+
+    <!-- Dark Mode Toggle -->
+    <section class="demo-section" style="padding-bottom: var(--space-2xl);">
+        <button class="glass-button" onclick="toggleDarkMode()">
+            Toggle Dark Mode
+        </button>
+    </section>
+
+    <!-- Modal (hidden by default) -->
+    <div class="glass-modal-overlay" id="modalOverlay" onclick="closeModalOverlay(event)">
+        <div class="glass-modal">
+            <div class="glass-modal__header">
+                <h3 class="glass-modal__title">Modal Title</h3>
+            </div>
+            <div class="glass-modal__body">
+                <p class="type-body">This is a glassmorphism modal with backdrop blur. The overlay blurs the background content while keeping it visible.</p>
+            </div>
+            <div class="glass-modal__footer">
+                <button class="glass-button glass-button--ghost" onclick="closeModal()">Cancel</button>
+                <button class="glass-button glass-button--primary" onclick="closeModal()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal functions
+        function openModal() {
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function closeModalOverlay(e) {
+            if (e.target.classList.contains('glass-modal-overlay')) {
+                closeModal();
+            }
+        }
+
+        // Dark mode toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('glass-root--dark');
+        }
+
+        // Magnetic effect (optional enhancement)
+        document.querySelectorAll('.anim-magnetic').forEach(el => {
+            el.addEventListener('mousemove', (e) => {
+                const rect = el.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                el.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.transform = '';
+            });
+        });
+
+        // Keyboard accessibility
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

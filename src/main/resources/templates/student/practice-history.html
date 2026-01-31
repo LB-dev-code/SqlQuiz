@@ -4,24 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice History - SqlQuiz</title>
-    <!-- Google Fonts -->
+    <title>Protocol Logs / Berlin Concrete</title>
+
+    <!-- Fonts -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
         rel="stylesheet">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-            --morandi-blue: #a3b8c8;
-            --glass-bg: rgba(255, 255, 255, 0.4);
-            --glass-border: rgba(255, 255, 255, 0.5);
-            --text-primary: #475569;
-            --accent: #7c9aaf;
-            --radius-md: 16px;
-            --radius-sm: 12px;
-            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            /* Berlin Concrete Palette */
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
+
+            /* Accents */
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+
+            --space-unit: 1.5rem;
         }
 
         * {
@@ -31,136 +40,241 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
-            color: var(--text-primary);
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* LAYOUT */
+        .poster-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        header {
+        /* SIDEBAR (Reused) */
+        .col-nav {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
+            position: sticky;
+            top: 0;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
         }
 
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow);
-            padding: 24px;
-        }
-
-        .history-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 10px;
-        }
-
-        .history-table th {
-            text-align: left;
-            padding: 12px 16px;
-            font-size: 13px;
+        .brand-block h1 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 2rem;
+            line-height: 0.9;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
         }
 
-        .history-row {
-            transition: transform 0.2s;
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        .history-row td {
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.2);
-            border-top: 1px solid var(--glass-border);
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .history-row td:first-child {
-            border-left: 1px solid var(--glass-border);
-            border-radius: 12px 0 0 12px;
-        }
-
-        .history-row td:last-child {
-            border-right: 1px solid var(--glass-border);
-            border-radius: 0 12px 12px 0;
-        }
-
-        .btn-back {
-            text-decoration: none;
-            color: var(--text-primary);
+        .nav-menu {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 500;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 4rem;
         }
 
-        .accuracy-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            background: var(--morandi-blue);
-            color: white;
-            font-size: 12px;
+        .nav-item {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: #888;
+            text-decoration: none;
+            transition: color 0.2s, padding-left 0.2s;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            color: #fff;
+            padding-left: 10px;
+        }
+
+        /* MAIN */
+        .col-main {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .manifesto-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+        }
+
+        .header-title h2 {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        /* TABLE */
+        .log-table-container {
+            padding: 2rem;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .log-table th {
+            text-align: left;
+            border-bottom: 1px solid var(--border-steel);
+            padding: 1rem;
+            color: var(--signal-orange);
+            text-transform: uppercase;
+            font-weight: normal;
+        }
+
+        .log-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #222;
+            color: #ccc;
+        }
+
+        .log-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+            color: #fff;
+        }
+
+        .accuracy-tag {
+            border: 1px solid #444;
+            padding: 2px 6px;
+            font-size: 0.8rem;
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            color: #666;
+            border: 1px dashed #333;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .poster-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .col-nav {
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .nav-menu {
+                flex-direction: row;
+                margin-top: 0;
+                margin-left: auto;
+            }
+
+            .log-table {
+                font-size: 0.8rem;
+            }
+
+            .log-table th,
+            .log-table td {
+                padding: 0.5rem;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <a href="/student/practice/dashboard" class="btn-back"><i class="fas fa-arrow-left"></i> Back to
-                Dashboard</a>
-            <h2 style="font-family: Montserrat;">Practice History</h2>
-        </header>
 
-        <div class="glass-card">
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Rounds</th>
-                        <th>Accuracy</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="session : ${history}" class="history-row">
-                        <td th:text="${#temporals.format(session.startTime, 'yyyy-MM-dd HH:mm')}">Date</td>
-                        <td>
-                            <th:block th:if="${session.targetQuestionType != null}" th:text="${session.targetQuestionType.displayName}">Type</th:block>
-                            <th:block th:if="${session.targetQuestionType == null}">Custom Mix</th:block>
-                        </td>
-                        <td th:text="${session.totalRounds}">0</td>
-                        <td><span class="accuracy-badge"
-                                th:text="${#numbers.formatDecimal(session.overallAccuracy * 100, 0, 0)} + '%'">90%</span>
-                        </td>
-                        <td>
-                            <th:block th:if="${session.status != null}" th:text="${session.status.displayName}">Status</th:block>
-                            <th:block th:if="${session.status == null}">Unknown</th:block>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div th:if="${#lists.isEmpty(history)}"
-                style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                <i class="fas fa-box-open"
-                    style="font-size: 48px; display: block; margin-bottom: 20px; opacity: 0.3;"></i>
-                No historical records found.
+    <div class="poster-grid">
+        <aside class="col-nav">
+            <div class="brand-block">
+                <h1>Sql<br>Quiz<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Berlin Concrete Build</div>
             </div>
-        </div>
+
+            <nav class="nav-menu">
+                <a href="/student/practice/dashboard" class="nav-item">
+                    ← RET. BASE
+                </a>
+            </nav>
+
+            <div style="font-size: 0.8rem; color: #666;">
+                ACCESSING ARCHIVES
+            </div>
+        </aside>
+
+        <main class="col-main">
+            <header class="manifesto-header">
+                <div class="header-title">
+                    <div style="font-size:0.8rem; color:var(--blueprint-blue); margin-bottom: 0.5rem;">/// SESSION LOGS
+                    </div>
+                    <h2>Practice<br>History</h2>
+                </div>
+            </header>
+
+            <div class="log-table-container">
+
+                <table class="log-table" th:if="${!#lists.isEmpty(history)}">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Protocol Type</th>
+                            <th>Volume</th>
+                            <th>Efficiency</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="session : ${history}">
+                            <td th:text="${#temporals.format(session.startTime, 'yyyy-MM-dd HH:mm')}">2024-01-01</td>
+                            <td style="font-family: var(--font-display);">
+                                <span th:if="${session.targetQuestionType != null}"
+                                    th:text="${session.targetQuestionType.displayName}">TYPE</span>
+                                <span th:if="${session.targetQuestionType == null}">MIXED PROTOCOL</span>
+                            </td>
+                            <td th:text="${session.totalRounds}">10</td>
+                            <td>
+                                <span class="accuracy-tag"
+                                    th:text="${#numbers.formatDecimal(session.overallAccuracy * 100, 0, 0)} + '%'"
+                                    th:style="${session.overallAccuracy >= 0.9 ? 'border-color:var(--success-green); color:var(--success-green);' : ''}">90%</span>
+                            </td>
+                            <td>
+                                <span th:text="${session.status}">COMPLETED</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div th:if="${#lists.isEmpty(history)}" class="empty-state">
+                    NO ARCHIVED SESSIONS DETECTED.
+                </div>
+
+            </div>
+        </main>
     </div>
+
 </body>
 
 </html>
