@@ -1,549 +1,486 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Center - MySQL Knowledge Testing Platform</title>
-    
-    <style>
-        :root{
-          /* Palette tuned for sleek, modern, light-on-dark glassmorphism */
-          --bg: #0b0f16;
-          --panel: rgba(18, 24, 35, 0.55);
-          --panel-strong: rgba(18, 24, 35, 0.7);
-          --white: #ffffff;
-          --muted: #9aa3b2;
-          --accent: #6aa7ff;
-          --accent-2: #86e3ff;
-          --success: #46d39a;
-          --warning: #f0b74a;
-          --danger: #f05a5a;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Center / Berlin Concrete</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* Berlin Concrete Palette */
+      --bg-concrete: #141414;
+      --surface-raw: rgba(255, 255, 255, 0.03);
+      --glass-smoke: rgba(10, 10, 10, 0.6);
+      --glass-frost: rgba(255, 255, 255, 0.02);
+      --border-steel: rgba(255, 255, 255, 0.15);
 
-          /* Typography */
-          --font: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-          --h1: 24px;
-          --h2: 16px;
-          --label: 12px;
-          --body: 14px;
-          --tiny: 11px;
+      /* Accents */
+      --signal-orange: #ff3c00;
+      --blueprint-blue: #0044ff;
 
-          /* Radii and blurs */
-          --radius-xl: 18px;
-          --radius-lg: 14px;
-          --radius-md: 12px;
-          --radius-sm: 10px;
-          --blur-heavy: 20px;
-          --blur-mid: 14px;
+      /* Typography */
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-tech: 'IBM Plex Mono', monospace;
 
-          /* Borders */
-          --border-soft: 1px solid rgba(255,255,255,0.08);
-          --border-strong: 1px solid rgba(255,255,255,0.15);
+      /* Metrics */
+      --space-unit: 1.5rem;
+      --brutal-gap: 2px;
+    }
 
-          /* Shadows (soft, directional) */
-          --shadow-1: 0 10px 30px rgba(0,0,0,0.35);
-          --shadow-2: 0 6px 18px rgba(0,0,0,0.28);
-          --shadow-inset: inset 0 1px 0 rgba(255,255,255,0.06);
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        * { box-sizing: border-box; }
-        html, body {
-          height: 100%;
-          background: radial-gradient(1200px 1200px at 10% 10%, #11172a 0%, #0b0f16 40%, #0b0f16 100%);
-          color: var(--white);
-          font-family: var(--font);
-          letter-spacing: 0.02em;
-          margin: 0;
-          padding: 0;
-        }
+    body {
+      background-color: var(--bg-concrete);
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+      color: #e0e0e0;
+      font-family: var(--font-tech);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-        .page {
-          min-height: 100vh;
-          padding: 32px;
-          display: grid;
-          place-items: center;
-        }
+    /* Brutalist Layout Grid */
+    .poster-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
 
-        .content-wrap {
-          width: 100%;
-          max-width: 1200px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
+    /* SIDEBAR / NAVIGATION */
+    .col-nav {
+      background: var(--glass-smoke);
+      backdrop-filter: blur(20px) grayscale(100%);
+      border-right: 1px solid var(--border-steel);
+      padding: var(--space-unit);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
 
-        /* Header bar */
-        .header {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px 24px;
-          border-radius: var(--radius-lg);
-          background: var(--panel);
-          backdrop-filter: blur(var(--blur-mid));
-          -webkit-backdrop-filter: blur(var(--blur-mid));
-          border: var(--border-soft);
-          box-shadow: var(--shadow-inset);
-        }
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          color: var(--muted);
-          font-size: 18px;
-        }
-        .header-right {
-          display: none;
-        }
-        .header-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 999px;
-          background: var(--accent);
-          box-shadow: 0 0 0 4px rgba(106,167,255,0.15);
-        }
+    .brand-block h1 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 2rem;
+      line-height: 0.9;
+      text-transform: uppercase;
+      letter-spacing: -0.05em;
+      margin-bottom: 0.5rem;
+    }
 
-        /* Navigation */
-        .nav {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .nav-link {
-          color: var(--muted);
-          text-decoration: none;
-          padding: 6px 10px;
-          border-radius: var(--radius-sm);
-          transition: all 0.2s ease;
-          font-size: var(--body);
-        }
-        .nav-link:hover {
-          color: var(--white);
-          background: var(--panel-strong);
-        }
+    .brand-meta {
+      font-size: 0.7rem;
+      opacity: 0.5;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
 
-        /* Title section */
-        .title-section {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          margin-bottom: 32px;
-          text-align: center;
-        }
-        .page-title {
-          font-size: 36px;
-          font-weight: 800;
-          color: var(--white);
-          margin: 0;
-          letter-spacing: 0.5px;
-        }
-        .page-subtitle {
-          color: var(--muted);
-          font-size: 16px;
-          margin: 8px 0 0 0;
-        }
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 4rem;
+    }
 
-        /* Filters and search */
-        .filters-bar {
-          display: flex;
-          gap: 12px;
-          margin-bottom: 24px;
-        }
-        .field {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 14px;
-          border-radius: var(--radius-md);
-          background: var(--panel-strong);
-          backdrop-filter: blur(var(--blur-mid));
-          -webkit-backdrop-filter: blur(var(--blur-mid));
-          border: var(--border-soft);
-          box-shadow: var(--shadow-inset);
-          flex: 1;
-        }
-        .field input, .field select {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          color: var(--white);
-          font-size: var(--body);
-        }
-        .field input::placeholder { color: var(--muted); }
-        .field select option {
-          background: var(--panel-strong);
-          color: var(--white);
-        }
-        .chip {
-          font-size: var(--tiny);
-          color: var(--muted);
-          padding: 6px 10px;
-          border-radius: 999px;
-          border: var(--border-soft);
-          background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-        }
+    .nav-item {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: #888;
+      text-decoration: none;
+      transition: color 0.2s, padding-left 0.2s;
+      position: relative;
+    }
 
-        /* Tabs */
-        .tabs {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 24px;
-        }
-        .tab {
-          padding: 10px 16px;
-          border-radius: var(--radius-md);
-          background: var(--panel);
-          backdrop-filter: blur(var(--blur-mid));
-          -webkit-backdrop-filter: blur(var(--blur-mid));
-          border: var(--border-soft);
-          color: var(--muted);
-          font-size: var(--body);
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .tab.active {
-          background: var(--accent);
-          color: var(--white);
-          border-color: var(--accent);
-        }
-        .tab:hover {
-          color: var(--white);
-          background: var(--panel-strong);
-        }
-        .tab.active:hover {
-          background: var(--accent);
-        }
+    .nav-item:hover,
+    .nav-item.active {
+      color: #fff;
+      padding-left: 10px;
+    }
 
-        /* Quiz cards grid */
-        .quiz-grid {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: nowrap;
-          gap: 20px;
-          overflow-x: auto;
-          scroll-snap-type: x mandatory;
-          padding-bottom: 10px;
-        }
-        .quiz-card {
-          flex: 0 0 320px;
-          scroll-snap-align: start;
-          border-radius: var(--radius-lg);
-          padding: 22px;
-          background: var(--panel);
-          backdrop-filter: blur(var(--blur-heavy));
-          -webkit-backdrop-filter: blur(var(--blur-heavy));
-          border: var(--border-soft);
-          box-shadow: var(--shadow-inset), var(--shadow-2);
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-        .quiz-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-inset), 0 16px 40px rgba(0,0,0,0.4);
-        }
-        .quiz-card::before {
-          content: '';
-          position: absolute;
-          inset: -30% -20% auto auto;
-          width: 180px;
-          height: 180px;
-          background: radial-gradient(closest-side, rgba(134, 227, 255, 0.08), transparent 60%);
-          transform: translate(30px, -60px) rotate(8deg);
-          pointer-events: none;
-          filter: blur(10px);
-        }
+    .nav-item.active::before {
+      content: '→';
+      position: absolute;
+      left: -15px;
+      color: var(--signal-orange);
+    }
 
-        .quiz-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: var(--white);
-          margin: 0 0 12px 0;
-        }
-        .quiz-info {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-bottom: 16px;
-        }
-        .quiz-meta {
-          font-size: var(--body);
-          color: var(--muted);
-        }
-        .quiz-meta strong {
-          color: var(--white);
-          font-weight: 600;
-        }
+    .user-block {
+      border-top: 1px solid var(--border-steel);
+      padding-top: 1rem;
+    }
 
-        /* Status indicator */
-        .status {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          border-radius: 999px;
-          font-size: var(--tiny);
-          font-weight: 600;
-        }
-        .status-available {
-          background: rgba(70, 211, 154, 0.2);
-          color: var(--success);
-          border: 1px solid rgba(70, 211, 154, 0.3);
-        }
-        .status-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: currentColor;
-        }
+    .user-avatar {
+      font-size: 3rem;
+      font-family: var(--font-display);
+      line-height: 1;
+      color: var(--signal-orange);
+      margin-bottom: 0.5rem;
+    }
 
-        /* Action button */
-        .quiz-actions {
-          margin-top: 16px;
-        }
-        .action-btn {
-          width: 100%;
-          padding: 12px 16px;
-          border-radius: var(--radius-md);
-          background: linear-gradient(180deg, var(--accent) 0%, #58a6ff 100%);
-          border: var(--border-strong);
-          color: var(--white);
-          font-size: var(--body);
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-        .action-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 16px 28px rgba(88, 166, 255, 0.35);
-          color: var(--white);
-        }
+    /* MAIN CONTENT AREA */
+    .col-main {
+      padding: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
 
-        /* Empty state */
-        .empty-state {
-          text-align: center;
-          padding: 60px 20px;
-          color: var(--muted);
-        }
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-          opacity: 0.6;
-        }
-        .empty-title {
-          font-size: 20px;
-          font-weight: 600;
-          color: var(--white);
-          margin: 0 0 8px 0;
-        }
-        .empty-text {
-          font-size: var(--body);
-          margin: 0 0 20px 0;
-        }
+    /* HEADER */
+    .manifesto-header {
+      padding: calc(var(--space-unit) * 2);
+      border-bottom: 1px solid var(--border-steel);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 2rem;
+    }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-          .page { padding: 16px; }
-          .quiz-grid { grid-template-columns: 1fr; }
-          .filters-bar { flex-direction: column; }
-          .title-section { flex-direction: column; align-items: flex-start; gap: 12px; }
-          .header { padding: 12px; }
-          .header-right { display: none; }
-          .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        }
-        @media (max-width: 480px) {
-          .kpi-row { grid-template-columns: 1fr; }
-        }
+    .header-title h2 {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      line-height: 0.9;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
 
-        /* KPI cards */
-        .kpi-row {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 20px;
-          margin-bottom: 32px;
-        }
+    .header-meta {
+      font-family: var(--font-tech);
+      color: var(--signal-orange);
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
 
-        .kpi {
-          padding: 20px;
-          border-radius: var(--radius-lg);
-          background: var(--panel);
-          backdrop-filter: blur(var(--blur-mid));
-          -webkit-backdrop-filter: blur(var(--blur-mid));
-          border: var(--border-soft);
-          box-shadow: var(--shadow-inset), var(--shadow-2);
-          transition: all 0.3s ease;
-          text-align: center;
-        }
-        
-        .kpi:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-inset), 0 12px 32px rgba(0,0,0,0.4);
-        }
+    /* FILTERS & TOOLS */
+    .filter-bar {
+      border-bottom: 1px solid var(--border-steel);
+      display: flex;
+      flex-wrap: wrap;
+    }
 
-        .kpi-label {
-          font-size: var(--tiny);
-          color: var(--muted);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
-        }
+    .filter-item {
+      padding: var(--space-unit);
+      border-right: 1px solid var(--border-steel);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      min-width: 250px;
+    }
 
-        .kpi-value {
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--white);
-        }
+    .raw-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #444;
+      color: #fff;
+      font-family: var(--font-tech);
+      font-size: 1rem;
+      padding: 0.5rem 0;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+    }
 
-        /* Utility classes */
-        .mono {
-          font-feature-settings: "tnum" on, "lnum" on;
-        }
-    </style>
+    .raw-input:focus {
+      border-bottom-color: var(--signal-orange);
+    }
+
+    .raw-select {
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 0.5rem;
+      font-family: var(--font-tech);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .tab-group {
+      display: flex;
+      border-right: 1px solid var(--border-steel);
+    }
+
+    .tab-btn {
+      padding: 0 var(--space-unit);
+      background: transparent;
+      border: none;
+      border-right: 1px solid var(--border-steel);
+      color: #666;
+      font-family: var(--font-tech);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tab-btn.active {
+      color: var(--signal-orange);
+      background: rgba(255, 60, 0, 0.05);
+    }
+
+    /* QUIZ GRID */
+    .quiz-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      border-bottom: 1px solid var(--border-steel);
+    }
+
+    .quiz-card {
+      border-right: 1px solid var(--border-steel);
+      border-bottom: 1px solid var(--border-steel);
+      padding: var(--space-unit);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 300px;
+      transition: background 0.2s;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+    }
+
+    .quiz-card:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .quiz-card:hover .quiz-title {
+      color: var(--signal-orange);
+    }
+
+    .card-header {
+      margin-bottom: 2rem;
+    }
+
+    .quiz-status {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #666;
+      margin-bottom: 1rem;
+      display: inline-block;
+      border: 1px solid #333;
+      padding: 2px 6px;
+    }
+
+    .quiz-status.available {
+      color: #46d39a;
+      border-color: rgba(70, 211, 154, 0.3);
+    }
+
+    .quiz-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      line-height: 1.1;
+      color: #fff;
+      transition: color 0.2s;
+    }
+
+    .card-meta {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #888;
+      font-family: var(--font-tech);
+      border-top: 1px solid #222;
+      padding-top: 1rem;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .start-indicator {
+      margin-top: 1rem;
+      text-align: right;
+      color: var(--signal-orange);
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.2s;
+    }
+
+    .quiz-card:hover .start-indicator {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      padding: 4rem;
+      text-align: center;
+      opacity: 0.4;
+      font-family: var(--font-tech);
+      grid-column: 1 / -1;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .poster-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .col-nav {
+        height: auto;
+        position: relative;
+        flex-direction: row;
+        align-items: center;
+        border-bottom: 1px solid var(--border-steel);
+        border-right: none;
+      }
+
+      .nav-menu {
+        flex-direction: row;
+        margin-top: 0;
+        margin-left: auto;
+      }
+
+      .nav-item {
+        font-size: 1rem;
+      }
+
+      .filter-bar {
+        flex-direction: column;
+      }
+
+      .filter-item {
+        border-right: none;
+        border-bottom: 1px solid var(--border-steel);
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <div class="page">
-    <div class="content-wrap">
-      <!-- Header bar -->
-      <div class="header">
-        <div class="header-left">
-          <div class="header-dot"></div>
-          <span>MySQL Knowledge Testing Platform</span>
-        </div>
-        <div class="header-right"></div>
+
+  <div class="poster-grid">
+
+    <!-- COLUMN 1: NAVIGATION -->
+    <aside class="col-nav">
+      <div class="brand-block">
+        <h1>Sql<br>Quiz<span style="color:var(--signal-orange)">.</span></h1>
+        <div class="brand-meta">Berlin Concrete Build</div>
       </div>
 
-      <!-- Title section -->
-      <div class="title-section">
-        <div>
-          <h1 class="page-title">Quiz Center</h1>
-          <p class="page-subtitle">Select the MySQL knowledge test you want to take</p>
+      <nav class="nav-menu">
+        <a href="/student/dashboard" class="nav-item">Dashboard</a>
+        <a href="/student/quizzes" class="nav-item active">Quiz List</a>
+        <a href="/student/submissions" class="nav-item">History</a>
+      </nav>
+
+      <div class="user-block">
+        <div class="user-avatar" th:text="${student != null ? #strings.substring(student.fullName, 0, 1) : 'G'}">G</div>
+        <div style="font-size: 0.9rem; color: #fff;" th:text="${student != null ? student.fullName : 'Guest'}">Guest
+          User</div>
+        <a href="/logout"
+          style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+          LOGOUT</a>
+      </div>
+    </aside>
+
+    <!-- COLUMN 2: CONTENT -->
+    <main class="col-main">
+
+      <!-- PAGE HEADER -->
+      <header class="manifesto-header">
+        <div class="header-title">
+          <div class="header-meta">/// SECTOR 01</div>
+          <h2>Module<br>Directory</h2>
+        </div>
+        <div style="text-align: right; max-width: 300px; color: #888; font-size: 0.9rem;">
+          Access all available assessments. Complete within designated time limits.
+        </div>
+      </header>
+
+      <!-- TOOLBAR -->
+      <div class="filter-bar">
+        <div class="filter-item" style="flex: 2;">
+          <span style="font-family: var(--font-tech); color: #666; font-size: 0.8rem;">SEARCH //</span>
+          <input type="text" id="searchInput" class="raw-input" placeholder="ENTER KEYWORD...">
+        </div>
+        <div class="tab-group">
+          <button class="tab-btn active" data-filter="all">ALL</button>
+          <button class="tab-btn" data-filter="available">OPEN</button>
+          <button class="tab-btn" data-filter="completed">CLOSED</button>
         </div>
       </div>
 
-      <!-- KPI cards -->
-      <div class="kpi-row">
-        <div class="kpi">
-          <div class="kpi-label">Available Quizzes</div>
-          <div class="kpi-value" th:text="${totalQuizzes}">0</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Completed</div>
-          <div class="kpi-value" th:text="${completedQuizzes}">0</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Average Score</div>
-          <div class="kpi-value" th:text="${averageScore > 0 ? #numbers.formatDecimal(averageScore, 1, 1) + '%' : '0%'}">0%</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Active Status</div>
-          <div class="kpi-value">✓</div>
-        </div>
-      </div>
+      <!-- GRID -->
+      <div class="quiz-grid" id="quizContainer">
 
-      <!-- Filters and search -->
-      <div class="filters-bar">
-        <div class="field">
-          <span class="chip">Search</span>
-          <input type="text" placeholder="Search quiz name..." id="searchInput" />
+        <div th:if="${#lists.isEmpty(quizzes)}" class="empty-state">
+          NO MODULES DETECTED
         </div>
-        <div class="field">
-          <span class="chip">Filter</span>
-          <select id="statusFilter">
-            <option value="">All Status</option>
-            <option value="available">Available</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-filter="all">All Quizzes</button>
-        <button class="tab" data-filter="available">Available</button>
-        <button class="tab" data-filter="inprogress">In Progress</button>
-        <button class="tab" data-filter="completed">Completed</button>
-      </div>
+        <a th:each="quiz : ${quizzes}" th:href="@{/student/quiz/{id}(id=${quiz.id})}" class="quiz-card"
+          data-status="available">
 
-      <!-- Quiz cards grid -->
-      <div th:if="${#lists.isEmpty(quizzes)}" class="empty-state">
-        <div class="empty-icon">📋</div>
-        <h3 class="empty-title">No Available Quizzes</h3>
-        <p class="empty-text">There are currently no open tests, please check back later</p>
-        <a href="/student/dashboard" class="action-btn" style="max-width: 200px; margin: 0 auto;">
-          Return to Dashboard
+          <div class="card-header">
+            <div class="quiz-status available">AVAILABLE</div>
+            <h3 class="quiz-title" th:text="${quiz.title}">Database Basics</h3>
+          </div>
+
+          <div class="card-meta">
+            <div class="meta-row">
+              <span>INSTRUCTOR</span>
+              <span th:text="${quiz.teacher.fullName}">System</span>
+            </div>
+            <div class="meta-row">
+              <span>TIME_LIMIT</span>
+              <span th:text="${quiz.timeLimit != null ? quiz.timeLimit + ' MIN' : 'UNLIMITED'}">45 MIN</span>
+            </div>
+            <div class="meta-row">
+              <span>ATTEMPTS</span>
+              <span th:text="${quiz.maxAttempts != null ? quiz.maxAttempts : '∞'}">3</span>
+            </div>
+            <div class="start-indicator">
+              INITIATE →
+            </div>
+          </div>
         </a>
       </div>
 
-      <div th:if="${!#lists.isEmpty(quizzes)}" class="quiz-grid" id="quizContainer">
-        <div class="quiz-card" th:each="quiz : ${quizzes}" data-status="available">
-            <h3 class="quiz-title" th:text="${quiz.title}">MySQL知识测试</h3>
-            
-            <div class="quiz-info">
-              <div class="quiz-meta">
-                <strong>Teacher:</strong>
-                <span th:text="${quiz.teacher.fullName}">Teacher Name</span>
-              </div>
-              
-              <div class="quiz-meta">
-                <strong>Created:</strong>
-                <span th:text="${#temporals.format(quiz.createdAt, 'yyyy-MM-dd')}">2024-01-01</span>
-              </div>
-              
-              <div class="quiz-meta">
-                <strong>Time Limit:</strong>
-                <span th:if="${quiz.timeLimit}" th:text="${quiz.timeLimit + ' minutes'}">60 minutes</span>
-                <span th:unless="${quiz.timeLimit}">No limit</span>
-              </div>
-              
-              <div class="quiz-meta">
-                <strong>Max Attempts:</strong>
-                <span th:if="${quiz.maxAttempts}" th:text="${quiz.maxAttempts + ' times'}">3 times</span>
-                <span th:unless="${quiz.maxAttempts}">No limit</span>
-              </div>
-              
-              <div class="quiz-meta">
-                <strong>Question Count:</strong>
-                <span>To be determined</span>
-              </div>
-            </div>
+    </main>
 
-            <div class="status status-available">
-              <span class="status-dot"></span>
-              Available
-            </div>
-
-            <div class="quiz-actions">
-              <a th:href="@{/student/quiz/{id}(id=${quiz.id})}" class="action-btn">
-                Start Quiz
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
   </div>
 
-  <script>
-    // Tab functionality
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        // Remove active class from all tabs
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        // Add active class to clicked tab
+  <script th:inline="javascript">
+    // Keep the filtering logic but adapt to new classes
+    document.querySelectorAll('.tab-btn').forEach(tab => {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
         this.classList.add('active');
-        
-        // Filter cards based on data-filter attribute
+
         const filter = this.getAttribute('data-filter');
         const cards = document.querySelectorAll('.quiz-card');
-        
+
         cards.forEach(card => {
+          // Simple mock filtering logic - in real app, might need more complex status logic from Thymeleaf
+          // ensuring we actually have data-status populated correctly
           if (filter === 'all' || card.getAttribute('data-status') === filter) {
-            card.style.display = 'block';
+            card.style.display = 'flex';
           } else {
             card.style.display = 'none';
           }
@@ -551,45 +488,19 @@
       });
     });
 
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', function() {
-      const searchTerm = this.value.toLowerCase();
-      const cards = document.querySelectorAll('.quiz-card');
-      
-      cards.forEach(card => {
+    document.getElementById('searchInput').addEventListener('input', function () {
+      const term = this.value.toLowerCase();
+      document.querySelectorAll('.quiz-card').forEach(card => {
         const title = card.querySelector('.quiz-title').textContent.toLowerCase();
-        const description = card.textContent.toLowerCase();
-        
-        if (title.includes(searchTerm) || description.includes(searchTerm)) {
-          card.style.display = 'block';
+        if (title.includes(term)) {
+          card.style.display = 'flex';
         } else {
           card.style.display = 'none';
         }
       });
-    });
-
-    // Status filter functionality
-    document.getElementById('statusFilter').addEventListener('change', function() {
-      const filter = this.value;
-      const cards = document.querySelectorAll('.quiz-card');
-      
-      cards.forEach(card => {
-        if (filter === '' || card.getAttribute('data-status') === filter) {
-          card.style.display = 'block';
-        } else {
-          card.style.display = 'none';
-        }
-      });
-      
-      // Reset active tab when using dropdown filter
-      if (filter !== '') {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-filter="${filter}"]`)?.classList.add('active');
-      } else {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector('.tab[data-filter="all"]')?.classList.add('active');
-      }
     });
   </script>
+
 </body>
+
 </html>

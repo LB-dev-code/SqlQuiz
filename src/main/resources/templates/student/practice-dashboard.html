@@ -1,40 +1,36 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL Practice Dashboard - SqlQuiz</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Neural Training / Berlin Concrete</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            /* Morandi Color Palette */
-            --bg-base: #f0f2f5;
-            --bg-gradient: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-            --morandi-blue: #a3b8c8;
-            --morandi-green: #b5c4b1;
-            --morandi-rose: #d4a5a5;
-            --morandi-grey: #9ca3af;
-            --morandi-sand: #d7c4b7;
-            
-            --glass-bg: rgba(255, 255, 255, 0.4);
-            --glass-border: rgba(255, 255, 255, 0.5);
-            --text-primary: #475569;
-            --text-secondary: #64748b;
-            --accent: #7c9aaf; /* Muted primary */
-            --accent-hover: #5d7e95;
-            --success: #88a096;
-            --danger: #c48b8b;
-            --warning: #ccad8f;
-            
-            --radius-lg: 24px;
-            --radius-md: 16px;
-            --radius-sm: 12px;
-            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-            
-            --spacing-unit: 8px;
+            /* Berlin Concrete Palette */
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --glass-frost: rgba(255, 255, 255, 0.02);
+            --border-steel: rgba(255, 255, 255, 0.15);
+
+            /* Accents */
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+
+            /* Metrics */
+            --space-unit: 1.5rem;
+            --brutal-gap: 2px;
         }
 
         * {
@@ -44,558 +40,484 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
-            color: var(--text-primary);
-            line-height: 1.6;
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Brutalist Layout Grid */
+        .poster-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
             min-height: 100vh;
         }
 
-        /* Glassmorphism Common Style */
-        .glass-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow);
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-        }
-
-        .glass-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-        }
-
-        /* Layout Structure - F-Pattern / Z-Pattern focused */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        header {
+        /* SIDEBAR / NAVIGATION */
+        .col-nav {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
+            position: sticky;
+            top: 0;
+            height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
         }
 
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-icon {
-            width: 44px;
-            height: 44px;
-            background: var(--morandi-blue);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        .app-name {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 24px;
+        .brand-block h1 {
+            font-family: var(--font-display);
             font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: -0.5px;
-        }
-
-        .user-nav {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--glass-bg);
-            padding: 6px 16px 6px 6px;
-            border-radius: 30px;
-            border: 1px solid var(--glass-border);
-        }
-
-        .avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--morandi-rose);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        /* Main Dashboard Grid */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 30px;
-        }
-
-        /* Stats Section */
-        .stats-section {
-            margin-bottom: 30px;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .stat-card {
-            padding: 24px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 13px;
-            color: var(--text-secondary);
+            font-size: 2rem;
+            line-height: 0.9;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
         }
 
-        /* Practice Area - The Central Action */
-        .practice-main-card {
-            padding: 40px;
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-menu {
             display: flex;
             flex-direction: column;
-            gap: 24px;
-            margin-bottom: 30px;
+            gap: 1rem;
+            margin-top: 4rem;
+        }
+
+        .nav-item {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: #888;
+            text-decoration: none;
+            transition: color 0.2s, padding-left 0.2s;
             position: relative;
-            overflow: hidden;
         }
 
-        .practice-main-card::before {
-            content: '';
+        .nav-item:hover,
+        .nav-item.active {
+            color: #fff;
+            padding-left: 10px;
+        }
+
+        .nav-item.active::before {
+            content: '→';
             position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 150px;
-            height: 150px;
-            background: var(--morandi-blue);
-            opacity: 0.1;
-            border-radius: 50%;
+            left: -15px;
+            color: var(--signal-orange);
         }
 
-        .practice-intro h2 {
-            font-size: 28px;
-            margin-bottom: 12px;
+        .user-block {
+            border-top: 1px solid var(--border-steel);
+            padding-top: 1rem;
         }
 
-        .practice-intro p {
-            color: var(--text-secondary);
-            max-width: 600px;
+        .user-avatar {
+            font-size: 3rem;
+            font-family: var(--font-display);
+            line-height: 1;
+            color: var(--signal-orange);
+            margin-bottom: 0.5rem;
         }
 
-        .control-row {
+        /* MAIN CONTENT AREA */
+        .col-main {
+            padding: 0;
+            position: relative;
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        .manifesto-header {
+            padding: calc(var(--space-unit) * 2);
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
             align-items: flex-end;
+            gap: 2rem;
+            flex-wrap: wrap;
         }
 
-        .input-group {
+        .header-title h2 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-meta {
+            font-family: var(--font-tech);
+            color: var(--signal-orange);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        /* INITIATE PANEL */
+        .initiate-panel {
+            padding: var(--space-unit);
+            border-bottom: 1px solid var(--border-steel);
+            background: rgba(0, 0, 0, 0.2);
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            flex: 1;
-            min-width: 250px;
+            gap: 1.5rem;
         }
 
-        label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        select {
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.2);
-            font-family: inherit;
-            color: var(--text-primary);
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        select:focus {
-            background: rgba(255,255,255,0.5);
-            border-color: var(--accent);
-        }
-
-        .btn-primary {
-            padding: 14px 32px;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 12px rgba(124, 154, 175, 0.3);
-            text-decoration: none;
-            min-height: 44px; /* iOS HIG requirement */
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(124, 154, 175, 0.4);
-        }
-
-        .btn-secondary {
-            padding: 12px 24px;
+        .raw-multi-select {
             background: transparent;
-            color: var(--text-secondary);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 0.5rem;
+            font-family: var(--font-tech);
+            font-size: 0.9rem;
+            width: 100%;
+            height: 150px;
+            outline: none;
         }
 
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.3);
-            color: var(--text-primary);
+        .raw-multi-select option {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        /* Mastery List */
-        .mastery-list {
+        .raw-multi-select option:checked {
+            background: var(--signal-orange);
+            color: #000;
+        }
+
+        .action-row {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn-execute {
+            background: var(--signal-orange);
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-execute:hover {
+            background: #fff;
+        }
+
+        /* SPLIT VIEW */
+        .content-split {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            flex: 1;
+        }
+
+        /* MASTERY GRID */
+        .mastery-zone {
+            padding: var(--space-unit);
+            border-right: 1px solid var(--border-steel);
+        }
+
+        .section-label {
+            font-family: var(--font-tech);
+            color: #666;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            display: block;
         }
 
         .mastery-item {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 16px;
-            background: rgba(255,255,255,0.2);
-            border-radius: var(--radius-sm);
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .type-info {
-            display: flex;
-            flex-direction: column;
+        .mastery-info {
+            flex: 1;
         }
 
-        .type-name {
-            font-weight: 600;
-            font-size: 14px;
+        .topic-name {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: #fff;
+            display: block;
         }
 
-        .type-stat {
-            font-size: 12px;
-            color: var(--text-secondary);
+        .topic-stats {
+            font-size: 0.75rem;
+            color: #666;
         }
 
-        .progress-container {
-            width: 100px;
-            height: 6px;
-            background: rgba(0,0,0,0.05);
-            border-radius: 3px;
-            overflow: hidden;
+        .progress-block {
+            width: 150px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-left: 1rem;
+            position: relative;
         }
 
-        .progress-bar {
+        .progress-fill {
             height: 100%;
-            background: var(--morandi-blue);
-            transition: width 0.5s ease;
+            background: #fff;
+            position: absolute;
+            left: 0;
+            top: 0;
         }
 
-        .progress-bar.mastered {
-            background: var(--success);
+        .progress-fill.mastered {
+            background: var(--success-green);
         }
 
-        .progress-bar.learning {
-            background: var(--morandi-blue);
+        .progress-value {
+            font-family: var(--font-tech);
+            font-size: 0.8rem;
+            color: #fff;
+            margin-left: 1rem;
+            width: 3rem;
+            text-align: right;
         }
 
-        /* History Panel */
-        .history-panel {
-            padding: 24px;
-            height: fit-content;
-        }
-
-        .history-list {
+        /* HISTORY FEED */
+        .history-zone {
+            background: rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
-            gap: 16px;
-        }
-
-        /* 滚动条美化 */
-        .history-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .history-list::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 3px;
-        }
-
-        .history-list::-webkit-scrollbar-thumb {
-            background: var(--morandi-blue);
-            border-radius: 3px;
-        }
-
-        .history-list::-webkit-scrollbar-thumb:hover {
-            background: var(--accent);
         }
 
         .history-item {
-            padding: 12px;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-steel);
+            font-size: 0.8rem;
+            color: #888;
         }
 
-        .history-item:last-child {
-            border-bottom: none;
+        .history-item strong {
+            color: #fff;
+            display: block;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
         }
 
-        .history-date {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .history-record {
-            font-weight: 600;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .accuracy-tag {
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: var(--morandi-green);
-            color: white;
-        }
-
-        /* Loading Spinner */
+        /* LOADING OVERLAY */
         #loading-overlay {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.8);
-            backdrop-filter: blur(4px);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
             z-index: 1000;
             display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            gap: 16px;
+            gap: 1rem;
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid var(--morandi-blue);
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .loader-text {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            color: #fff;
+            animation: blink 0.5s infinite alternate;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes blink {
+            from {
+                opacity: 0.2;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
-        /* Responsive */
-        @media (max-width: 992px) {
-            .dashboard-grid {
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .poster-grid {
                 grid-template-columns: 1fr;
             }
-        }
 
-        @media (max-width: 600px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch;
+            .col-nav {
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                align-items: center;
+                border-bottom: 1px solid var(--border-steel);
+                border-right: none;
             }
-            .btn-primary {
-                width: 100%;
-                justify-content: center;
+
+            .nav-menu {
+                flex-direction: row;
+                margin-top: 0;
+                margin-left: auto;
+            }
+
+            .nav-item {
+                font-size: 1rem;
+            }
+
+            .content-split {
+                grid-template-columns: 1fr;
+            }
+
+            .mastery-zone {
+                border-right: none;
+                border-bottom: 1px solid var(--border-steel);
             }
         }
     </style>
 </head>
+
 <body>
 
     <div id="loading-overlay">
-        <div class="spinner"></div>
-        <p>Initializing your practice session...</p>
+        <div class="loader-text">INITIALIZING...</div>
+        <div style="font-family: var(--font-tech); color: var(--signal-orange);">/// GENERATING NEURAL PATHWAYS</div>
     </div>
 
-    <div class="container">
-        <!-- Header (F-Pattern: Logo top-left, User top-right) -->
-        <header>
-            <div class="logo-area">
-                <div class="logo-icon"><i class="fas fa-brain"></i></div>
-                <div class="app-name">SqlQuiz <span style="font-weight: 300; font-size: 14px; opacity: 0.6;">| Practice</span></div>
+    <div class="poster-grid">
+
+        <!-- COLUMN 1: NAVIGATION -->
+        <aside class="col-nav">
+            <div class="brand-block">
+                <h1>Sql<br>Quiz<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Berlin Concrete Build</div>
             </div>
-            <div class="user-nav">
-                <a href="/student/dashboard" class="btn-secondary"><i class="fas fa-arrow-left"></i> Home</a>
-                <div class="user-profile">
-                    <div class="avatar" th:text="${student.fullName != null and !student.fullName.isEmpty() ? student.fullName.substring(0,1) : 'S'}">A</div>
-                    <span class="username" th:text="${student.fullName != null ? student.fullName : student.username}">Student Name</span>
+
+            <nav class="nav-menu">
+                <a href="/student/dashboard" class="nav-item">Dashboard</a>
+                <a href="/student/submissions" class="nav-item">History</a>
+                <a href="/student/practice/dashboard" class="nav-item active">Training</a>
+            </nav>
+
+            <div class="user-block">
+                <div class="user-avatar"
+                    th:text="${student != null ? #strings.substring(student.fullName, 0, 1) : 'S'}">S</div>
+                <div style="font-size: 0.9rem; color: #fff;" th:text="${student != null ? student.fullName : 'User'}">
+                    User</div>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
+            </div>
+        </aside>
+
+        <!-- COLUMN 2: MAIN CONTENT -->
+        <main class="col-main">
+
+            <!-- HEADER -->
+            <header class="manifesto-header">
+                <div class="header-title">
+                    <div class="header-meta">/// SELF-IMPROVEMENT MODULE</div>
+                    <h2>Neural<br>Training</h2>
+                </div>
+                <div style="text-align: right; max-width: 300px; color: #888; font-size: 0.9rem;">
+                    AI-driven practice sessions based on your performance metrics.
+                </div>
+            </header>
+
+            <!-- INITIATE PANEL -->
+            <div class="initiate-panel">
+                <div>
+                    <div class="section-label" style="margin-bottom: 0.5rem;">TARGET PARAMETERS (OPTIONAL - SELECT
+                        MULTIPLE)</div>
+                    <select id="type-select" multiple class="raw-multi-select">
+                        <option th:each="type : ${questionTypes}" th:value="${type.name()}"
+                            th:text="${type.displayName}">JOIN OPERATIONS</option>
+                    </select>
+                </div>
+                <div class="action-row">
+                    <button onclick="startNewSession()" class="btn-execute">
+                        INITIATE SESSION
+                    </button>
+                    <div style="font-family: var(--font-tech); color: #666; font-size: 0.8rem;">
+                        < 10 Questions Generated>
+                    </div>
                 </div>
             </div>
-        </header>
 
-        <div class="dashboard-grid">
-            <!-- Left Column: Main Actions & Mastering Stats -->
-            <main>
-                <!-- New Practice Card -->
-                <div class="glass-card practice-main-card">
-                    <div class="practice-intro">
-                        <h2>Personalized SQL Training</h2>
-                        <p>Our AI analyzes your quiz performance to generate targeted exercises. Start a 10-question round to bridge your knowledge gaps.</p>
+            <!-- CONTENT SPLIT -->
+            <div class="content-split">
+
+                <!-- MASTERY DATA -->
+                <div class="mastery-zone">
+                    <div class="section-label">TOPIC MASTERY MATRIX</div>
+
+                    <div th:if="${#lists.isEmpty(statistics)}"
+                        style="padding: 2rem; color: #444; text-align: center; font-family: var(--font-tech);">
+                        NO DATA AVAILABLE. COMPLETE A SESSION TO GENERATE METRICS.
                     </div>
-                    <div class="control-row">
-                        <div class="input-group">
-                            <label for="type-select">Focus Topics (Optional - Select Multiple)</label>
-                            <select id="type-select" multiple="multiple" size="5">
-                                <option th:each="type : ${questionTypes}"
-                                        th:value="${type.name()}"
-                                        th:text="${type.displayName}"></option>
-                            </select>
-                            <small style="color: var(--text-secondary); margin-top: 4px;">Hold Ctrl/Cmd to select multiple topics</small>
+
+                    <div th:each="stat : ${statistics}" class="mastery-item">
+                        <div class="mastery-info">
+                            <span class="topic-name" th:text="${stat.questionType.displayName}">JOINS</span>
+                            <span class="topic-stats"
+                                th:text="${stat.correctCount} + ' / ' + ${stat.totalCount} + ' CORRECT'">5/10</span>
                         </div>
-                        <button onclick="startNewSession()" class="btn-primary">
-                            <i class="fas fa-bolt"></i> Start Session
-                        </button>
+                        <div class="progress-block">
+                            <div class="progress-fill" th:style="'width:' + ${stat.accuracy * 100} + '%'"
+                                th:classappend="${stat.accuracy >= 0.9 ? 'mastered' : ''}"></div>
+                        </div>
+                        <div class="progress-value"
+                            th:text="${#numbers.formatDecimal(stat.accuracy * 100, 0, 0)} + '%'">50%</div>
                     </div>
                 </div>
 
-                <!-- Type Statistics -->
-                <section class="stats-section">
-                    <div class="section-header">
-                        <h3 class="section-title"><i class="fas fa-chart-line" style="color: var(--morandi-blue);"></i> Topic Mastery</h3>
-                        <span class="text-small" th:text="${#lists.size(statistics)} + ' topics tracked'">0 topics</span>
-                    </div>
-                    
-                    <!-- 掌握和推荐提示 -->
-                    <div th:if="${!#lists.isEmpty(statistics)}" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
-                        <div th:if="${#lists.size(statistics.?[isMastered == true])} > 0" 
-                             style="padding: 12px 16px; background: rgba(136, 160, 150, 0.1); border: 1px solid var(--success); border-radius: var(--radius-sm); flex: 1; min-width: 200px;">
-                            <div style="font-size: 12px; color: var(--success); font-weight: 600; margin-bottom: 4px;">
-                                <i class="fas fa-trophy"></i> MASTERED (≥9 0%)
-                            </div>
-                            <div style="font-size: 13px; color: var(--text-secondary);" th:text="${#strings.listJoin(statistics.?[isMastered == true].![questionType.displayName], ', ')}">Topics</div>
-                        </div>
-                        <div th:if="${#lists.size(statistics.?[isMastered == false && errorFrequency >= 0.3])} > 0" 
-                             style="padding: 12px 16px; background: rgba(255, 193, 7, 0.1); border: 1px solid var(--warning); border-radius: var(--radius-sm); flex: 1; min-width: 200px;">
-                            <div style="font-size: 12px; color: var(--warning); font-weight: 600; margin-bottom: 4px;">
-                                <i class="fas fa-exclamation-triangle"></i> RECOMMENDED PRACTICE
-                            </div>
-                            <div style="font-size: 13px; color: var(--text-secondary);" th:text="${#strings.listJoin(statistics.?[isMastered == false && errorFrequency >= 0.3].![questionType.displayName], ', ')}">Topics</div>
-                        </div>
-                    </div>
-                    
-                    <div class="mastery-list">
-                        <div th:if="${#lists.isEmpty(statistics)}" class="empty-state">
-                            <i class="fas fa-ghost" style="font-size: 32px; opacity: 0.2; display: block; margin-bottom: 10px;"></i>
-                            No practice data yet. Complete your first quiz or practice session!
-                        </div>
-                        
-                        <div th:each="stat : ${statistics}" class="glass-card mastery-item">
-                            <div class="type-info">
-                                <span class="type-name" th:text="${stat.questionType.displayName}">Topic Name</span>
-                                <span class="type-stat" th:text="${stat.correctCount} + '/' + ${stat.totalCount} + ' Correct'">10/12</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <div class="progress-container">
-                                    <div class="progress-bar"
-                                         th:style="'width:' + ${stat.accuracy * 100} + '%'"
-                                         th:classappend="${stat.accuracy >= 0.9 ? 'mastered' : 'learning'}"></div>
-                                </div>
-                                <span class="type-name" th:text="${#numbers.formatDecimal(stat.accuracy * 100, 0, 0)} + '%'">85%</span>
-                                <i th:if="${stat.isMastered}" class="fas fa-check-circle" style="color: var(--success);" title="Mastered (90%+)"></i>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </main>
+                <!-- HISTORY LOG -->
+                <div class="history-zone">
+                    <div class="section-label" style="padding: 1rem; border-bottom: 1px solid var(--border-steel);">
+                        RECENT LOGS</div>
 
-            <!-- Right Column: Quick Stats & History -->
-            <aside>
-                <div class="glass-card history-panel">
-                    <div class="section-header">
-                        <h3 class="section-title"><i class="fas fa-history" style="color: var(--morandi-sand);"></i> Recent Activity</h3>
+                    <div th:if="${#lists.isEmpty(history)}"
+                        style="padding: 1rem; color: #444; font-family: var(--font-tech);">
+                        EMPTY LOG
                     </div>
-                    <div class="history-list" style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
-                        <div th:if="${#lists.isEmpty(history)}" class="empty-state">
-                            Records will appear here.
-                        </div>
-                        <div th:each="practiceSession : ${history}" class="history-item">
-                            <span class="history-date" th:text="${#temporals.format(practiceSession.startTime, 'MMM dd, HH:mm')}">Jan 25</span>
-                            <div class="history-record">
-                                <span th:text="${practiceSession.totalQuestions} + ' Questions'">10 Questions</span>
-                                <span class="accuracy-tag" th:text="${#numbers.formatDecimal(practiceSession.overallAccuracy * 100, 0, 0)} + '% Accurate'">90%</span>
-                            </div>
+
+                    <div th:each="historyItem : ${history}" class="history-item">
+                        <strong th:text="${historyItem.totalQuestions} + ' QUESTIONS'">10 QUESTIONS</strong>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.25rem;">
+                            <span th:text="${#temporals.format(historyItem.startTime, 'MMM dd HH:mm')}">JAN 01 12:00</span>
+                            <span
+                                th:text="${#numbers.formatDecimal(historyItem.overallAccuracy * 100, 0, 0)} + '% ACCURACY'"
+                                style="color: var(--signal-orange)">80% ACCURACY</span>
                         </div>
                     </div>
                 </div>
-            </aside>
-        </div>
+
+            </div>
+
+        </main>
+
     </div>
 
     <!-- Hidden session ID for active rounds -->
     <input type="hidden" id="active-session-id" th:value="${activeSession != null ? activeSession.id : ''}">
 
     <script>
+        console.log('[DEBUG] Script loaded');
         const loading = document.getElementById('loading-overlay');
 
         async function startNewSession() {
-            // 获取多选下拉框中所有选中的值
+            console.log('[DEBUG] startNewSession called');
             const selectElement = document.getElementById('type-select');
             const selectedTypes = Array.from(selectElement.selectedOptions).map(option => option.value);
 
@@ -644,9 +566,7 @@
             }
         }
 
-        // 页面加载时，清理任何未完成的会话
         document.addEventListener('DOMContentLoaded', async () => {
-            // 自动结束任何遗留的活跃会话
             try {
                 await fetch('/student/practice/api/cleanup', {
                     method: 'POST',
@@ -657,5 +577,7 @@
             }
         });
     </script>
+
 </body>
+
 </html>

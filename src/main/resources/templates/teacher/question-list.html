@@ -1,1073 +1,772 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question Management - MySQL Knowledge Test Platform</title>
+    <title>Node Management / Berlin Concrete</title>
 
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
-        :root{
-            /* Dark theme with glassmorphism colors matching register page */
-            --bg: #0b0f14;
-            --bg-grad-1: #0b0f14;
-            --bg-grad-2: #0e1219;
-            --panel: rgba(18, 22, 29, 0.55);
-            --panel-strong: rgba(18, 22, 29, 0.75);
-            --white: #e8edf7;
-            --muted: #9aa6b2;
-            --text-dim: #6b7280;
-            --field: rgba(255,255,255,0.06);
-            --field-border: rgba(255,255,255,0.12);
-            --field-focus: rgba(100, 180, 255, 0.25);
-            --accent-1: #6e74ff;
-            --accent-2: #6ce1ff;
-            --accent: #5b8cff;
-            --accent-hover: #4979ff;
-            --danger: #ff5f8a;
-            --success: #4ff0a7;
-            --warning: #ffc857;
-            --shadow-1: rgba(0, 0, 0, 0.35);
-            --shadow-2: rgba(0, 20, 60, 0.35);
-            --heart: #ff6aa2;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
-            --spacing-1: 8px;
-            --spacing-2: 12px;
-            --spacing-3: 16px;
-            --spacing-4: 24px;
-            --spacing-5: 32px;
-            --spacing-6: 40px;
-            --spacing-7: 48px;
-            --spacing-8: 64px;
-            --spacing-10: 80px;
-
-            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
-            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+        :root {
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+            --alert-red: #ff003c;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+            --space-unit: 1.5rem;
         }
 
-        * { box-sizing: border-box; }
-        html, body {
-            height: 100%;
-            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
-            color: var(--white);
-            font-family: var(--font-sans);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
         }
 
-        .page {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: var(--spacing-6) var(--spacing-5);
+        body {
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* ====== Top bar ====== */
-        .topbar {
+        /* LAYOUT */
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-            margin-bottom: var(--spacing-5);
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
         }
 
-        .title-wrap {
+        /* SIDEBAR */
+        .sidebar {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
             display: flex;
-            align-items: center;
-            gap: var(--spacing-3);
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
         }
 
-        .app-title {
+        .brand-block {
+            margin-bottom: 3rem;
+        }
+
+        .brand-block h1 {
             font-family: var(--font-display);
             font-weight: 700;
-            font-size: 36px;
-            letter-spacing: 0.4px;
-            color: var(--white);
-        }
-
-        .user {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-            padding: var(--spacing-2) var(--spacing-3);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-md);
-            text-decoration: none;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .user:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-        
-        .logout-btn {
-            padding: 6px 10px;
-            margin-left: var(--spacing-2);
-            border-radius: var(--radius-sm);
-            background: rgba(255, 95, 138, 0.1);
-            border: 1px solid rgba(255, 95, 138, 0.3);
-            color: var(--danger);
-            font-size: 12px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .logout-btn:hover {
-            background: rgba(255, 95, 138, 0.2);
-            border-color: var(--danger);
-            transform: translateY(-1px);
-        }
-
-        .avatar {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(91,140,255,0.35), rgba(255,255,255,0.1));
-            border: 1px solid rgba(255,255,255,0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--white);
-        }
-
-        .username {
-            font-weight: 600;
-            color: var(--muted);
-        }
-
-        /* ====== Navigation links ====== */
-        .nav-links {
-            display: none;
-        }
-
-        /* ====== Action buttons row ====== */
-        .actions {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-10);
-        }
-
-        /* ====== Small deco chips ====== */
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
-            color: var(--muted);
-        }
-
-        .chip-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 12px rgba(91,140,255,0.8);
-        }
-
-        /* ====== KPI cards row ====== */
-        .kpi-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-6);
-        }
-
-        .kpi {
-            padding: var(--spacing-4);
-            border-radius: var(--radius-lg);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .kpi:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .kpi-label {
-            font-size: 12px;
-            color: var(--text-dim);
-            letter-spacing: 0.4px;
+            font-size: 2rem;
+            line-height: 0.9;
             text-transform: uppercase;
-            margin-bottom: var(--spacing-2);
-        }
-
-        .kpi-value {
-            font-family: var(--font-display);
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--white);
-        }
-
-        /* ====== Panel components ====== */
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .section {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--spacing-5);
-        }
-
-        .section-header {
-            padding: var(--spacing-6) var(--spacing-6) var(--spacing-3);
-        }
-
-        .section-title {
-            font-size: 22px;
-            font-weight: 600;
-            margin: 0;
-            color: var(--white);
-        }
-
-        .section-sub {
-            font-size: 14px;
-            color: var(--muted);
-            margin-top: var(--spacing-2);
-        }
-
-        .list {
-            padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
-            display: grid;
-            gap: var(--spacing-2);
-        }
-
-        /* List Items */
-        .item {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: var(--spacing-4);
-            align-items: start;
-            padding: var(--spacing-4) var(--spacing-4);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            box-shadow: var(--shadow-1);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .item:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 6px 10px;
-            border-radius: 999px;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
             color: #fff;
         }
 
-        .badge-easy {
-            background: var(--success);
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        .badge-medium {
-            background: var(--warning);
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            flex: 1;
         }
 
-        .badge-hard {
-            background: var(--danger);
-        }
-
-        .badge-single {
-            background: var(--accent);
-        }
-
-        .badge-multiple {
-            background: #9333ea;
-        }
-
-        .item-body {
-            display: grid;
-            gap: 6px;
-        }
-
-        .item-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--white);
-        }
-
-        .item-line {
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-
-        .item-actions {
-            display: inline-flex;
-            gap: var(--spacing-2);
-            align-items: center;
-        }
-
-        /* ====== Action Buttons ====== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-2);
-            padding: 14px 18px;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            letter-spacing: 0.2px;
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            cursor: pointer;
-            transition: all 0.12s ease;
-            text-align: center;
+        .nav-item {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: #888;
             text-decoration: none;
-            font-size: 14px;
-            background: var(--panel);
-            color: var(--white);
+            transition: color 0.2s, padding-left 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .btn.primary {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91,140,255,0.55);
-            box-shadow:
-                0 14px 28px rgba(108,225,255,0.18),
-                0 4px 10px var(--shadow-1),
-                inset 0 1px 0 rgba(255,255,255,0.45);
+        .nav-item:hover,
+        .nav-item.active {
+            color: #fff;
+            padding-left: 10px;
         }
 
-        .btn-secondary {
-            color: var(--white);
+        .nav-item.active::before {
+            content: '→';
+            position: absolute;
+            left: -15px;
+            color: var(--signal-orange);
         }
 
-        .btn:hover { 
-            transform: translateY(-1px); 
-            filter: brightness(1.04);
+        .user-profile {
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-steel);
+            font-size: 0.8rem;
+            color: #666;
         }
 
-        .btn.primary:hover {
-            box-shadow:
-                0 16px 32px rgba(108,225,255,0.22),
-                0 6px 14px var(--shadow-1);
+        .user-name {
+            color: #fff;
+            display: block;
+            margin-bottom: 4px;
         }
 
-        .btn-secondary:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
+        .logout-link {
+            color: var(--alert-red);
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 0.7rem;
         }
 
-        .btn:active { 
-            transform: translateY(0); 
+        /* MAIN */
+        .main-content {
+            padding: 0;
         }
 
-        /* Small buttons for actions */
-        .btn-primary {
-            padding: 8px 12px;
-            font-size: 12px;
+        .top-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
         }
 
-        .btn-danger {
-            padding: 8px 12px;
-            font-size: 12px;
+        .page-title h2 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+        }
+
+        .page-subtitle {
+            color: var(--blueprint-blue);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* KPI BAR */
+        .kpi-bar {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-steel);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .kpi-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kpi-lbl {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .kpi-val {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        /* ACTIONS */
+        .action-bar {
+            padding: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
             background: transparent;
-            border: 1px solid var(--danger);
-            color: var(--danger);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 0.8rem 1.5rem;
+            font-family: var(--font-tech);
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 0.85rem;
         }
 
-        .btn-danger:hover {
-            background: rgba(255, 95, 138, 0.1);
-            color: var(--danger);
+        .btn:hover {
+            background: #fff;
+            color: #000;
         }
 
-        /* SQL Code */
-        .sql-code {
+        .btn-primary {
+            background: var(--signal-orange);
+            border-color: var(--signal-orange);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #fff;
+            border-color: #fff;
+        }
+
+        .btn-tech {
+            border-color: var(--blueprint-blue);
+            color: var(--blueprint-blue);
+        }
+
+        .btn-tech:hover {
+            background: var(--blueprint-blue);
+            color: #fff;
+        }
+
+        /* QUESTION LIST */
+        .list-container {
+            padding: 0 2rem 2rem 2rem;
+        }
+
+        .q-item {
+            border: 1px solid var(--border-steel);
+            background: var(--surface-raw);
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .q-item:hover {
+            border-color: #666;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .q-main {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .q-index {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: #444;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .q-content h3 {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .q-meta {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .q-desc {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .q-sql {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            color: var(--accent-2);
-            font-weight: 600;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem;
+            border-left: 2px solid var(--blueprint-blue);
+            color: var(--blueprint-blue);
+            font-size: 0.8rem;
+            overflow-x: auto;
         }
 
-        /* Empty State */
+        .q-score {
+            text-align: right;
+            border: 1px solid var(--border-steel);
+            padding: 0.5rem 1rem;
+            font-family: var(--font-display);
+        }
+
+        .score-val {
+            font-size: 1.5rem;
+            color: var(--signal-orange);
+            display: block;
+        }
+
+        .score-lbl {
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .q-actions {
+            border-top: 1px solid var(--border-steel);
+            display: flex;
+        }
+
+        .q-action-btn {
+            flex: 1;
+            padding: 0.8rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            border: none;
+            border-right: 1px solid var(--border-steel);
+            color: #888;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .q-action-btn:last-child {
+            border-right: none;
+        }
+
+        .q-action-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .q-action-btn.delete:hover {
+            background: var(--alert-red);
+            color: #fff;
+        }
+
         .empty-state {
             text-align: center;
-            padding: var(--spacing-8) var(--spacing-4);
-            color: var(--text-dim);
+            padding: 5rem;
+            border: 1px dashed var(--border-steel);
+            color: #666;
+            margin-top: 2rem;
         }
 
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: var(--spacing-4);
-            opacity: 0.5;
-        }
-
-        .empty-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: var(--spacing-2);
-            color: var(--muted);
-        }
-
-        .empty-description {
-            font-size: 14px;
-            margin-bottom: var(--spacing-6);
-        }
-
-        /* Alerts */
-        .alert {
-            padding: var(--spacing-3) var(--spacing-4);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-4);
-            font-size: 14px;
-            border: 1px solid;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .alert-success {
-            background: rgba(79, 240, 167, 0.1);
-            border-color: var(--success);
-            color: var(--success);
-        }
-
-        .alert-danger {
-            background: rgba(255, 95, 138, 0.1);
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        /* Score display */
-        .score-badge {
-            background: linear-gradient(135deg, rgba(255, 200, 87, 0.2), rgba(255, 200, 87, 0.1));
-            border: 1px solid rgba(255, 200, 87, 0.3);
-            color: var(--warning);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        /* Scroll container */
-        .scroll {
-            max-height: calc(100vh - 70px - 48px - 48px);
-            overflow: auto;
-            padding: 0 var(--spacing-1) var(--spacing-1);
-        }
-
-        .scroll::-webkit-scrollbar { 
-            width: 10px; 
-            height: 10px; 
-        }
-
-        .scroll::-webkit-scrollbar-thumb {
-            background: rgba(154, 166, 178, 0.3);
-            border-radius: 999px;
-            border: 2px solid transparent;
-            background-clip: content-box;
-        }
-
-        .scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(154, 166, 178, 0.5);
-        }
-
-        .scroll::-webkit-scrollbar-track { 
-            background: transparent; 
-        }
-
-        /* Modals - using simpler styling to avoid Bootstrap conflicts */
-        .modal-backdrop {
+        /* MODAL */
+        .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(3px);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
             display: none;
-            align-items: center;
             justify-content: center;
-            padding: var(--spacing-6);
-            z-index: 50;
+            align-items: center;
+            z-index: 1000;
         }
 
-        .modal-backdrop.show {
+        .modal-overlay.show {
             display: flex;
         }
 
-        .modal {
-            width: 620px;
+        .modal-box {
+            background: #0b0b0b;
+            border: 1px solid var(--border-steel);
+            width: 600px;
             max-width: 90vw;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--field-border);
-            background: var(--panel);
-            backdrop-filter: saturate(140%) blur(16px);
-            -webkit-backdrop-filter: saturate(140%) blur(16px);
-            box-shadow: var(--shadow-2);
-            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
 
         .modal-header {
-            padding: var(--spacing-4) var(--spacing-5);
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-steel);
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--field-border);
+            align-items: center;
         }
 
         .modal-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--white);
+            font-family: var(--font-display);
+            color: #fff;
+            font-size: 1.2rem;
+            text-transform: uppercase;
         }
 
         .modal-body {
-            padding: var(--spacing-4) var(--spacing-5) var(--spacing-3);
-            display: grid;
-            gap: var(--spacing-3);
-        }
-
-        .modal-footer {
-            padding: var(--spacing-4) var(--spacing-5);
+            padding: 2rem;
             display: flex;
-            justify-content: flex-end;
-            gap: var(--spacing-2);
-            border-top: 1px solid var(--field-border);
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
-        .field {
-            display: grid;
-            gap: var(--spacing-1);
+        .form-group label {
+            display: block;
+            color: #666;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
         }
 
-        .label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--muted);
-        }
-
-        .input, .textarea {
+        .form-control {
             width: 100%;
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-3);
-            font-size: 14px;
-            background: var(--field);
-            color: var(--white);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 0.8rem;
+            font-family: var(--font-tech);
+            font-size: 0.9rem;
+        }
+
+        .form-control:focus {
             outline: none;
-            transition: all 150ms ease;
-            font-family: var(--font-sans);
+            border-color: var(--blueprint-blue);
+            background: rgba(0, 68, 255, 0.1);
         }
 
-        .input:focus, .textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .textarea {
-            min-height: 120px;
+        textarea.form-control {
+            min-height: 100px;
             resize: vertical;
         }
 
-        .input::placeholder, .textarea::placeholder {
-            color: var(--text-dim);
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-steel);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.2);
         }
 
-        /* ====== Responsive ====== */
-        @media (max-width: 1100px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        /* TOAST */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #000;
+            border: 1px solid;
+            padding: 1rem 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            z-index: 2000;
+            font-family: var(--font-tech);
+            text-transform: uppercase;
+            font-size: 0.8rem;
         }
-        @media (max-width: 720px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .topbar { grid-template-columns: 1fr; gap: var(--spacing-3); }
-            .user { justify-content: flex-start; }
-            .nav-links { flex-wrap: wrap; }
+
+        .toast-success {
+            color: var(--success-green);
+            border-color: var(--success-green);
+        }
+
+        .toast-error {
+            color: var(--alert-red);
+            border-color: var(--alert-red);
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+
+            .nav-menu {
+                flex-direction: row;
+                margin-left: auto;
+                margin-right: 2rem;
+            }
+
+            .q-main {
+                grid-template-columns: 1fr;
+            }
+
+            .q-index {
+                text-align: left;
+                opacity: 0.5;
+                font-size: 1rem;
+            }
+
+            .q-score {
+                text-align: left;
+                border: none;
+                padding: 0;
+                margin-top: 1rem;
+            }
         }
     </style>
 </head>
+
 <body>
-    <div class="page">
-        <!-- Top bar -->
-        <div class="topbar">
-            <div class="title-wrap">
-                <div class="chip">
-                    <span class="chip-dot"></span>
-                    <span>Question Management</span>
+
+    <div class="dashboard-grid">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand-block">
+                <h1>Teacher<br>Command<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Admin Access Level</div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="/teacher/dashboard" class="nav-item">Overview</a>
+                <a href="/teacher/quizzes" class="nav-item">Quiz Bank</a>
+                <a href="/teacher/question/list" class="nav-item active">Questions</a>
+                <a href="/teacher/sql-test" class="nav-item">SQL Tools</a>
+            </nav>
+
+            <div class="user-profile">
+                <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
+                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="main-content">
+            <header class="top-header">
+                <div style="padding: 0 2rem;">
+                    <div class="page-subtitle">/// NODE MANAGEMENT</div>
+                    <div class="page-title">
+                        <h2>Question List</h2>
+                    </div>
                 </div>
-                <div class="app-title">MySQL Knowledge Test Platform</div>
-            </div>
-            <div class="user">
-                <div class="avatar" th:text="${#strings.substring(teacher.fullName, 0, 1)}">T</div>
-                <div class="username" th:text="${teacher.fullName}">Teacher Name</div>
-                <a href="/logout" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
-
-
-        <!-- Toast Messages -->
-        <div id="successToast" class="alert alert-success" style="display: none;">
-            <i class="fas fa-check-circle"></i>
-            <span id="successMessage">Operation Successful</span>
-        </div>
-
-        <div id="errorToast" class="alert alert-danger" style="display: none;">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorMessage">Operation Failed</span>
-        </div>
-
-        <!-- Flash Messages for initial page load -->
-        <div th:if="${message}" class="alert alert-success" id="flashMessage">
-            <i class="fas fa-check-circle"></i>
-            <span th:text="${message}">Operation Successful</span>
-        </div>
-
-        <div th:if="${error}" class="alert alert-danger" id="flashError">
-            <i class="fas fa-exclamation-circle"></i>
-            <span th:text="${error}">Operation Failed</span>
-        </div>
-
-        <!-- KPI cards -->
-        <div class="kpi-row">
-            <div class="kpi">
-                <div class="kpi-label">Total Questions</div>
-                <div class="kpi-value" th:text="${#lists.size(questions)}">0</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Total Score</div>
-                <div class="kpi-value" id="totalScore">0</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Average Score</div>
-                <div class="kpi-value" id="avgScore">0</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Belonging Quiz</div>
-                <div class="kpi-value" th:text="${quiz.title}">Quiz Title</div>
-            </div>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="actions">
-            <a th:href="@{/teacher/quiz/{id}/question/create(id=${quiz.id})}" class="btn primary">
-                <i class="fas fa-plus"></i>
-                Add Question
-            </a>
-            <a href="/teacher/question/ai-generate" class="btn primary" style="background: linear-gradient(90deg, #6ce1ff, #6e74ff);">
-                <i class="fas fa-robot"></i>
-                AI Generate Question
-            </a>
-            <a href="/teacher/question/ai-normalize" class="btn secondary">
-                <i class="fas fa-magic"></i>
-                AI Normalize Question
-            </a>
-            <a href="/teacher/dashboard" class="btn secondary">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-            <a href="/teacher/quizzes" class="btn secondary">
-                <i class="fas fa-list"></i>
-                Quiz List
-            </a>
-        </div>
-
-        <!-- Section Card -->
-        <section class="card section">
-            <header class="section-header">
-                <h2 class="section-title">Question List</h2>
-                <p class="section-sub">
-                    Manage Quiz Questions &nbsp;&nbsp; 
-                    <span th:if="${!#lists.isEmpty(questions)}">
-                        Total Score: <span id="totalScoreHeader">0</span> points
-                    </span>
-                </p>
             </header>
 
-            <div class="list">
-                <!-- Empty State -->
-                <div th:if="${#lists.isEmpty(questions)}" class="empty-state">
-                    <div class="empty-icon">
-                        <i class="fas fa-inbox"></i>
-                    </div>
-                    <div class="empty-title">No questions added yet</div>
-                    <div class="empty-description">Start adding the first question for your quiz</div>
-                    <a th:href="@{/teacher/quiz/{id}/question/create(id=${quiz.id})}" class="btn primary">
-                        <i class="fas fa-plus"></i>
-                        Add First Question
-                    </a>
+            <div class="kpi-bar">
+                <div class="kpi-item">
+                    <span class="kpi-lbl">Total Questions</span>
+                    <span class="kpi-val" th:text="${#lists.size(questions)}">0</span>
                 </div>
-
-                <!-- Question Items -->
-                <div th:if="${!#lists.isEmpty(questions)}" 
-                     th:each="question, iterStat : ${questions}" 
-                     class="item">
-                    <!-- Badge based on difficulty and type -->
-                    <span class="badge badge-single"
-                          th:classappend="${question.difficultyLevel != null} ?
-                                    (${question.difficultyLevel == T(com.example.SqlQuiz.entity.Question.DifficultyLevel).EASY} ? 'badge-easy' :
-                                    (${question.difficultyLevel == T(com.example.SqlQuiz.entity.Question.DifficultyLevel).MEDIUM} ? 'badge-medium' : 'badge-hard')) : ''">
-                        <span th:text="${iterStat.count}">1</span>
-                        <span th:text="${question.questionType != null ? question.questionType.englishName : 'Unknown'}">SQL</span>
-                        <span th:text="${question.difficultyLevel != null ? question.difficultyLevel.englishName : 'Unknown'}">Easy</span>
-                    </span>
-
-                    <div class="item-body">
-                        <div class="item-title" th:text="${question.content}">Question Content</div>
-                        <div class="item-line">
-                            <strong>Belonging Quiz:</strong> <span th:text="${question.quiz.title}">Quiz Title</span>
-                        </div>
-                        <div th:if="${question.description}" class="item-line" th:text="${question.description}">Question Description</div>
-                        <div th:if="${question.expectedSql}" class="item-line">
-                            <strong>Expected SQL:</strong> 
-                            <span class="sql-code" th:text="${question.expectedSql}">SELECT * FROM users;</span>
-                        </div>
-                        <div class="item-line">
-                            Created At: <span th:text="${#temporals.format(question.createdAt, 'yyyy-MM-dd HH:mm')}">2024-01-01 12:00</span>
-                        </div>
-                    </div>
-
-                    <div class="item-actions">
-                        <div class="score-badge">
-                            <i class="fas fa-star"></i>
-                            <span th:text="${question.score}">10</span> points
-                        </div>
-                        <button class="btn btn-primary"
-                                title="Edit"
-                                th:data-question-id="${question.id}"
-                                onclick="editQuestion(this.dataset.questionId)">
-                            <i class="fas fa-edit"></i>
-                            Edit
-                        </button>
-                        <button class="btn btn-danger"
-                                title="Delete"
-                                th:data-question-id="${question.id}"
-                                th:data-question-content="${question.content}"
-                                onclick="deleteQuestion(this.dataset.questionId, this.dataset.questionContent)">
-                            <i class="fas fa-trash"></i>
-                            Delete
-                        </button>
-                    </div>
+                <div class="kpi-item">
+                    <span class="kpi-lbl">Total Score</span>
+                    <span class="kpi-val" id="totalScore">0</span>
+                </div>
+                <div class="kpi-item">
+                    <span class="kpi-lbl">Context</span>
+                    <span class="kpi-val" style="font-size: 1rem; margin-top: auto; color: var(--blueprint-blue);"
+                        th:text="${quiz.title}">Global Bank</span>
                 </div>
             </div>
-        </section>
+
+            <div class="action-bar">
+                <a th:href="@{/teacher/quiz/{id}/question/create(id=${quiz.id})}" class="btn btn-primary">
+                    + Add Question Node
+                </a>
+                <a href="/teacher/question/ai-generate" class="btn btn-tech">
+                    <i class="fas fa-robot"></i> AI Generate
+                </a>
+                <a href="/teacher/question/ai-normalize" class="btn btn-tech">
+                    <i class="fas fa-magic"></i> AI Normalize
+                </a>
+                <div style="flex:1;"></div>
+                <a href="/teacher/quizzes" class="btn">
+                    ← Back to Bank
+                </a>
+            </div>
+
+            <!-- TOASTS -->
+            <div id="toastBox" class="toast"></div>
+
+            <div class="list-container">
+
+                <div th:if="${#lists.isEmpty(questions)}" class="empty-state">
+                    NO QUESTIONS DETECTED IN THIS SECTOR. INITIATE CREATION.
+                </div>
+
+                <div th:each="question, iterStat : ${questions}" class="q-item">
+                    <div class="q-main">
+                        <div class="q-index"
+                            th:text="${(iterStat.index + 1) < 10 ? '0' + (iterStat.index + 1) : (iterStat.index + 1)}">
+                            01</div>
+
+                        <div class="q-content">
+                            <h3 th:text="${question.content}">Select all users...</h3>
+
+                            <div class="q-meta">
+                                <span>TYPE: <span style="color:#fff;"
+                                        th:text="${question.questionType != null ? question.questionType.englishName : 'SQL'}">SQL</span></span>
+                                <span>DIFF: <span
+                                        th:style="${'color:' + (question.difficultyLevel != null && question.difficultyLevel.name() == 'HARD' ? 'var(--alert-red)' : (question.difficultyLevel != null && question.difficultyLevel.name() == 'MEDIUM' ? 'var(--warning)' : 'var(--success-green)'))}"
+                                        th:text="${question.difficultyLevel != null ? question.difficultyLevel.englishName : 'EASY'}">EASY</span></span>
+                            </div>
+
+                            <div class="q-desc" th:if="${question.description}" th:text="${question.description}">
+                                Detailed description...</div>
+
+                            <div class="q-sql" th:if="${question.expectedSql}" th:text="${question.expectedSql}">SELECT
+                                * FROM ...</div>
+                        </div>
+
+                        <div class="q-score">
+                            <span class="score-val" th:text="${question.score}">10</span>
+                            <span class="score-lbl">Points</span>
+                        </div>
+                    </div>
+
+                    <div class="q-actions">
+                        <button class="q-action-btn" th:onclick="|editQuestion('${question.id}')|">Edit Node</button>
+                        <button class="q-action-btn delete"
+                            th:onclick="|deleteQuestion('${question.id}', '${#strings.escapeJava(question.content)}')|">Delete
+                            Node</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
     </div>
 
-    <!-- Edit Question Modal -->
-    <div class="modal-backdrop" id="editBackdrop" aria-hidden="true">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <!-- EDIT MODAL -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
             <div class="modal-header">
-                <div class="modal-title" id="editTitle">
-                    <i class="fas fa-edit"></i>
-                    Edit Question
-                </div>
-                <button class="btn" onclick="closeEdit()">Close</button>
+                <div class="modal-title">Edit Node Config</div>
+                <button onclick="closeEdit()"
+                    style="background:none; border:none; color:#fff; cursor:pointer;">X</button>
             </div>
             <form id="editQuestionForm" method="post">
                 <div class="modal-body">
-                    <div class="field">
-                        <label class="label">Question Content <span style="color: var(--danger);">*</span></label>
-                        <textarea class="textarea" id="editContent" name="content" required></textarea>
+                    <div class="form-group">
+                        <label>Question Content *</label>
+                        <textarea class="form-control" id="editContent" name="content" required></textarea>
                     </div>
-                    <div class="field">
-                        <label class="label">Question Description</label>
-                        <textarea class="textarea" id="editDescription" name="description" 
-                                  placeholder="Please enter detailed description, table structure, sample data, etc."></textarea>
+                    <div class="form-group">
+                        <label>Description (Context)</label>
+                        <textarea class="form-control" id="editDescription" name="description"></textarea>
                     </div>
-                    <div class="field">
-                        <label class="label">Expected SQL</label>
-                        <textarea class="textarea" id="editExpectedSql" name="expectedSql" 
-                                  placeholder="Please enter the correct SQL statement as reference answer"></textarea>
+                    <div class="form-group">
+                        <label>Expected SQL (Solution)</label>
+                        <textarea class="form-control" id="editExpectedSql" name="expectedSql"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn" onclick="closeEdit()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">Commit Changes</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal-backdrop" id="deleteBackdrop" aria-hidden="true">
-        <div class="modal" style="width: 420px;" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-            <div class="modal-header">
-                <div class="modal-title" id="confirmTitle">
-                    <i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>
-                    Confirm Delete
-                </div>
-                <button class="btn" onclick="closeDelete()">Close</button>
+    <!-- DELETE MODAL -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box" style="width: 400px;">
+            <div class="modal-header" style="border-color: var(--alert-red);">
+                <div class="modal-title" style="color: var(--alert-red);">Confirm Deletion</div>
             </div>
-            <div class="modal-body" style="padding: var(--spacing-4) var(--spacing-5); display: grid; grid-template-columns: 44px 1fr; gap: var(--spacing-3); align-items: start;">
-                <div style="width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 200, 87, 0.2); color: var(--warning); border: 1px solid rgba(255, 200, 87, 0.3); font-size: 22px; font-weight: 800;">
-                    !
-                </div>
-                <div style="font-size: 14px; color: var(--white); line-height: 1.5;">
-                    Are you sure you want to delete this question?
-                    <div style="margin-top: var(--spacing-2); padding: var(--spacing-2) var(--spacing-3); background: rgba(255, 200, 87, 0.1); border-radius: var(--radius-sm); border: 1px solid rgba(255, 200, 87, 0.3);">
-                        <strong>Question Content:</strong><span id="deleteQuestionContent"></span>
-                    </div>
-                    <div style="color: var(--danger); font-weight: 600; margin-top: var(--spacing-2);">
-                        ⚠️ This operation cannot be undone!
-                    </div>
-                </div>
+            <div class="modal-body">
+                <p style="color: #fff;">Are you sure you want to purge this question node?</p>
+                <div id="deleteContentPreview"
+                    style="font-size: 0.8rem; color: #888; padding: 1rem; border: 1px solid var(--border-steel);"></div>
+                <p style="color: var(--alert-red); font-size: 0.8rem;">⚠ This action is irreversible.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" onclick="closeDelete()">Cancel</button>
-                <form id="deleteQuestionForm" method="post" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                <button type="button" class="btn" onclick="closeDelete()">Abort</button>
+                <form id="deleteQuestionForm" method="post" style="display:inline;">
+                    <button type="submit" class="btn"
+                        style="background: var(--alert-red); border-color: var(--alert-red);">Execute Delete</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <script>
-        // Calculate and display total score
-        document.addEventListener('DOMContentLoaded', function() {
-            const questionCount = /*[[${#lists.size(questions)}]]*/ 0;
-            let totalScore = 0;
-            
-            // Calculate score from score badges
-            document.querySelectorAll('.score-badge span').forEach(span => {
-                const scoreText = span.textContent;
-                const score = parseInt(scoreText);
-                if (!isNaN(score)) {
-                    totalScore += score;
-                }
+    <script th:inline="javascript">
+        // Calculate Total Score
+        document.addEventListener('DOMContentLoaded', () => {
+            let total = 0;
+            document.querySelectorAll('.score-val').forEach(el => {
+                total += parseInt(el.textContent) || 0;
             });
-            
-            // Update score displays
-            document.getElementById('totalScore').textContent = totalScore;
-            document.getElementById('totalScoreHeader').textContent = totalScore;
-            
-            const avgScore = questionCount > 0 ? (totalScore / questionCount).toFixed(1) : '0';
-            document.getElementById('avgScore').textContent = avgScore;
-            
-            // Auto-hide flash messages after 5 seconds
-            const flashMessage = document.getElementById('flashMessage');
-            const flashError = document.getElementById('flashError');
-            
-            if (flashMessage) {
-                setTimeout(() => {
-                    flashMessage.style.transition = 'opacity 0.3s ease-out';
-                    flashMessage.style.opacity = '0';
-                    setTimeout(() => flashMessage.remove(), 300);
-                }, 5000);
-            }
-            
-            if (flashError) {
-                setTimeout(() => {
-                    flashError.style.transition = 'opacity 0.3s ease-out';
-                    flashError.style.opacity = '0';
-                    setTimeout(() => flashError.remove(), 300);
-                }, 5000); // Error messages stay longer
-            }
+            document.getElementById('totalScore').textContent = total;
         });
 
-        // Toast message functions
-        function showToast(type, message, duration = 5000) {
-            const toast = type === 'success' ? 
-                document.getElementById('successToast') : 
-                document.getElementById('errorToast');
-            
-            const messageElement = type === 'success' ? 
-                document.getElementById('successMessage') : 
-                document.getElementById('errorMessage');
-            
-            // Set message text
-            messageElement.textContent = message;
-            
-            // Show toast
-            toast.style.display = 'flex';
-            toast.style.position = 'fixed';
-            toast.style.top = '20px';
-            toast.style.right = '20px';
-            toast.style.zIndex = '1000';
-            toast.style.animation = 'slideIn 0.3s ease-out';
-            
-            // Auto hide after duration
-            setTimeout(() => {
-                toast.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(100px)';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                    toast.style.opacity = '1';
-                    toast.style.transform = 'translateX(0)';
-                }, 300);
-            }, duration);
+        // Toast System
+        function showToast(type, msg) {
+            const box = document.getElementById('toastBox');
+            box.className = 'toast toast-' + type;
+            box.textContent = '> ' + msg;
+            box.style.display = 'flex';
+            setTimeout(() => { box.style.display = 'none'; }, 3000);
         }
 
-        // Add slide-in animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from {
-                    opacity: 0;
-                    transform: translateX(100px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-        `;
-        document.head.appendChild(style);
+        // Edit Logic
+        function editQuestion(id) {
+            document.getElementById('editModal').classList.add('show');
 
-        // Modal functions
-        let currentEditId = null;
-        let currentDeleteId = null;
-
-        function editQuestion(questionId) {
-            currentEditId = questionId;
-            document.getElementById('editBackdrop').classList.add('show');
-            
-            // Load question data
-            fetch('/teacher/question/' + questionId + '/edit')
-                .then(response => response.json())
-                .then(question => {
-                    if (question) {
-                        document.getElementById('editContent').value = question.content || '';
-                        document.getElementById('editDescription').value = question.description || '';
-                        document.getElementById('editExpectedSql').value = question.expectedSql || '';
-                        document.getElementById('editQuestionForm').action = '/teacher/question/' + questionId + '/edit';
-                    } else {
-                        showToast('error', 'Failed to get question information');
-                        closeEdit();
-                    }
+            fetch('/teacher/question/' + id + '/edit')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('editContent').value = data.content || '';
+                    document.getElementById('editDescription').value = data.description || '';
+                    document.getElementById('editExpectedSql').value = data.expectedSql || '';
+                    document.getElementById('editQuestionForm').action = '/teacher/question/' + id + '/edit';
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('error', 'Failed to get question information');
-                    closeEdit();
-                });
+                .catch(e => showToast('error', 'Fetch Error'));
         }
 
         function closeEdit() {
-            document.getElementById('editBackdrop').classList.remove('show');
-            currentEditId = null;
+            document.getElementById('editModal').classList.remove('show');
         }
 
-        function deleteQuestion(questionId, questionContent) {
-            currentDeleteId = questionId;
-            document.getElementById('deleteQuestionContent').textContent = questionContent;
-            document.getElementById('deleteQuestionForm').action = '/teacher/question/' + questionId + '/delete';
-            document.getElementById('deleteBackdrop').classList.add('show');
+        document.getElementById('editQuestionForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(this.action, { method: 'POST', body: formData })
+                .then(r => {
+                    if (r.ok) {
+                        showToast('success', 'Node Updated');
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        showToast('error', 'Update Failed');
+                    }
+                });
+        });
+
+        // Delete Logic
+        function deleteQuestion(id, content) {
+            document.getElementById('deleteModal').classList.add('show');
+            document.getElementById('deleteContentPreview').textContent = content;
+            document.getElementById('deleteQuestionForm').action = '/teacher/question/' + id + '/delete';
         }
 
         function closeDelete() {
-            document.getElementById('deleteBackdrop').classList.remove('show');
-            currentDeleteId = null;
+            document.getElementById('deleteModal').classList.remove('show');
         }
 
-        // Close on backdrop click
-        document.getElementById('editBackdrop').addEventListener('click', (e) => {
-            if (e.target.id === 'editBackdrop') closeEdit();
-        });
-        document.getElementById('deleteBackdrop').addEventListener('click', (e) => {
-            if (e.target.id === 'deleteBackdrop') closeDelete();
-        });
-
-        // Form submission handling
-        document.getElementById('editQuestionForm').addEventListener('submit', function(e) {
+        document.getElementById('deleteQuestionForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            
             const formData = new FormData(this);
-            const action = this.action;
-            
-            fetch(action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (response.ok) {
-                    showToast('success', 'Question updated successfully!');
-                    closeEdit();
-                    // Refresh page after a short delay to see updated data
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    throw new Error('Update failed');
-                }
-            })
-            .catch(error => {
-                showToast('error', 'Failed to update question, please try again');
-            });
-        });
-
-        document.getElementById('deleteQuestionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const action = this.action;
-            
-            if (confirm('Are you sure you want to delete this question? This operation cannot be undone.')) {
-                fetch(action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (response.ok) {
-                        showToast('success', 'Question deleted successfully!');
-                        closeDelete();
-                        // Refresh page after a short delay to see updated data
-                        setTimeout(() => location.reload(), 1000);
+            fetch(this.action, { method: 'POST', body: formData })
+                .then(r => {
+                    if (r.ok) {
+                        showToast('success', 'Node Purged');
+                        setTimeout(() => location.reload(), 800);
                     } else {
-                        throw new Error('Delete failed');
+                        showToast('error', 'Delete Failed');
                     }
-                })
-                .catch(error => {
-                    showToast('error', 'Failed to delete question, please try again');
                 });
-            }
-        });
-
-        // ESC key handling
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeEdit();
-                closeDelete();
-            }
         });
     </script>
+
 </body>
+
 </html>

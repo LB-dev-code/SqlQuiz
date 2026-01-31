@@ -4,675 +4,488 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard - MySQL Knowledge Testing Platform</title>
+    <title>Dashboard / Berlin Concrete</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            /* Dark theme with glassmorphism colors matching register page */
-            --bg: #0b0f14;
-            --bg-grad-1: #0b0f14;
-            --bg-grad-2: #0e1219;
-            --panel: rgba(18, 22, 29, 0.55);
-            --panel-strong: rgba(18, 22, 29, 0.75);
-            --white: #e8edf7;
-            --muted: #9aa6b2;
-            --text-dim: #6b7280;
-            --field: rgba(255, 255, 255, 0.06);
-            --field-border: rgba(255, 255, 255, 0.12);
-            --field-focus: rgba(100, 180, 255, 0.25);
-            --accent-1: #6e74ff;
-            --accent-2: #6ce1ff;
-            --accent: #5b8cff;
-            --accent-hover: #4979ff;
-            --danger: #ff5f8a;
-            --success: #4ff0a7;
-            --warning: #ffc857;
-            --shadow-1: rgba(0, 0, 0, 0.35);
-            --shadow-2: rgba(0, 20, 60, 0.35);
-            --heart: #ff6aa2;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
-            --spacing-1: 8px;
-            --spacing-2: 12px;
-            --spacing-3: 16px;
-            --spacing-4: 24px;
-            --spacing-5: 32px;
-            --spacing-6: 40px;
-            --spacing-7: 48px;
-            --spacing-8: 64px;
+            /* Berlin Concrete Palette */
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --glass-frost: rgba(255, 255, 255, 0.02);
+            --border-steel: rgba(255, 255, 255, 0.15);
 
-            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
-            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+            /* Accents */
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+
+            /* Metrics */
+            --space-unit: 1.5rem;
+            --brutal-gap: 2px;
+            /* For grid lines */
         }
 
         * {
             box-sizing: border-box;
-        }
-
-        html,
-        body {
-            height: 100%;
-            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
-            color: var(--white);
-            font-family: var(--font-sans);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
             margin: 0;
+            padding: 0;
         }
 
-        .page {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: var(--spacing-6) var(--spacing-5);
+        body {
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            /* User demanded reasonable line height */
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* ====== Top bar ====== */
-        .topbar {
+        /* Brutalist Layout Grid */
+        .poster-grid {
             display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-            margin-bottom: var(--spacing-5);
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
         }
 
-        .title-wrap {
+        /* SIDEBAR / NAVIGATION */
+        .col-nav {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
+            position: sticky;
+            top: 0;
+            height: 100vh;
             display: flex;
-            align-items: center;
-            gap: var(--spacing-3);
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .app-title {
+        .brand-block h1 {
             font-family: var(--font-display);
             font-weight: 700;
-            font-size: 28px;
-            letter-spacing: 0.4px;
-            color: var(--white);
+            font-size: 2rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
         }
 
-        .user {
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-menu {
             display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-            padding: var(--spacing-2) var(--spacing-3);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-md);
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 4rem;
+        }
+
+        .nav-item {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: #888;
             text-decoration: none;
-            transition: all 0.2s ease;
+            transition: color 0.2s, padding-left 0.2s;
             position: relative;
         }
 
-        .user:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255, 255, 255, 0.08);
+        .nav-item:hover,
+        .nav-item.active {
+            color: #fff;
+            padding-left: 10px;
         }
 
-        .logout-btn {
-            padding: 6px 10px;
-            margin-left: var(--spacing-2);
-            border-radius: var(--radius-sm);
-            background: rgba(255, 95, 138, 0.1);
-            border: 1px solid rgba(255, 95, 138, 0.3);
-            color: var(--danger);
-            font-size: 12px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+        .nav-item.active::before {
+            content: '→';
+            position: absolute;
+            left: -15px;
+            color: var(--signal-orange);
         }
 
-        .logout-btn:hover {
-            background: rgba(255, 95, 138, 0.2);
-            border-color: var(--danger);
-            transform: translateY(-1px);
+        .user-block {
+            border-top: 1px solid var(--border-steel);
+            padding-top: 1rem;
         }
 
-        .avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(91, 140, 255, 0.35), rgba(255, 255, 255, 0.1));
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--white);
+        .user-avatar {
+            font-size: 3rem;
+            font-family: var(--font-display);
+            line-height: 1;
+            color: var(--signal-orange);
+            margin-bottom: 0.5rem;
         }
 
-        .username {
-            font-weight: 600;
-            color: var(--muted);
+        /* MAIN CONTENT AREA */
+        .col-main {
+            padding: 0;
+            position: relative;
         }
 
-        /* ====== Navigation links ====== */
-        .nav-links {
-            display: flex;
-            gap: var(--spacing-3);
-            margin-top: var(--spacing-3);
-            margin-bottom: var(--spacing-5);
+        /* HEADER / STATS MANIFESTO */
+        .manifesto-header {
+            padding: calc(var(--space-unit) * 2);
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
         }
 
-        .nav-link {
-            color: var(--muted);
-            text-decoration: none;
-            font-size: 14px;
-            padding: var(--spacing-2) var(--spacing-3);
-            border-radius: var(--radius-md);
-            transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid transparent;
-        }
-
-        .nav-link:hover {
-            color: var(--white);
-            background: var(--field);
-            border-color: var(--field-border);
-            transform: translateY(-1px);
-        }
-
-
-        /* ====== KPI cards row ====== */
-        .kpi-row {
+        .big-stats-row {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-6);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
         }
 
-        .kpi {
-            padding: var(--spacing-4);
-            border-radius: var(--radius-lg);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        .stat-block {
+            display: flex;
+            flex-direction: column;
         }
 
-        .kpi:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .kpi-label {
-            font-size: 12px;
-            color: var(--text-dim);
-            letter-spacing: 0.4px;
+        .stat-label {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            margin-bottom: var(--spacing-2);
+            letter-spacing: 0.1em;
+            color: #666;
+            margin-bottom: 0.5rem;
         }
 
-        .kpi-value {
+        .stat-number {
             font-family: var(--font-display);
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--white);
+            font-size: 4rem;
+            line-height: 0.8;
+            font-weight: 300;
+            color: #fff;
         }
 
+        .stat-number.accent {
+            color: var(--signal-orange);
+        }
 
-        /* ====== Action buttons row ====== */
-        .actions {
+        .stat-number.blueprint {
+            color: var(--blueprint-blue);
+        }
+
+        /* ACTION ZONE */
+        .action-zone {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-8);
+            grid-template-columns: 2fr 1fr;
+            border-bottom: 1px solid var(--border-steel);
         }
 
-        .btn {
-            display: inline-flex;
+        .hero-action {
+            padding: var(--space-unit);
+            background: var(--surface-raw);
+            text-decoration: none;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid var(--border-steel);
+            transition: background 0.3s;
+        }
+
+        .hero-action:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .hero-action h2 {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .hero-action p {
+            max-width: 400px;
+            color: #999;
+        }
+
+        .sub-action {
+            flex: 1;
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: var(--spacing-2);
-            padding: 14px 18px;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            letter-spacing: 0.2px;
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            cursor: pointer;
-            transition: all 0.12s ease;
-            text-align: center;
+            border-bottom: 1px solid var(--border-steel);
             text-decoration: none;
-            font-size: 14px;
-            background: var(--panel);
+            color: #aaa;
+            font-family: var(--font-tech);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.8rem;
+            transition: color 0.2s;
         }
 
-        .btn.primary {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91, 140, 255, 0.55);
-            box-shadow:
-                0 14px 28px rgba(108, 225, 255, 0.18),
-                0 4px 10px var(--shadow-1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.45);
+        .sub-action {
+            border-bottom: none;
         }
 
-        .btn.secondary {
-            color: var(--white);
+        .sub-action:hover {
+            color: var(--signal-orange);
+            background: rgba(255, 60, 0, 0.05);
         }
 
-        .btn:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.04);
-        }
-
-        .btn.primary:hover {
-            box-shadow:
-                0 16px 32px rgba(108, 225, 255, 0.22),
-                0 6px 14px var(--shadow-1);
-        }
-
-        .btn.secondary:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        /* ====== Bottom grid: Available + Recent ====== */
-        .bottom-grid {
+        /* CONTENT GRID */
+        .content-split {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-4);
-            margin-top: var(--spacing-8);
+            grid-template-columns: 1fr 350px;
+            min-height: 50vh;
         }
 
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        .quiz-feed {
+            border-right: 1px solid var(--border-steel);
         }
 
-        .panel:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255, 255, 255, 0.08);
+        .section-label {
+            position: sticky;
+            top: 0;
+            background: var(--bg-concrete);
+            padding: 1rem var(--space-unit);
+            border-bottom: 1px solid var(--border-steel);
+            font-family: var(--font-tech);
+            font-size: 0.8rem;
+            color: var(--signal-orange);
+            text-transform: uppercase;
+            z-index: 10;
         }
 
-        .panel-header {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            padding: var(--spacing-4);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        .quiz-item {
+            padding: var(--space-unit);
+            border-bottom: 1px solid var(--border-steel);
+            transition: background 0.2s;
+            display: block;
+            text-decoration: none;
+            color: inherit;
         }
 
-        .panel-title {
+        .quiz-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .quiz-item h3 {
             font-family: var(--font-display);
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            color: var(--white);
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
         }
 
-        .panel-subtitle {
-            font-size: 12px;
-            color: var(--text-dim);
+        .quiz-meta-row {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: #666;
         }
 
-        .list {
-            padding: var(--spacing-3) var(--spacing-4) var(--spacing-4);
-            display: grid;
-            gap: var(--spacing-2);
+        /* HISTORY FEED */
+        .history-feed {
+            background: rgba(0, 0, 0, 0.2);
         }
 
-        .list-item {
-            display: grid;
-            grid-template-columns: 1fr auto;
+        .history-item {
+            padding: 1rem var(--space-unit);
+            border-bottom: 1px solid var(--border-steel);
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            padding: 12px 14px;
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
-            transition: all 0.2s ease;
         }
 
-        .list-item:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255, 255, 255, 0.08);
+        .score-display {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
         }
 
-        .item-title {
-            font-weight: 600;
-            color: var(--white);
-            font-size: 14px;
+        .score-display.pass {
+            color: #fff;
         }
 
-        .item-meta {
-            font-size: 12px;
-            color: var(--text-dim);
+        .score-display.fail {
+            color: #666;
         }
 
-        .item-description {
-            font-size: 12px;
-            color: var(--text-dim);
-            margin-top: 4px;
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .poster-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .col-nav {
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                align-items: center;
+                border-bottom: 1px solid var(--border-steel);
+                border-right: none;
+            }
+
+            .nav-menu {
+                flex-direction: row;
+                margin-top: 0;
+                margin-left: auto;
+            }
+
+            .nav-item {
+                font-size: 1rem;
+            }
+
+            .content-split {
+                grid-template-columns: 1fr;
+            }
+
+            .quiz-feed {
+                border-right: none;
+            }
+
+            .action-zone {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-action {
+                border-right: none;
+                border-bottom: 1px solid var(--border-steel);
+            }
         }
 
-        /* ====== Small deco chips ====== */
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.05));
-            color: var(--muted);
-        }
-
-        .chip-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 12px rgba(91, 140, 255, 0.8);
-        }
-
-        /* ====== Utility classes ====== */
-        .empty-state {
+        /* UTILS */
+        .empty-zone {
+            padding: 4rem;
             text-align: center;
-            padding: var(--spacing-6) var(--spacing-4);
-            color: var(--text-dim);
-        }
-
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: var(--spacing-3);
-            opacity: 0.5;
-        }
-
-        .text-small {
-            font-size: 12px;
-        }
-
-        .mt-2 {
-            margin-top: var(--spacing-2);
-        }
-
-        .mt-3 {
-            margin-top: var(--spacing-3);
-        }
-
-        .mt-4 {
-            margin-top: var(--spacing-4);
-        }
-
-        /* ====== Score badges ====== */
-        .score-badge {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(79, 240, 167, 0.2);
-            color: var(--success);
-            border: 1px solid rgba(79, 240, 167, 0.3);
-        }
-
-        .score-badge.in-progress {
-            background: rgba(255, 200, 87, 0.2);
-            color: var(--warning);
-            border-color: rgba(255, 200, 87, 0.3);
-        }
-
-        /* ====== Quiz detail metadata ====== */
-        .quiz-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-2);
-            margin-top: var(--spacing-1);
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 12px;
-            color: var(--text-dim);
-        }
-
-        /* ====== Responsive ====== */
-        @media (max-width: 1100px) {
-            .kpi-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .actions {
-                grid-template-columns: 1fr;
-            }
-
-            .bottom-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 720px) {
-            .kpi-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .topbar {
-                grid-template-columns: 1fr;
-                gap: var(--spacing-3);
-            }
-
-            .user {
-                justify-content: flex-start;
-            }
-
-            .nav-links {
-                flex-wrap: wrap;
-            }
+            opacity: 0.3;
+            font-family: var(--font-tech);
         }
     </style>
 </head>
 
 <body>
-    <div class="page">
-        <!-- Top bar -->
-        <div class="topbar">
-            <div class="title-wrap">
-                <div class="chip">
-                    <span class="chip-dot"></span>
-                    <span>Student Dashboard</span>
-                </div>
-                <div class="app-title">MySQL Knowledge Testing Platform</div>
-            </div>
-            <div class="user">
-                <div class="avatar" th:text="${#strings.substring(student.fullName, 0, 1)}">S</div>
-                <div class="username" th:text="${student.fullName}">Student Name</div>
-                <a href="/logout" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
 
-        <!-- Navigation links -->
-        <div class="nav-links">
-            <a href="/student/quizzes" class="nav-link">
-                <i class="fas fa-list"></i> Quiz Center
-            </a>
-            <a href="/student/submissions" class="nav-link">
-                <i class="fas fa-history"></i> My History
-            </a>
-            <a href="/student/sql-practice" class="nav-link">
-                <i class="fas fa-code"></i> SQL Practice
-            </a>
-        </div>
+    <div class="poster-grid">
 
-        <!-- KPI cards -->
-        <div class="kpi-row">
-            <div class="kpi">
-                <div class="kpi-label">Available Quizzes</div>
-                <div class="kpi-value" th:text="${#lists.size(availableQuizzes)}">0</div>
+        <!-- COLUMN 1: NAVIGATION (Fixed Rail) -->
+        <aside class="col-nav">
+            <div class="brand-block">
+                <h1>Sql<br>Quiz<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Berlin Concrete Build</div>
             </div>
-            <div class="kpi">
-                <div class="kpi-label">Completed Quizzes</div>
-                <div class="kpi-value" th:text="${#lists.size(submissions)}">0</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Average Score</div>
-                <div class="kpi-value"
-                    th:text="${averageScore != null ? #numbers.formatDecimal(averageScore, 1, 1) + '%' : '0%'}">0%</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Best Score</div>
-                <div class="kpi-value"
-                    th:text="${bestScore != null ? #numbers.formatDecimal(bestScore, 1, 1) + '%' : '0%'}">0%</div>
-            </div>
-        </div>
 
-        <!-- Action buttons -->
-        <div class="actions">
-            <a href="/student/quizzes" class="btn primary">
-                <i class="fas fa-play"></i>
-                Start Quiz
-            </a>
-            <a href="/student/practice/dashboard" class="btn secondary">
-                <i class="fas fa-walking"></i>
-                Start Self-Practice
-            </a>
-            <a href="/student/submissions" class="btn secondary">
-                <i class="fas fa-chart-line"></i>
-                Score Analysis
-            </a>
-        </div>
+            <nav class="nav-menu">
+                <a href="/student/dashboard" class="nav-item active">Dashboard</a>
+                <a href="/student/submissions" class="nav-item">History</a>
+            </nav>
 
-        <!-- Bottom grid -->
-        <div class="bottom-grid">
-            <!-- Available Tests -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div>
-                        <div class="panel-title">Available Quizzes</div>
-                        <div class="panel-subtitle" th:if="${!#lists.isEmpty(availableQuizzes)}">Select a test to start
-                            answering</div>
-                        <div class="panel-subtitle" th:if="${#lists.isEmpty(availableQuizzes)}">No available tests at
-                            the moment</div>
+            <div class="user-block">
+                <div class="user-avatar" th:text="${#strings.substring(student.fullName, 0, 1)}">S</div>
+                <div style="font-size: 0.9rem; color: #fff;" th:text="${student.fullName}">Student Name</div>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
+            </div>
+        </aside>
+
+        <!-- COLUMN 2: MAIN SCROLL -->
+        <main class="col-main">
+
+            <!-- SECTION 1: MANIFESTO STATS -->
+            <header class="manifesto-header">
+                <div style="font-family: var(--font-tech); color: var(--signal-orange);">/// SYSTEM STATUS</div>
+
+                <div class="big-stats-row">
+                    <div class="stat-block">
+                        <div class="stat-label">Subject ID</div>
+                        <div class="stat-number">#0<span th:text="${student.id}">1</span></div>
                     </div>
-                    <a href="/student/quizzes" class="btn secondary" style="padding: 8px 12px; font-size: 12px;"
-                        th:if="${!#lists.isEmpty(availableQuizzes)}">
-                        View All
-                    </a>
-                </div>
-                <div class="list">
-                    <div th:if="${#lists.isEmpty(availableQuizzes)}" class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-inbox"></i>
+                    <div class="stat-block">
+                        <div class="stat-label">Avg. Performance</div>
+                        <div class="stat-number accent">
+                            <span
+                                th:text="${averageScore != null ? #numbers.formatDecimal(averageScore, 0, 0) : '0'}">0</span><span
+                                style="font-size: 1.5rem">%</span>
                         </div>
-                        <div>No available tests at the moment</div>
-                        <div class="text-small mt-2">Please check back later</div>
                     </div>
+                    <div class="stat-block">
+                        <div class="stat-label">Completed Units</div>
+                        <div class="stat-number">
+                            <span th:text="${#lists.size(submissions)}">0</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- SECTION 2: ACTION GRID -->
+            <div class="action-zone">
+                <a href="/student/quizzes" class="hero-action">
+                    <h2>Initiate<br>Protocol</h2>
+                    <p>Start a new quiz session. Time limit active.</p>
+                </a>
+                <a href="/student/practice/dashboard" class="sub-action" style="flex:1;">Self Practice Mode</a>
+            </div>
+
+            <!-- SECTION 3: SPLIT CONTENT -->
+            <div class="content-split">
+
+                <!-- FEED: AVAILABLE QUIZZES -->
+                <div class="quiz-feed">
+                    <div class="section-label">Available Modules // <span
+                            th:text="${#lists.size(availableQuizzes)}">0</span></div>
 
                     <div th:if="${!#lists.isEmpty(availableQuizzes)}">
-                        <div class="list-item" th:each="quiz : ${availableQuizzes}" th:if="${quizStat.index < 5}">
-                            <div>
-                                <div class="item-title" th:text="${quiz.title}">Quiz Title</div>
-                                <div class="item-description" th:text="${quiz.description}">Quiz Description</div>
-                                <div class="quiz-meta">
-                                    <div class="meta-item">
-                                        <i class="fas fa-user"></i>
-                                        <span th:text="${quiz.teacher.fullName}">Teacher Name</span>
-                                    </div>
-                                    <div class="meta-item" th:if="${quiz.timeLimit}">
-                                        <i class="fas fa-clock"></i>
-                                        <span th:text="${quiz.timeLimit + ' minutes'}">60 minutes</span>
-                                    </div>
-                                </div>
-                                <div class="quiz-meta" th:if="${quiz.startTime != null or quiz.endTime != null}">
-                                    <div class="meta-item" th:if="${quiz.startTime}">
-                                        <i class="fas fa-calendar-start"></i>
-                                        <span th:text="${#temporals.format(quiz.startTime, 'MM-dd HH:mm')}">Start
-                                            Time</span>
-                                    </div>
-                                    <div class="meta-item" th:if="${quiz.endTime}">
-                                        <i class="fas fa-calendar-check"></i>
-                                        <span th:text="${#temporals.format(quiz.endTime, 'MM-dd HH:mm')}">End
-                                            Time</span>
-                                    </div>
-                                </div>
+                        <a th:href="@{/student/quiz/{id}(id=${quiz.id})}" class="quiz-item"
+                            th:each="quiz : ${availableQuizzes}">
+                            <h3 th:text="${quiz.title}">Database Fundamentals</h3>
+                            <div class="quiz-meta-row">
+                                <span th:text="${quiz.description}">Description relative...</span>
+                                <span>|</span>
+                                <span th:text="${quiz.timeLimit + ' min'}">30 min</span>
                             </div>
-                            <div>
-                                <a th:href="@{/student/quiz/{id}(id=${quiz.id})}" class="btn primary"
-                                    style="padding: 8px 12px; font-size: 12px;">
-                                    View
-                                </a>
-                            </div>
-                        </div>
+                        </a>
                     </div>
-                </div>
-            </div>
 
-            <!-- Recent Test Records -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div>
-                        <div class="panel-title">Recent Test Records</div>
-                        <div class="panel-subtitle" th:if="${!#lists.isEmpty(submissions)}">Latest answer records</div>
-                        <div class="panel-subtitle" th:if="${#lists.isEmpty(submissions)}">No test records yet</div>
+                    <div class="empty-zone" th:if="${#lists.isEmpty(availableQuizzes)}">
+                        NO MODULES AVAILABLE
                     </div>
-                    <a href="/student/submissions" class="btn secondary" style="padding: 8px 12px; font-size: 12px;"
-                        th:if="${!#lists.isEmpty(submissions)}">
-                        View All
-                    </a>
                 </div>
-                <div class="list">
-                    <div th:if="${#lists.isEmpty(submissions)}" class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-history"></i>
-                        </div>
-                        <div>No test records</div>
-                        <div class="text-small mt-2">Records will be available after taking tests</div>
-                        <div class="mt-3">
-                            <a href="/student/quizzes" class="btn primary" style="padding: 8px 16px; font-size: 12px;">
-                                Start First Test
-                            </a>
-                        </div>
-                    </div>
+
+                <!-- FEED: RECENT HISTORY -->
+                <div class="history-feed">
+                    <div class="section-label" style="background: transparent; border-color: rgba(255,255,255,0.1);">
+                        Recent Activity</div>
 
                     <div th:if="${!#lists.isEmpty(submissions)}">
-                        <div class="list-item" th:each="submission : ${submissions}"
-                            th:if="${submissionStat.index < 3}">
+                        <div class="history-item" th:each="submission, stat : ${submissions}" th:if="${stat.index < 5}">
                             <div>
-                                <div class="item-title" th:text="${submission.quiz.title}">Quiz Title</div>
-                                <div class="item-meta"
-                                    th:text="${#temporals.format(submission.submitTime, 'yyyy-MM-dd HH:mm')}">2024-04-22
-                                    14:30</div>
+                                <div style="font-size: 0.9rem; color: #ccc;" th:text="${submission.quiz.title}">Quiz
+                                    Title</div>
+                                <div style="font-size: 0.7rem; color: #666; font-family: var(--font-tech);"
+                                    th:text="${#temporals.format(submission.submitTime, 'MM-dd HH:mm')}">DATE</div>
                             </div>
-                            <div>
-                                <span class="score-badge" th:if="${submission.percentage != null}"
-                                    th:text="${#numbers.formatDecimal(submission.percentage, 1, 1) + '%'}">85%</span>
-                                <span class="score-badge in-progress" th:unless="${submission.percentage != null}">In
-                                    Progress</span>
+                            <div class="score-display" th:classappend="${submission.percentage >= 60 ? 'pass' : 'fail'}"
+                                th:text="${submission.percentage != null ? #numbers.formatDecimal(submission.percentage, 0, 0) + '%' : 'PEND'}">
+                                85%
                             </div>
                         </div>
                     </div>
+
+                    <div class="empty-zone" th:if="${#lists.isEmpty(submissions)}">
+                        NO DATA
+                    </div>
                 </div>
+
             </div>
-        </div>
+        </main>
     </div>
+
 </body>
 
 </html>
