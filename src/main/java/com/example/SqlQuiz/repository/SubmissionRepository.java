@@ -82,4 +82,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     
     // 根据教师查找所有提交记录
     List<Submission> findByQuiz_Teacher(User teacher);
+
+    // 根据ID查找提交记录，并预加载关联对象（student, quiz）
+    @Query("SELECT s FROM Submission s LEFT JOIN FETCH s.student LEFT JOIN FETCH s.quiz WHERE s.id = :id")
+    Optional<Submission> findByIdWithDetails(@Param("id") Long id);
 }

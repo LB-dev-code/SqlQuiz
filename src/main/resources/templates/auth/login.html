@@ -1,1038 +1,340 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SQL Quiz</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>System Access / Berlin Concrete</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
         :root {
-            /* === Light Obsidian Theme === */
-
-            /* Surface - Light, airy */
-            --surface-base: #FAF9F7;
-            --surface-warm: #F5F3F0;
-            --surface-cool: #F8F6F4;
-
-            /* Obsidian - Light, transparent */
-            --obsidian-light: rgba(45, 42, 40, 0.65);
-            --obsidian-mid: rgba(35, 32, 30, 0.75);
-            --obsidian-deep: rgba(25, 22, 20, 0.85);
-
-            /* Earth tones - Subtle accents */
-            --terracotta: #A86B5F;
-            --terracotta-light: #B88278;
-            --terracotta-dark: #8B554B;
-
-            --sage: #8A9A7D;
-            --sage-light: #9CAF88;
-            --sage-dark: #6B7A6D;
-
-            --camel: #A88B6B;
-            --camel-light: #C19A6B;
-            --camel-dark: #8B6E52;
-
-            /* Text - Warm, readable */
-            --text-primary: #2D2B28;
-            --text-secondary: #6B6862;
-            --text-tertiary: #9A9690;
-            --text-on-glass: #3E3C38;
-
-            /* Glass - Light, airy */
-            --glass-light: rgba(250, 249, 247, 0.72);
-            --glass-medium: rgba(250, 249, 247, 0.55);
-            --glass-heavy: rgba(250, 249, 247, 0.85);
+            /* Berlin Concrete Palette */
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
 
             /* Accents */
-            --accent-warm: rgba(168, 107, 95, 0.12);
-            --accent-sage: rgba(138, 154, 125, 0.12);
-            --accent-camel: rgba(168, 139, 107, 0.12);
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+            --alert-red: #ff003c;
 
-            /* Status colors */
-            --color-error: #A86B5F;
-            --color-error-bg: rgba(168, 107, 95, 0.1);
-            --color-success: #8A9A7D;
-            --color-success-bg: rgba(138, 154, 125, 0.1);
-            --color-link: #8B554B;
-            --color-link-hover: #A86B5F;
-
-            /* Roles */
-            --color-teacher: #A88B6B;
-            --color-teacher-bg: rgba(168, 139, 107, 0.12);
-            --color-student: #8A9A7D;
-            --color-student-bg: rgba(138, 154, 125, 0.12);
-
-            /* Spacing - Irregular */
-            --space-xs: 5px;
-            --space-sm: 11px;
-            --space-md: 19px;
-            --space-lg: 31px;
-            --space-xl: 51px;
-            --space-2xl: 83px;
-
-            /* Border radius */
-            --radius-sm: 5px;
-            --radius-md: 9px;
-            --radius-lg: 13px;
-            --radius-xl: 19px;
-
-            /* Shadows - Light, airy (NO borders) */
-            --shadow-glass-sm:
-                0 2px 6px rgba(45, 42, 40, 0.04),
-                0 8px 20px rgba(45, 42, 40, 0.03),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
-            --shadow-glass-md:
-                0 3px 10px rgba(45, 42, 40, 0.06),
-                0 14px 36px rgba(45, 42, 40, 0.05),
-                inset 0 1px 0 rgba(255, 255, 255, 0.7);
-            --shadow-glass-lg:
-                0 5px 18px rgba(45, 42, 40, 0.08),
-                0 22px 56px rgba(45, 42, 40, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
-            --shadow-subtle:
-                0 1px 3px rgba(45, 42, 40, 0.04);
-            --shadow-input:
-                0 2px 6px rgba(45, 42, 40, 0.03),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            --shadow-focus:
-                0 0 0 3px rgba(168, 107, 95, 0.15),
-                0 3px 10px rgba(168, 107, 95, 0.1);
-            --shadow-accent:
-                0 0 18px rgba(168, 107, 95, 0.12);
-
-            /* Typography - NOT Inter/Geist */
-            --font-serif: 'Noto Serif SC', 'Source Han Serif SC', serif;
-            --font-body: 'Crimson Pro', serif;
-            --font-mono: 'JetBrains Mono', monospace;
-            --font-ui: -apple-system, BlinkMacSystemFont, sans-serif;
-
-            /* Animations - Spring physics */
-            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+            --space-unit: 1.5rem;
         }
 
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: var(--font-body);
-            background-color: var(--surface-base);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: var(--space-sm);
-            line-height: 1.65;
-            overflow-x: hidden;
-
-            /* Subtle gradient glow - NOT bokeh orbs */
+            background-color: var(--bg-concrete);
             background-image:
-                radial-gradient(ellipse 35% 45% at 12% 32%, rgba(168, 107, 95, 0.04) 0%, transparent 55%),
-                radial-gradient(ellipse 28% 38% at 88% 68%, rgba(138, 154, 125, 0.035) 0%, transparent 50%);
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* === Page Container - 52:48 asymmetric split === */
+        /* Glass Panel */
+        .glass-panel {
+            background: var(--surface-raw);
+            backdrop-filter: blur(20px) grayscale(100%);
+            -webkit-backdrop-filter: blur(20px) grayscale(100%);
 
-        .page-container {
+            /* Caustic Edge */
+            box-shadow:
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 0 rgba(0, 0, 0, 0.5),
+                0 24px 48px -12px rgba(0, 0, 0, 0.5);
+
+            border: 1px solid var(--border-steel);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+            border-radius: 0;
+
             width: 100%;
-            max-width: 1120px;
-            display: grid;
-            grid-template-columns: 1.08fr 0.92fr;
-            gap: var(--space-2xl);
-            align-items: center;
-            animation: fadeIn 0.7s var(--ease-smooth) forwards;
-            opacity: 0;
-            transform: translateY(16px);
-        }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* === Left - Brand Section === */
-
-        .brand-section {
-            padding: var(--space-lg) var(--space-md) var(--space-lg) 0;
+            max-width: 480px;
+            padding: 3rem;
             position: relative;
+            margin: 1rem;
         }
 
-        /* Brand badge - subtle */
-        .brand-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-xs);
-            padding: var(--space-xs) var(--space-sm);
-            background: var(--accent-warm);
-            box-shadow: var(--shadow-glass-sm);
-            border-radius: 100px;
-            font-family: var(--font-mono);
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.18em;
+        /* Typography */
+        h1 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
             text-transform: uppercase;
-            color: var(--terracotta);
-            margin-bottom: var(--space-xl);
-        }
-
-        .brand-badge svg {
-            width: 11px;
-            height: 11px;
-        }
-
-        /* Brand title - asymmetrical */
-        .brand-title {
-            font-family: var(--font-serif);
-            font-size: clamp(38px, 6.2vw, 62px);
-            font-weight: 600;
             letter-spacing: -0.04em;
-            line-height: 1.05;
-            color: var(--text-primary);
-            margin-bottom: var(--space-md);
+            color: #fff;
+            margin-bottom: 0.5rem;
         }
 
-        .brand-title .line-1 {
-            display: block;
-            margin-left: -6px;
-        }
-
-        .brand-title .line-2 {
-            display: block;
-            color: var(--terracotta);
-            margin-left: 18px;
-        }
-
-        /* Brand description */
-        .brand-description {
-            font-size: 17px;
-            color: var(--text-secondary);
-            line-height: 1.7;
-            max-width: 460px;
-            margin-bottom: var(--space-xl);
-        }
-
-        /* Features list - flowing layout */
-        .features-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            padding: var(--space-sm) var(--space-md);
-            background: var(--glass-medium);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: var(--shadow-glass-sm);
-            border-radius: var(--radius-md);
-            transition: all 0.35s var(--ease-spring);
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Accent indicator - inset shadow, NOT border */
-        .feature-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: linear-gradient(180deg, var(--terracotta) 0%, var(--terracotta-light) 100%);
-            transform: scaleY(0);
-            transition: transform 0.35s var(--ease-spring);
-        }
-
-        .feature-item:hover {
-            transform: translateX(6px);
-            box-shadow: var(--shadow-glass-md);
-        }
-
-        .feature-item:hover::before {
-            transform: scaleY(1);
-        }
-
-        .feature-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .feature-icon svg {
-            width: 11px;
-            height: 11px;
-            color: var(--terracotta);
-        }
-
-        .feature-text {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .feature-text strong {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-
-        /* === Right - Login Section === */
-
-        .login-section {
-            position: relative;
-        }
-
-        /* Login card - Light glass */
-        .login-card {
-            background: var(--glass-light);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            box-shadow: var(--shadow-glass-md);
-            padding: var(--space-lg);
-            animation: riseUp 0.7s var(--ease-spring) 0.14s backwards;
-        }
-
-        @keyframes riseUp {
-            from {
-                opacity: 0;
-                transform: translateY(24px) scale(0.97);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        /* Logo - soft, minimal */
-        .card-logo {
-            width: 52px;
-            height: 52px;
-            background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-dark) 100%);
-            box-shadow:
-                0 4px 14px rgba(168, 107, 95, 0.25),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            border-radius: var(--radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: var(--space-md);
-        }
-
-        .card-logo svg {
-            width: 24px;
-            height: 24px;
-            color: #FAF9F7;
-        }
-
-        .card-title {
-            font-family: var(--font-serif);
-            font-size: 27px;
-            font-weight: 600;
-            letter-spacing: -0.03em;
-            color: var(--text-primary);
-            margin-bottom: var(--space-xs);
-        }
-
-        .card-subtitle {
-            font-size: 14px;
-            color: var(--text-tertiary);
-            margin-bottom: var(--space-md);
-        }
-
-        /* === Form === */
-
-        .form {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-xs);
-        }
-
-        .form-label {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            font-weight: 500;
-            letter-spacing: 0.12em;
+        .meta-text {
+            font-family: var(--font-tech);
+            font-size: 0.75rem;
             text-transform: uppercase;
-            color: var(--text-tertiary);
+            letter-spacing: 0.2em;
+            opacity: 0.6;
+            margin-bottom: 2rem;
+            display: block;
         }
 
-        .input-wrapper {
-            position: relative;
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
         }
 
-        .form-input {
+        label {
+            display: block;
+            font-family: var(--font-tech);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            color: #888;
+        }
+
+        .form-control {
             width: 100%;
-            height: 49px;
-            padding: 0 var(--space-md);
-            background: var(--glass-medium);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: none;
-            border-radius: var(--radius-lg);
-            color: var(--text-primary);
-            font-size: 15px;
-            font-family: inherit;
-            transition: all 0.25s var(--ease-smooth);
-            box-shadow: var(--shadow-input);
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 1rem;
+            font-family: var(--font-tech);
+            font-size: 1rem;
+            transition: all 0.2s;
+            border-radius: 0;
         }
 
-        .form-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .form-input:hover {
-            background: var(--glass-heavy);
-            box-shadow:
-                0 3px 10px rgba(45, 42, 40, 0.05),
-                inset 0 1px 0 rgba(255, 255, 255, 0.5);
-        }
-
-        .form-input:focus {
+        .form-control:focus {
             outline: none;
-            box-shadow: var(--shadow-focus);
-            background: rgba(250, 249, 247, 0.9);
+            border-color: var(--signal-orange);
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 60, 0, 0.1);
         }
 
-        .password-toggle {
-            position: absolute;
-            right: var(--space-sm);
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            padding: var(--space-xs);
-            cursor: pointer;
-            color: var(--text-tertiary);
-            border-radius: var(--radius-sm);
-            transition: all 0.2s var(--ease-smooth);
-        }
-
-        .password-toggle:hover {
-            color: var(--terracotta);
-            background: var(--accent-warm);
-        }
-
-        .password-toggle svg {
-            width: 17px;
-            height: 17px;
-        }
-
-        /* Form options */
-        .form-options {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        /* Checkbox - NO border, shadow-defined */
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: var(--space-xs);
-            font-size: 13px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-
-        .checkbox-label input {
-            display: none;
-        }
-
-        .checkbox {
-            width: 17px;
-            height: 17px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.25s var(--ease-spring);
-            background: var(--glass-heavy);
-            box-shadow: var(--shadow-subtle);
-        }
-
-        .checkbox-label:hover .checkbox {
-            box-shadow:
-                0 2px 6px rgba(45, 42, 40, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.5);
-        }
-
-        .checkbox-label input:checked + .checkbox {
-            background: var(--terracotta);
-            box-shadow:
-                0 0 10px rgba(168, 107, 95, 0.35),
-                0 2px 6px rgba(168, 107, 95, 0.25),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        .checkbox svg {
-            width: 9px;
-            height: 9px;
-            color: white;
-            opacity: 0;
-            transform: scale(0.6);
-            transition: all 0.25s var(--ease-spring);
-        }
-
-        .checkbox-label input:checked + .checkbox svg {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .forgot-link {
-            font-size: 13px;
-            color: var(--color-link);
-            text-decoration: none;
-            transition: color 0.2s var(--ease-smooth);
-        }
-
-        .forgot-link:hover {
-            color: var(--color-link-hover);
-            text-decoration: underline;
-            text-underline-offset: 2px;
-        }
-
-        /* Submit button - spring physics, NOT scale(1.02) */
         .btn-submit {
-            height: 51px;
-            background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-dark) 100%);
+            display: inline-block;
+            width: 100%;
+            background: var(--signal-orange);
+            color: #000;
+            padding: 1rem;
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-decoration: none;
             border: none;
-            border-radius: var(--radius-lg);
-            color: #FAF9F7;
-            font-family: var(--font-ui);
-            font-size: 15px;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s var(--ease-spring);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-sm);
-            box-shadow:
-                0 3px 12px rgba(168, 107, 95, 0.28),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border-radius: 0;
+            margin-top: 1rem;
+            transition: all 0.2s;
         }
 
         .btn-submit:hover {
+            background: #fff;
             transform: translateY(-2px);
-            box-shadow:
-                0 6px 20px rgba(168, 107, 95, 0.35),
-                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-submit:active {
-            transform: translateY(0);
+        /* Quick Login Grid */
+        .quick-access-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-steel);
+            padding-top: 2rem;
         }
 
-        .btn-submit.loading {
-            pointer-events: none;
-            position: relative;
-        }
-
-        .btn-submit.loading .btn-text {
-            visibility: hidden;
-        }
-
-        .btn-submit.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(250, 249, 247, 0.3);
-            border-top-color: #FAF9F7;
-            border-radius: 50%;
-            animation: spin 0.75s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Divider - subtle */
-        .divider {
+        .quick-btn {
+            background: var(--surface-raw);
+            border: 1px solid var(--border-steel);
+            color: #aaa;
+            padding: 0.75rem;
+            text-align: left;
+            font-family: var(--font-tech);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
             display: flex;
-            align-items: center;
-            margin: var(--space-md) 0;
-            color: var(--text-tertiary);
-            font-size: 12px;
+            flex-direction: column;
+            gap: 0.25rem;
         }
 
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(45, 42, 40, 0.08), transparent);
+        .quick-btn:hover {
+            border-color: #fff;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        .divider span {
-            padding: 0 var(--space-sm);
-            font-family: var(--font-mono);
-            font-size: 10px;
-            letter-spacing: 0.12em;
+        .quick-role {
             text-transform: uppercase;
+            font-weight: 700;
+            color: var(--blueprint-blue);
         }
 
-        .register-link {
-            text-align: center;
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .register-link a {
-            color: var(--color-link);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .register-link a:hover {
-            text-decoration: underline;
-            text-underline-offset: 2px;
-        }
-
-        /* Alert messages */
         .alert {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--space-sm);
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-md);
-            font-size: 13px;
-            animation: slideIn 0.4s var(--ease-spring);
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-16px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .alert svg {
-            width: 15px;
-            height: 15px;
-            flex-shrink: 0;
-            margin-top: 1px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid;
+            font-size: 0.8rem;
+            text-transform: uppercase;
         }
 
         .alert-error {
-            background: var(--color-error-bg);
-            color: var(--color-error);
-            box-shadow:
-                0 2px 8px rgba(168, 107, 95, 0.1),
-                inset 0 1px 0 rgba(168, 107, 95, 0.1);
-        }
-
-        .alert-error svg {
-            color: var(--color-error);
+            border-color: var(--alert-red);
+            color: var(--alert-red);
+            background: rgba(255, 0, 60, 0.05);
         }
 
         .alert-success {
-            background: var(--color-success-bg);
-            color: var(--color-success);
-            box-shadow:
-                0 2px 8px rgba(138, 154, 125, 0.1),
-                inset 0 1px 0 rgba(138, 154, 125, 0.1);
+            border-color: var(--success-green);
+            color: var(--success-green);
+            background: rgba(0, 255, 102, 0.05);
         }
 
-        .alert-success svg {
-            color: var(--color-success);
+        .links {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            text-transform: uppercase;
         }
 
-        /* Quick login */
-        .quick-login {
-            margin-top: var(--space-md);
-            padding-top: var(--space-md);
-            position: relative;
+        .links a {
+            color: #666;
+            text-decoration: none;
+            transition: color 0.2s;
         }
 
-        .quick-login::before {
-            content: '';
+        .links a:hover {
+            color: var(--signal-orange);
+        }
+
+        /* Layout Asymmetry Element */
+        .deco-strip {
             position: absolute;
             top: 0;
-            left: var(--space-md);
-            right: var(--space-md);
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(45, 42, 40, 0.08), transparent);
+            left: -20px;
+            bottom: 0;
+            width: 10px;
+            background: repeating-linear-gradient(45deg,
+                    var(--border-steel),
+                    var(--border-steel) 1px,
+                    transparent 1px,
+                    transparent 10px);
+            opacity: 0.3;
         }
 
-        .quick-login-title {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--text-tertiary);
-            margin-bottom: var(--space-sm);
+        /* Checkbox styling */
+        .check-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: -0.5rem;
+            margin-bottom: 1.5rem;
         }
 
-        .quick-login-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-sm);
+        .check-group input {
+            accent-color: var(--signal-orange);
+            width: 16px;
+            height: 16px;
         }
 
-        .quick-login-card {
-            padding: var(--space-md);
-            background: var(--glass-medium);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: none;
-            border-radius: var(--radius-md);
+        .check-group label {
+            margin-bottom: 0;
+            color: #888;
             cursor: pointer;
-            transition: all 0.3s var(--ease-spring);
-            text-align: center;
-            box-shadow: var(--shadow-glass-sm);
-        }
-
-        .quick-login-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-glass-md);
-        }
-
-        .quick-login-card.teacher {
-            background: var(--color-teacher-bg);
-        }
-
-        .quick-login-card.teacher:hover {
-            background: rgba(168, 139, 107, 0.18);
-        }
-
-        .quick-login-card.student {
-            background: var(--color-student-bg);
-        }
-
-        .quick-login-card.student:hover {
-            background: rgba(138, 154, 125, 0.18);
-        }
-
-        .quick-login-role {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            margin-bottom: var(--space-xs);
-        }
-
-        .quick-login-card.teacher .quick-login-role {
-            color: var(--color-teacher);
-        }
-
-        .quick-login-card.student .quick-login-role {
-            color: var(--color-student);
-        }
-
-        .quick-login-creds {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .quick-login-creds kbd {
-            display: inline-block;
-            padding: 3px 6px;
-            background: var(--glass-heavy);
-            border-radius: var(--radius-sm);
-            font-size: 10px;
-            margin: 0 2px;
-        }
-
-        /* Footer */
-        .footer {
-            margin-top: var(--space-md);
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-tertiary);
-        }
-
-        .footer a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin: 0 var(--space-sm);
-            transition: color 0.2s var(--ease-smooth);
-        }
-
-        .footer a:hover {
-            color: var(--terracotta);
-        }
-
-        /* Responsive */
-        @media (max-width: 920px) {
-            .page-container {
-                grid-template-columns: 1fr;
-                gap: var(--space-lg);
-                max-width: 440px;
-            }
-
-            .brand-section {
-                display: none;
-            }
-
-            .brand-section.mobile-show {
-                display: block;
-                text-align: center;
-                padding: var(--space-md);
-            }
-
-            .quick-login-cards {
-                grid-template-columns: 1fr;
-            }
-
-            .quick-login::before {
-                left: var(--space-sm);
-                right: var(--space-sm);
-            }
-        }
-
-        @media (min-width: 921px) {
-            .brand-section.mobile-show {
-                display: none;
-            }
-        }
-
-        /* Focus visible */
-        :focus-visible {
-            outline: 2px solid var(--terracotta);
-            outline-offset: 2px;
-        }
-
-        /* Reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
         }
     </style>
 </head>
+
 <body>
-    <div class="page-container">
-        <!-- Left - Brand Section -->
-        <div class="brand-section">
-            <div class="brand-badge">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                </svg>
-                Professional MySQL Testing Platform
+
+    <div class="glass-panel">
+        <div class="deco-strip"></div>
+
+        <header>
+            <h1>System Entry</h1>
+            <span class="meta-text">Access Protocol v2.5 // Auth Required</span>
+        </header>
+
+        <!-- Messages -->
+        <div th:if="${param.error}" class="alert alert-error">
+            <i class="fas fa-exclamation-triangle"></i> Access Denied: Invalid Credentials
+        </div>
+        <div th:if="${param.logout}" class="alert alert-success">
+            <i class="fas fa-check-circle"></i> Session Terminated Successfully
+        </div>
+
+        <form th:action="@{/login}" method="post">
+            <div class="form-group">
+                <label for="username">User Identity</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="ENTER USERNAME"
+                    required autofocus autocomplete="username">
             </div>
 
-            <h1 class="brand-title">
-                <span class="line-1">SQL</span>
-                <span class="line-2">Quiz</span>
-            </h1>
+            <div class="form-group">
+                <label for="password">Access Key</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="ENTER PASSWORD"
+                    required autocomplete="current-password">
+            </div>
 
-            <p class="brand-description">
-                An intelligent MySQL knowledge testing platform.
-                AI-powered questions, instant feedback to master your SQL skills in a secure sandbox environment.
-            </p>
+            <div class="check-group">
+                <input type="checkbox" id="remember-me" name="remember-me">
+                <label for="remember-me">Retain Session</label>
+            </div>
 
-            <div class="features-list">
-                <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                    </div>
-                    <div class="feature-text">
-                        <strong>AI-Powered Questions</strong><br>
-                        Dynamically generated based on your skill level
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                            <path d="M2 17l10 5 10-5"/>
-                            <path d="M2 12l10 5 10-5"/>
-                        </svg>
-                    </div>
-                    <div class="feature-text">
-                        <strong>Sandbox Protection</strong><br>
-                        Safe isolated SQL execution environment
-                    </div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                            <polyline points="22 6 18 14 15 6"/>
-                        </svg>
-                    </div>
-                    <div class="feature-text">
-                        <strong>Real-time Analysis</strong><br>
-                        Detailed error hints and optimization suggestions
-                    </div>
-                </div>
+            <button type="submit" class="btn-submit">
+                Initialize Session
+            </button>
+        </form>
+
+        <div class="links">
+            <a th:href="@{/register}">Create New Identity</a>
+            <a href="#">Security Help</a>
+        </div>
+
+        <!-- Quick Access for Dev/Demo -->
+        <div class="quick-access-grid">
+            <div class="quick-btn" onclick="quickLogin('teacher', 'Teacher123412341234')">
+                <span class="quick-role">Teacher // Admin</span>
+                <span>ID: teacher</span>
+            </div>
+            <div class="quick-btn" onclick="quickLogin('student', 'Student1234')">
+                <span class="quick-role" style="color: var(--success-green);">Student // User</span>
+                <span>ID: student</span>
             </div>
         </div>
 
-        <!-- Right - Login Form -->
-        <div class="login-section">
-            <div class="login-card">
-                <div class="card-logo">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                        <path d="M12 6v6l4 2"/>
-                    </svg>
-                </div>
-
-                <h2 class="card-title">Welcome Back</h2>
-                <p class="card-subtitle">Sign in to continue your learning journey</p>
-
-                <!-- Alert Messages -->
-                <div th:if="${error}" class="alert alert-error">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span th:text="${error}">Login failed</span>
-                </div>
-
-                <div th:if="${message}" class="alert alert-success">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <span th:text="${message}">Operation successful</span>
-                </div>
-
-                <!-- Login Form -->
-                <form th:action="@{/login}" method="post" class="form" id="loginForm">
-                    <div class="form-group">
-                        <label class="form-label" for="username">Username or Email</label>
-                        <input type="text" id="username" name="username" class="form-input"
-                               placeholder="Enter your username" required autocomplete="username">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" for="password">Password</label>
-                        <div class="input-wrapper">
-                            <input type="password" id="password" name="password" class="form-input"
-                                   placeholder="Enter your password" required autocomplete="current-password">
-                            <button type="button" class="password-toggle" id="togglePassword" title="Show password">
-                                <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8-11-8z"/>
-                                    <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                                <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                    <line x1="1" y1="1" x2="23" y2="23"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-options">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="remember-me">
-                            <span class="checkbox">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                            </span>
-                            <span>Remember me</span>
-                        </label>
-                        <a href="#" class="forgot-link">Forgot password?</a>
-                    </div>
-
-                    <button type="submit" class="btn-submit" id="loginBtn">
-                        <span class="btn-text">Sign In</span>
-                    </button>
-                </form>
-
-                <div class="divider">
-                    <span>or</span>
-                </div>
-
-                <p class="register-link">
-                    Don't have an account? <a href="/register">Sign up now</a>
-                </p>
-
-                <!-- Quick Login -->
-                <div class="quick-login">
-                    <div class="quick-login-title">Quick Test Accounts</div>
-                    <div class="quick-login-cards">
-                        <div class="quick-login-card teacher" onclick="quickLogin('teacher', '123456')">
-                            <div class="quick-login-role">TEACHER</div>
-                            <div class="quick-login-creds"><kbd>teacher</kbd> / <kbd>123456</kbd></div>
-                        </div>
-                        <div class="quick-login-card student" onclick="quickLogin('student', '123456')">
-                            <div class="quick-login-role">STUDENT</div>
-                            <div class="quick-login-creds"><kbd>student</kbd> / <kbd>123456</kbd></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <footer class="footer">
-                    <a href="#">About</a>
-                    <a href="#">Help</a>
-                    <a href="#">Contact</a>
-                </footer>
-            </div>
-        </div>
     </div>
 
     <script>
-        const togglePassword = document.getElementById('togglePassword');
-        const passwordInput = document.getElementById('password');
-        const eyeOpen = togglePassword.querySelector('.eye-open');
-        const eyeClosed = togglePassword.querySelector('.eye-closed');
-
-        togglePassword.addEventListener('click', function() {
-            const isPassword = passwordInput.getAttribute('type') === 'password';
-            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-            eyeOpen.style.display = isPassword ? 'none' : 'block';
-            eyeClosed.style.display = isPassword ? 'block' : 'none';
-            togglePassword.title = isPassword ? 'Hide password' : 'Show password';
-        });
-
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn = document.getElementById('loginBtn');
-
-        loginForm.addEventListener('submit', function() {
-            loginBtn.classList.add('loading');
-        });
-
         function quickLogin(username, password) {
             document.getElementById('username').value = username;
             document.getElementById('password').value = password;
-            loginBtn.focus();
         }
-
-        // Keyboard shortcut
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                loginForm.dispatchEvent(new Event('submit'));
-            }
-        });
     </script>
 </body>
+
 </html>

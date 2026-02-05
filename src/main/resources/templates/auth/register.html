@@ -1,650 +1,513 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注册 - SQL Quiz</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Identity Creation / Berlin Concrete</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
         :root {
-            /* AuthKit-inspired Light Mode */
-            --background-primary: #FFFFFF;
-            --background-secondary: #F9FAFB;
-            --background-tertiary: #F4F4F5;
-            --text-primary: #18181B;
-            --text-secondary: #71717A;
-            --text-tertiary: #A1A1AA;
-            --border-default: #E4E4E7;
-            --border-hover: #D4D4D8;
-            --accent-primary: #18181B;
-            --accent-hover: #27272A;
-            --link-color: #2563EB;
-            --link-hover: #1D4ED8;
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --radius-sm: 6px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            --radius-xl: 16px;
-            --radius-2xl: 24px;
-        }
+            /* Berlin Concrete Palette */
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
 
-        /* Dark Mode */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --background-primary: #09090B;
-                --background-secondary: #18181B;
-                --background-tertiary: #27272A;
-                --text-primary: #FAFAFA;
-                --text-secondary: #A1A1AA;
-                --text-tertiary: #71717A;
-                --border-default: #27272A;
-                --border-hover: #3F3F46;
-                --accent-primary: #FAFAFA;
-                --accent-hover: #E4E4E7;
-                --link-color: #3B82F6;
-                --link-hover: #60A5FA;
-            }
+            /* Accents */
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+            --alert-red: #ff003c;
+
+            /* Typography */
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+            --space-unit: 1.5rem;
         }
 
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--background-secondary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
             line-height: 1.5;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        /* Animated background gradient */
-        .bg-gradient {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-tertiary) 100%);
-            z-index: -1;
-        }
-
-        .bg-gradient::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
-            animation: gradientShift 15s ease-in-out infinite;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.1); }
-        }
-
-        /* Main card container */
-        .register-card {
-            width: 100%;
-            max-width: 460px;
-            background: var(--background-primary);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-2xl);
-            box-shadow: var(--shadow-xl);
-            padding: 40px;
-            animation: cardFadeIn 0.5s ease-out;
-        }
-
-        @keyframes cardFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Logo section */
-        .logo-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 32px;
-        }
-
-        .logo {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-            border-radius: var(--radius-xl);
+            min-height: 100vh;
+            overflow-x: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
-        .logo svg {
-            width: 32px;
-            height: 32px;
-            color: white;
+        /* Glass Panel */
+        .glass-panel {
+            background: var(--surface-raw);
+            backdrop-filter: blur(20px) grayscale(100%);
+            -webkit-backdrop-filter: blur(20px) grayscale(100%);
+
+            /* Caustic Edge */
+            box-shadow:
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 0 rgba(0, 0, 0, 0.5),
+                0 24px 48px -12px rgba(0, 0, 0, 0.5);
+
+            border: 1px solid var(--border-steel);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+            border-radius: 0;
+
+            width: 100%;
+            max-width: 600px;
+            /* Wider for register */
+            padding: 3rem;
+            position: relative;
+            margin: 1rem;
         }
 
-        .logo-title {
-            font-size: 24px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+        /* Typography */
+        h1 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+            letter-spacing: -0.04em;
+            color: #fff;
+            margin-bottom: 0.5rem;
         }
 
-        .logo-subtitle {
-            font-size: 14px;
-            color: var(--text-secondary);
+        .meta-text {
+            font-family: var(--font-tech);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            opacity: 0.6;
+            margin-bottom: 2rem;
+            display: block;
         }
 
-        /* Form styles */
-        .form {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
+        /* Form Elements */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
         }
 
         .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+            margin-bottom: 1.5rem;
         }
 
-        .form-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
+        label {
+            display: block;
+            font-family: var(--font-tech);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            color: #888;
         }
 
-        .form-input {
+        .form-control {
             width: 100%;
-            height: 42px;
-            padding: 0 14px;
-            background: var(--background-secondary);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            color: var(--text-primary);
-            font-size: 14px;
-            font-family: inherit;
-            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 1rem;
+            font-family: var(--font-tech);
+            font-size: 1rem;
+            transition: all 0.2s;
+            border-radius: 0;
         }
 
-        .form-input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .form-input:hover {
-            border-color: var(--border-hover);
-        }
-
-        .form-input:focus {
+        .form-control:focus {
             outline: none;
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08);
+            border-color: var(--signal-orange);
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 60, 0, 0.1);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .form-input:focus {
-                box-shadow: 0 0 0 3px rgba(250, 250, 250, 0.08);
-            }
-        }
-
-        /* Password row */
-        .password-row {
+        /* Role Selection - Industrial Cards */
+        .role-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        /* Role selection cards */
-        .role-section {
-            margin-top: 8px;
-        }
-
-        .role-section-title {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-        }
-
-        .role-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
         .role-card {
-            position: relative;
-            padding: 16px;
-            background: var(--background-secondary);
-            border: 2px solid var(--border-default);
-            border-radius: var(--radius-xl);
+            background: var(--surface-raw);
+            border: 1px solid var(--border-steel);
+            padding: 1.5rem;
             cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
+            transition: all 0.2s;
+            position: relative;
         }
 
         .role-card:hover {
-            border-color: var(--border-hover);
-            box-shadow: var(--shadow-md);
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .role-card.active {
-            border-color: var(--accent-primary);
-            background: var(--background-tertiary);
+            border-color: var(--signal-orange);
+            background: rgba(255, 60, 0, 0.05);
         }
 
-        .role-card.active .role-icon {
-            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        .role-card.active::before {
+            content: 'SELECTED';
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--signal-orange);
+            color: #000;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            font-weight: 700;
         }
 
         .role-icon {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 10px;
-            background: var(--background-tertiary);
-            border-radius: var(--radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #888;
         }
 
-        .role-icon svg {
-            width: 20px;
-            height: 20px;
-            color: var(--text-secondary);
-        }
-
-        .role-card.active .role-icon svg {
-            color: white;
+        .role-card.active .role-icon {
+            color: var(--signal-orange);
         }
 
         .role-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 0.25rem;
         }
 
         .role-desc {
-            font-size: 12px;
-            color: var(--text-tertiary);
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
         }
 
-        .role-heart {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .role-card.student .role-heart {
-            opacity: 1;
-        }
-
-        /* Submit button */
         .btn-submit {
-            height: 46px;
-            margin-top: 8px;
-            background: var(--accent-primary);
+            display: inline-block;
+            width: 100%;
+            background: var(--signal-orange);
+            color: #000;
+            padding: 1rem;
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-decoration: none;
             border: none;
-            border-radius: var(--radius-lg);
-            color: var(--background-primary);
-            font-size: 15px;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            border-radius: 0;
+            transition: all 0.2s;
         }
 
         .btn-submit:hover {
-            background: var(--accent-hover);
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
-        .btn-submit:active {
-            transform: translateY(1px);
+        .btn-send-code {
+            background: transparent;
+            border: 1px solid var(--blueprint-blue);
+            color: var(--blueprint-blue);
+            padding: 1rem;
+            font-family: var(--font-tech);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-width: 110px;
         }
 
-        .btn-submit.loading {
-            pointer-events: none;
-            position: relative;
+        .btn-send-code:hover:not(:disabled) {
+            background: var(--blueprint-blue);
+            color: #fff;
         }
 
-        .btn-submit.loading .btn-text {
-            visibility: hidden;
+        .btn-send-code:disabled {
+            border-color: #666;
+            color: #666;
+            cursor: not-allowed;
         }
 
-        .btn-submit.loading::after {
-            content: '';
-            position: absolute;
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--background-primary);
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Divider */
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 8px 0;
-            color: var(--text-tertiary);
-            font-size: 13px;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-default);
-        }
-
-        .divider span {
-            padding: 0 12px;
-        }
-
-        /* Login link */
-        .login-link {
-            text-align: center;
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .login-link a {
-            color: var(--link-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-link a:hover {
-            text-decoration: underline;
-        }
-
-        /* Alert messages */
         .alert {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 14px 16px;
-            border-radius: var(--radius-lg);
-            margin-bottom: 20px;
-            font-size: 14px;
-            animation: alertFadeIn 0.3s ease-out;
-        }
-
-        @keyframes alertFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert svg {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-            margin-top: 1px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid;
+            font-size: 0.8rem;
+            text-transform: uppercase;
         }
 
         .alert-error {
-            background: rgba(248, 81, 73, 0.1);
-            border: 1px solid rgba(248, 81, 73, 0.2);
-            color: #EF4444;
-        }
-
-        .alert-error svg {
-            color: #EF4444;
+            border-color: var(--alert-red);
+            color: var(--alert-red);
+            background: rgba(255, 0, 60, 0.05);
         }
 
         .alert-success {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            color: #22C55E;
+            border-color: var(--success-green);
+            color: var(--success-green);
+            background: rgba(0, 255, 102, 0.05);
         }
 
-        .alert-success svg {
-            color: #22C55E;
-        }
-
-        /* Footer */
-        .footer {
-            margin-top: 28px;
+        .links {
+            margin-top: 1.5rem;
             text-align: center;
-            font-size: 13px;
-            color: var(--text-tertiary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
         }
 
-        .footer a {
-            color: var(--text-secondary);
+        .links a {
+            color: #666;
             text-decoration: none;
-            margin: 0 12px;
-            transition: color 0.2s ease;
+            transition: color 0.2s;
         }
 
-        .footer a:hover {
-            color: var(--text-primary);
+        .links a:hover {
+            color: var(--signal-orange);
         }
 
-        /* Responsive */
-        @media (max-width: 500px) {
-            .register-card {
-                padding: 24px 20px;
-            }
-
-            .password-row {
-                grid-template-columns: 1fr;
-            }
-
-            .role-cards {
-                grid-template-columns: 1fr;
-            }
+        /* Layout Asymmetry Element */
+        .deco-strip {
+            position: absolute;
+            top: 0;
+            left: -20px;
+            bottom: 0;
+            width: 10px;
+            background: repeating-linear-gradient(45deg,
+                    var(--border-steel),
+                    var(--border-steel) 1px,
+                    transparent 1px,
+                    transparent 10px);
+            opacity: 0.3;
         }
     </style>
 </head>
+
 <body>
-    <div class="bg-gradient"></div>
 
-    <div class="register-card">
-        <!-- Logo section -->
-        <div class="logo-section">
-            <div class="logo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                    <path d="M12 6v6l4 2"/>
-                    <path d="M8 12h8"/>
-                </svg>
-            </div>
-            <h1 class="logo-title">创建账户</h1>
-            <p class="logo-subtitle">加入 SQL Quiz，开始你的学习之旅</p>
-        </div>
+    <div class="glass-panel">
+        <div class="deco-strip"></div>
 
-        <!-- Error/Success messages -->
+        <header>
+            <h1>New Identity</h1>
+            <span class="meta-text">Register Protocol v2.5 // Assign Role</span>
+        </header>
+
+        <!-- Messages -->
         <div th:if="${error}" class="alert alert-error">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span th:text="${error}">注册失败</span>
+            <i class="fas fa-exclamation-triangle"></i> <span th:text="${error}">Error</span>
         </div>
-
         <div th:if="${message}" class="alert alert-success">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-            <span th:text="${message}">操作成功</span>
+            <i class="fas fa-check-circle"></i> <span th:text="${message}">Success</span>
         </div>
 
-        <!-- Register form -->
-        <form th:action="@{/register}" method="post" class="form" id="registerForm">
+        <form th:action="@{/register}" method="post" id="registerForm">
+
             <div class="form-group">
-                <label class="form-label" for="username">用户名</label>
-                <input type="text" id="username" name="username" class="form-input"
-                       placeholder="3-50个字符" required minlength="3" maxlength="50" autocomplete="username">
+                <label for="username">Username Handle</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="UNIQUE IDENTIFIER"
+                    required minlength="3" maxlength="50" autocomplete="username">
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="fullName">姓名</label>
-                <input type="text" id="fullName" name="fullName" class="form-input"
-                       placeholder="请输入您的姓名" required autocomplete="name">
+                <label for="fullName">Display Name</label>
+                <input type="text" id="fullName" name="fullName" class="form-control" placeholder="FULL NAME" required
+                    autocomplete="name">
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="email">邮箱地址</label>
-                <input type="email" id="email" name="email" class="form-input"
-                       placeholder="请输入邮箱" required autocomplete="email">
+                <label for="email">Comms Address</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="email" id="email" name="email" class="form-control" placeholder="EMAIL ADDRESS" required
+                        autocomplete="email">
+                    <button type="button" class="btn-send-code" onclick="sendVerificationCode()" id="sendCodeBtn">
+                        Send Code
+                    </button>
+                </div>
+                <small id="emailHelp" style="color: #666; font-size: 0.7rem; margin-top: 0.3rem; display: block;"></small>
             </div>
 
-            <div class="password-row">
+            <div class="form-group">
+                <label for="verificationCode">Verification Code</label>
+                <input type="text" id="verificationCode" name="verificationCode" class="form-control"
+                    placeholder="ENTER CODE" required maxlength="6" pattern="[0-9]{6}">
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" for="password">密码</label>
-                    <input type="password" id="password" name="password" class="form-input"
-                           placeholder="至少6个字符" required minlength="6" autocomplete="new-password">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="SECRET"
+                        required minlength="6" autocomplete="new-password">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="confirmPassword">确认密码</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-input"
-                           placeholder="再次输入密码" required autocomplete="new-password">
+                    <label for="confirmPassword">Confirm</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control"
+                        placeholder="REPEAT" required autocomplete="new-password">
                 </div>
             </div>
 
-            <!-- Role selection -->
-            <div class="role-section">
-                <div class="role-section-title">选择角色</div>
-                <div class="role-cards">
-                    <!-- Teacher -->
-                    <div class="role-card teacher" tabindex="0" data-role="teacher">
-                        <div class="role-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                            </svg>
-                        </div>
-                        <div class="role-title">教师</div>
-                        <div class="role-desc">创建和管理测验</div>
-                        <input type="radio" name="role" value="teacher" style="display:none;">
-                    </div>
+            <!-- Role Selection -->
+            <label style="margin-bottom: 0.5rem; display:block;">Assign Designation</label>
+            <div class="role-grid">
+                <!-- Teacher -->
+                <div class="role-card" onclick="selectRole('teacher', this)">
+                    <div class="role-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <div class="role-title">TEACHER</div>
+                    <div class="role-desc">Administer & Control</div>
+                    <input type="radio" name="role" value="teacher" style="display:none;">
+                </div>
 
-                    <!-- Student -->
-                    <div class="role-card student" tabindex="0" data-role="student">
-                        <span class="role-heart">❤</span>
-                        <div class="role-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                            </svg>
-                        </div>
-                        <div class="role-title">学生</div>
-                        <div class="role-desc">参加测验和练习</div>
-                        <input type="radio" name="role" value="student" style="display:none;">
-                    </div>
+                <!-- Student -->
+                <div class="role-card" onclick="selectRole('student', this)">
+                    <div class="role-icon"><i class="fas fa-user-graduate"></i></div>
+                    <div class="role-title">STUDENT</div>
+                    <div class="role-desc">Execute Protocols</div>
+                    <input type="radio" name="role" value="student" style="display:none;">
                 </div>
             </div>
 
             <button type="submit" class="btn-submit" id="submitBtn">
-                <span class="btn-text">注册账户</span>
+                Confirm Registration
             </button>
         </form>
 
-        <div class="divider">
-            <span>或</span>
+        <div class="links">
+            <span>Already Assigned?</span> <a th:href="@{/login}">Access Terminal</a>
         </div>
-
-        <p class="login-link">
-            已有账户？ <a href="/login">立即登录</a>
-        </p>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <a href="#">关于平台</a>
-            <a href="#">使用帮助</a>
-            <a href="#">联系我们</a>
-        </footer>
     </div>
 
     <script>
-        // Role selection
-        const roleCards = document.querySelectorAll('.role-card');
+        // 倒计时相关变量
+        let countdown = 0;
+        let countdownInterval = null;
 
-        roleCards.forEach(card => {
-            const select = () => {
-                roleCards.forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
+        // 发送验证码
+        async function sendVerificationCode() {
+            const emailInput = document.getElementById('email');
+            const sendCodeBtn = document.getElementById('sendCodeBtn');
+            const emailHelp = document.getElementById('emailHelp');
 
-                const radio = card.querySelector('input[type="radio"]');
-                if (radio) radio.checked = true;
-            };
+            const email = emailInput.value.trim();
+            console.log('[Send Code] 准备发送验证码到:', email);
 
-            card.addEventListener('click', select);
+            // 验证邮箱格式
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                console.error('[Send Code] 邮箱格式无效');
+                emailHelp.textContent = 'ERROR: INVALID EMAIL FORMAT';
+                emailHelp.style.color = 'var(--alert-red)';
+                return;
+            }
 
-            card.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    select();
+            // 禁用按钮
+            sendCodeBtn.disabled = true;
+            emailHelp.textContent = 'SENDING...';
+            emailHelp.style.color = '#888';
+
+            try {
+                console.log('[Send Code] 开始发送请求...');
+                const response = await fetch('/send-verification-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'email=' + encodeURIComponent(email)
+                });
+
+                console.log('[Send Code] 响应状态:', response.status);
+                const result = await response.json();
+                console.log('[Send Code] 响应结果:', result);
+
+                if (result.success) {
+                    emailHelp.textContent = 'CODE SENT! CHECK YOUR EMAIL';
+                    emailHelp.style.color = 'var(--success-green)';
+                    startCountdown();
+                } else {
+                    console.error('[Send Code] 发送失败:', result.message);
+                    emailHelp.textContent = 'ERROR: ' + result.message;
+                    emailHelp.style.color = 'var(--alert-red)';
+                    sendCodeBtn.disabled = false;
                 }
-            });
-        });
+            } catch (error) {
+                console.error('[Send Code] 请求异常:', error);
+                emailHelp.textContent = 'ERROR: FAILED TO SEND CODE';
+                emailHelp.style.color = 'var(--alert-red)';
+                sendCodeBtn.disabled = false;
+            }
+        }
 
-        // Form validation
+        // 开始倒计时
+        function startCountdown() {
+            const sendCodeBtn = document.getElementById('sendCodeBtn');
+            countdown = 60; // 60秒倒计时
+
+            countdownInterval = setInterval(() => {
+                sendCodeBtn.textContent = 'WAIT ' + countdown + 'S';
+
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    sendCodeBtn.textContent = 'Send Code';
+                    sendCodeBtn.disabled = false;
+                }
+                countdown--;
+            }, 1000);
+        }
+
+        function selectRole(role, cardElement) {
+            // Remove active from all
+            document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+            // Add active to clicked
+            cardElement.classList.add('active');
+            // Check the radio
+            cardElement.querySelector('input').checked = true;
+        }
+
         const registerForm = document.getElementById('registerForm');
-        const submitBtn = document.getElementById('submitBtn');
-
-        registerForm.addEventListener('submit', function(e) {
+        registerForm.addEventListener('submit', function (e) {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const role = document.querySelector('input[name="role"]:checked');
+            const verificationCode = document.getElementById('verificationCode').value;
 
             if (password !== confirmPassword) {
                 e.preventDefault();
-                alert('两次输入的密码不一致！');
+                alert('ERROR: PASSWORDS DO NOT MATCH');
                 return;
             }
 
             if (!role) {
                 e.preventDefault();
-                alert('请选择用户角色！');
+                alert('ERROR: DESIGNATION REQUIRED');
                 return;
             }
 
-            submitBtn.classList.add('loading');
+            if (!verificationCode || verificationCode.length !== 6) {
+                e.preventDefault();
+                alert('ERROR: VALID VERIFICATION CODE REQUIRED');
+                return;
+            }
         });
     </script>
 </body>
+
 </html>

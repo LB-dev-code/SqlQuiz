@@ -302,28 +302,6 @@
             border-color: #666;
         }
 
-        /* TOOLS GRID */
-        .tools-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 3rem;
-        }
-
-        .tool-card {
-            border: 1px solid var(--border-steel);
-            padding: 2rem;
-            text-decoration: none;
-            color: #fff;
-            transition: all 0.2s;
-            display: block;
-        }
-
-        .tool-card:hover {
-            border-color: var(--blueprint-blue);
-            background: rgba(0, 68, 255, 0.05);
-        }
-
         @media (max-width: 1024px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -362,9 +340,8 @@
             </div>
 
             <nav class="nav-menu">
-                <a href="/teacher/dashboard" class="nav-item active">Overview</a>
+                <a href="/teacher/dashboard" class="nav-item active">Dashboard</a>
                 <a href="/teacher/quizzes" class="nav-item">Quiz Bank</a>
-                <a href="/teacher/question/list" class="nav-item">Questions</a>
                 <a href="/teacher/sql-test" class="nav-item">SQL Tools</a>
             </nav>
 
@@ -436,20 +413,6 @@
                 <div th:if="${#lists.isEmpty(quizzes)}"
                     style="text-align: center; padding: 4rem; border: 1px dashed var(--border-steel); color: #666;">
                     NO DATA AVAILABLE. INITIATE NEW PROTOCOL.
-                </div>
-
-                <!-- TOOLS -->
-                <div class="tools-grid">
-                    <a href="/teacher/sql-test" class="tool-card">
-                        <h3 style="font-family:var(--font-display); color:#fff;">SQL Verification</h3>
-                        <p style="font-size:0.8rem; color:#888; margin-top:0.5rem;">Test query logic against current
-                            database schema.</p>
-                    </a>
-                    <a href="/teacher/question/create" class="tool-card">
-                        <h3 style="font-family:var(--font-display); color:#fff;">Add Question Node</h3>
-                        <p style="font-size:0.8rem; color:#888; margin-top:0.5rem;">Manually inject new query
-                            challenges.</p>
-                    </a>
                 </div>
 
             </div>

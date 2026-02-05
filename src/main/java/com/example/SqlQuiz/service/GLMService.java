@@ -33,6 +33,9 @@ public class GLMService {
 
     private String score_prompt ;
 
+    // 评分准则知识库ID
+    private static final String SCORING_KNOWLEDGE_ID = "2019315389405835264";
+
     @Autowired
     private SandboxDatabaseService sandboxService;
 
@@ -277,116 +280,128 @@ public class GLMService {
 
     public String score_answer(Double score, String description, String expected_answer, String student_answer) throws JsonProcessingException {
         score_prompt = String.format(
-                "You are a professional SQL teaching scoring assistant. Please score the student's SQL answer based on the following information. All your responses should be in English:\n" +
-                        "**Scoring Criteria:**\n" +
-                        "- Full score: %.1f points\n" +
-                        "- Question description: %s\n" +
-                        "- Standard answer: %s\n" +
-                        "- Student answer: %s\n" +
-                        "**Scoring Requirements:**\n" +
-                        "1. If the student's SQL writing differs from the standard answer but achieves the same query effect and results, give full score\n" +
-                        "2. If the student's answer has partial errors, give corresponding partial scores based on the error degree:\n" +
-                        "   - Correct syntax but wrong logic: give 60%%~80%% score\n" +
-                        "   - Main logic correct but with detail issues: give 80%%~95%% score\n" +
-                        "   - Serious logic errors but with some correct thinking: give 20%%~60%% score\n" +
-                        "3. If the student's answer is completely wrong or completely unreasonable, give 0 points\n" +
-                        "4. As long as the student doesn't get full score, you must explain the deduction reasons in detail\n" +
-                        "**Scoring Dimensions:**\n" +
-                        "- SQL syntax correctness\n" +
-                        "- Query logic accuracy\n" +
-                        "- Result completeness\n" +
-                        "- Code standardization\n" +
-                        "**Response Format Requirements:**\n" +
-                        "Please respond strictly in the following JSON format without adding any other content:\n" +
-                        "```json\n" +
+                "你是一个SQL作业评分系统。你必须严格按照《SQL作业AI评分系统行为规范文档》的流程进行评分。\n\n" +
+                        "**核心要求：评分必须是确定性的，相同输入必须产生完全相同的输出。**\n\n" +
+                        "**输入信息:**\n" +
+                        "- 题目满分: %.1f 分\n" +
+                        "- 题目描述: %s\n" +
+                        "- 标准答案: %s\n" +
+                        "- 学生答案: %s\n\n" +
+                        "**评分流程（严格执行）:**\n" +
+                        "1. 输入预处理：转小写、去除首尾空白、统一空格\n" +
+                        "2. 精确匹配：标准化后完全相同 = 满分\n" +
+                        "3. 语义等价：逻辑相同但写法不同 = 满分\n" +
+                        "4. 部分得分：计算令牌编辑距离，使用公式 Score = M * (1 - D_min/T)\n" +
+                        "5. 空答案或非 SQL = 0分\n\n" +
+                        "**输出格式（仅返回JSON）:**\n" +
                         "{\n" +
-                        "  \"score\": actual_score(number),\n" +
+                        "  \"score\": 数字(到一位小数),\n" +
                         "  \"fullScore\": %.1f,\n" +
-                        "  \"percentage\": score_percentage(number),\n" +
-                        "  \"feedback\": \"detailed scoring feedback description\",\n" +
-                        "  \"deductionReasons\": [\n" +
-                        "    \"deduction_reason_1\",\n" +
-                        "    \"deduction_reason_2\"\n" +
-                        "  ]\n" +  // Remove trailing comma
-                        "}\n" +    // Add newline
-                        "```",
-                score, description, expected_answer, student_answer,score // First %.1f and %s
-                // Second %.1f corresponds to fullScore
+                        "  \"isCorrect\": 布尔值,\n" +
+                        "  \"matchType\": \"EXACT|SEMANTIC|PARTIAL|ZERO\",\n" +
+                        "  \"editDistance\": 数字(令牌编辑距离),\n" +
+                        "  \"feedback\": \"简短评分说明\"\n" +
+                        "}",
+                score, description, expected_answer, student_answer, score
         );
+
         List<Map<String, String>> messages = List.of(
-                Map.of("role", "user", "content", score_prompt + "\n\nPlease score this SQL question")
+                Map.of("role", "system", "content", 
+                        "你是SQL作业评分专家。你必须严格遵循知识库中《SQL作业AI评分系统行为规范文档》的所有要求。" +
+                        "你的评分依据必须完全来源于计算出的编辑距离和预设公式，不得引入个人推理或感觉。" +
+                        "相同输入必须产生完全相同的输出。"),
+                Map.of("role", "user", "content", score_prompt)
         );
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", messages,
-                "max_tokens", 2000,
-                "temperature", 0.3  // 评分需要更准确，降低温度
-        );
+
+        // 使用知识库 + temperature=0 确保确定性输出
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        body.put("max_tokens", 1000);
+        body.put("temperature", 0);  // 0 = 完全确定性
+        body.put("top_p", 0.1);       // 进一步限制随机性
+        
+        // 添加评分准则知识库
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("type", "retrieval");
+        tools.put("retrieval", Map.of(
+                "knowledge_id", SCORING_KNOWLEDGE_ID,
+                "prompt_template", "从文档\n\"\"\"\n{{knowledge}}\n\"\"\"\n中找问题\n\"\"\"\n{{question}}\n\"\"\"的答案，找到答案后仅使用文档中的评分规则进行评分。"
+        ));
+        body.put("tools", List.of(tools));
+
         String result = "";
         try {
+            System.out.println("[AI Score] ========== 开始AI评分 (使用知识库: " + SCORING_KNOWLEDGE_ID + ") ==========");
+            System.out.println("[AI Score] 题目满分: " + score);
+            System.out.println("[AI Score] 题目描述: " + description);
+            System.out.println("[AI Score] 标准答案: " + expected_answer);
+            System.out.println("[AI Score] 学生答案: " + student_answer);
+
             result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
                     .body(body)
                     .retrieve()
                     .body(String.class);
+
             System.out.println("GLM Score API Response: " + result);
-            
+
             if (result == null || result.trim().isEmpty()) {
                 throw new RuntimeException("GLM scoring API returned empty response");
             }
-            
+
             // Remove possible BOM markers and leading/trailing whitespace
             result = result.trim();
             if (result.startsWith("\uFEFF")) {
                 result = result.substring(1);
             }
-            
+
             // Check if response starts with error code
             if (result.startsWith("error:") || result.startsWith("Error:")) {
                 throw new RuntimeException("GLM scoring API returned error: " + result);
             }
-            
+
             // Parse JSON response
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(result);
-            
+
             // Check for error messages
             JsonNode error = jsonNode.get("error");
             if (error != null) {
                 String errorMessage = error.get("message") != null ? error.get("message").asText() : error.asText();
                 throw new RuntimeException("GLM scoring API returned error: " + errorMessage);
             }
-            
+
             JsonNode choices = jsonNode.get("choices");
-            
+
             if (choices != null && choices.isArray() && choices.size() > 0) {
                 JsonNode message = choices.get(0).get("message");
                 if (message != null) {
                     JsonNode content = message.get("content");
                     if (content != null) {
                         String contentText = content.asText();
-                        System.out.println("Extracted score content: " + contentText);
+                        System.out.println("[AI Score] 提取到评分结果: " + contentText);
                         return contentText;
                     }
                 }
             }
-            
+
             // If unable to parse, return original response for debugging
-            System.err.println("Unable to extract content from GLM scoring API response, returning original response");
+            System.err.println("[AI Score] Unable to extract content from GLM scoring API response, returning original response");
             return result;
-            
+
         } catch (JsonProcessingException e) {
-            System.err.println("GLM scoring API JSON parsing error: " + e.getMessage());
-            System.err.println("Response was: " + result);
+            System.err.println("[AI Score] JSON parsing error: " + e.getMessage());
+            System.err.println("[AI Score] Response was: " + result);
             // If JSON parsing fails, try to return original response
             if (result != null && !result.isEmpty()) {
-                System.err.println("Returning original scoring response for debugging");
+                System.err.println("[AI Score] Returning original scoring response for debugging");
                 return result;
             }
             throw new RuntimeException("GLM scoring API JSON parsing failed: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("GLM Score API call failed: " + e.getMessage());
-            System.err.println("Response was: " + result);
+            System.err.println("[AI Score] API call failed: " + e.getMessage());
+            System.err.println("[AI Score] Response was: " + result);
             throw new RuntimeException("GLM scoring API call failed: " + e.getMessage());
         }
     }
@@ -568,14 +583,19 @@ public class GLMService {
                 "- setupSql: Use unique prefix: `" + tablePrefix + "_`\n" +
                 "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
                 "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
-                "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- **CRITICAL - INSERT FORMAT**: Every INSERT statement MUST include values for ALL columns defined in CREATE TABLE\n" +
+                "  * Use format: INSERT INTO `" + tablePrefix + "_[table_name]` (col1, col2, col3, ...) VALUES (val1, val2, val3, ...)\n" +
+                "  * **NEVER omit any column** - always explicitly list all columns in the INSERT statement\n" +
+                "  * For AUTO_INCREMENT columns: either include the value OR set to 0/NULL (but still list the column)\n" +
+                "  * This ensures no column has NULL values across all rows\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
                 "- **CRITICAL - Distractor Data**: Insert 5-8 sample records with:\n" +
                 "  * Records matching the query criteria (correct answers)\n" +
                 "  * Records NOT matching the criteria (distractors)\n" +
-                "  * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
+                "  * Edge cases: boundary values, similar-but-not-matching values\n" +
                 "  * Example: For 'names containing United', include 'United States', 'United Kingdom' AND 'Germany', 'France'\n" +
+                "  * **IMPORTANT**: Every column should have meaningful data in every row - avoid empty NULL values\n" +
                 "\n" +
                 "Return valid JSON only, no extra text.";
         
@@ -1003,8 +1023,17 @@ public class GLMService {
 
             // 3. 执行expectedSql验证
             if (expectedSql != null && !expectedSql.trim().isEmpty()) {
-                SandboxDatabaseService.SqlExecutionResult result = 
-                    sandboxService.executeInSandbox(sandbox, expectedSql);
+                // 从setupSql中提取表前缀
+                String tablePrefix = extractTablePrefix(setupSql);
+                System.out.println("[AI Verify] Extracted table prefix: " + tablePrefix);
+
+                // 使用带前缀映射的版本执行expectedSql
+                SandboxDatabaseService.SqlExecutionResult result =
+                    sandboxService.executeInSandbox(sandbox, expectedSql, tablePrefix);
+
+                if (!result.isSuccess()) {
+                    System.err.println("[AI Verify] SQL execution failed: " + result.getErrorMessage());
+                }
                 return result.isSuccess();
             }
 
@@ -1020,5 +1049,32 @@ public class GLMService {
                 sandboxService.cleanupSandbox(sandbox.getDatabaseName());
             }
         }
+    }
+
+    /**
+     * 从setupSql中提取表前缀
+     * 格式: quiz_q_<uuid_8chars>_<timestamp>
+     * 例如: CREATE TABLE quiz_q_a1B2c3D4_1738671234567_employees -> 提取 quiz_q_a1B2c3D4_1738671234567
+     *
+     * 注意：不包含末尾的下划线，因为addTablePrefixToSql会自动添加下划线和表名
+     */
+    private String extractTablePrefix(String setupSql) {
+        if (setupSql == null || setupSql.isEmpty()) {
+            return null;
+        }
+        // 匹配 quiz_q_<8位十六进制>_<13位时间戳> (不包含末尾下划线)
+        // 例如: quiz_q_a1B2c3D4_1738671234567 (后面紧跟着表名如_employees)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "quiz_q_[a-fA-F0-9]{8}_\\d{13}(?=_)"
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(setupSql);
+        if (matcher.find()) {
+            String prefix = matcher.group();
+            System.out.println("[AI Verify] Found table prefix in setupSql: " + prefix);
+            return prefix;
+        }
+        System.err.println("[AI Verify] Could not find table prefix in setupSql!");
+        System.err.println("[AI Verify] setupSql preview: " + (setupSql.length() > 200 ? setupSql.substring(0, 200) : setupSql));
+        return null;
     }
 }

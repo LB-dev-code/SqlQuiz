@@ -116,7 +116,8 @@ public class TeacherController {
             // 添加调试信息
             User teacher = (User) auth.getPrincipal();
             model.addAttribute("teacher", teacher);
-            
+            model.addAttribute("quiz", new Quiz());
+
             // 获取KPI数据
             List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
             int totalQuestions = 0;
@@ -587,14 +588,15 @@ public class TeacherController {
 
     // 通用提交详情页面
     @GetMapping("/submission-detail")
+    @Transactional(readOnly = true)
     public String submissionDetail(@RequestParam(required = false) Long submission_id,
                                    @RequestParam(required = false) Long quiz_id,
                                    Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
-        
+
         if (submission_id != null) {
-            // 显示特定提交详情
-            Optional<Submission> submissionOpt = submissionRepository.findById(submission_id);
+            // 显示特定提交详情 - 使用预加载查询避免懒加载问题
+            Optional<Submission> submissionOpt = submissionRepository.findByIdWithDetails(submission_id);
             if (!submissionOpt.isPresent()) {
                 return "redirect:/teacher/quiz-statistics";
             }
@@ -629,7 +631,9 @@ public class TeacherController {
 
     // SQL测试页面
     @GetMapping("/sql-test")
-    public String sqlTestPage() {
+    public String sqlTestPage(Model model, Authentication auth) {
+        User teacher = (User) auth.getPrincipal();
+        model.addAttribute("teacher", teacher);
         return "teacher/sql-test";
     }
 
@@ -949,5 +953,34 @@ public class TeacherController {
         model.addAttribute("quizzes", quizzes);
         model.addAttribute("teacher", teacher);
         return "teacher/question-ai-generate";
+    }
+
+    // 切换Quiz状态
+    @GetMapping("/quiz/{id}/toggle-status")
+    public String toggleQuizStatus(@PathVariable Long id, Authentication auth, RedirectAttributes redirectAttributes) {
+        try {
+            User teacher = (User) auth.getPrincipal();
+            Quiz quiz = quizService.findById(id).orElse(null);
+
+            if (quiz == null) {
+                redirectAttributes.addFlashAttribute("error", "Quiz does not exist");
+                return "redirect:/teacher/quizzes";
+            }
+
+            // 检查权限
+            if (!quiz.getTeacher().getId().equals(teacher.getId())) {
+                redirectAttributes.addFlashAttribute("error", "No permission to operate this quiz");
+                return "redirect:/teacher/quizzes";
+            }
+
+            quizService.toggleQuizStatus(id);
+            redirectAttributes.addFlashAttribute("message", "Quiz status toggled successfully");
+            return "redirect:/teacher/quizzes";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("error", "Failed to toggle quiz status: " + e.getMessage());
+            return "redirect:/teacher/quizzes";
+        }
     }
 }

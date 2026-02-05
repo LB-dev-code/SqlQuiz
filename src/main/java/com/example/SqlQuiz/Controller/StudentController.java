@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Controller
@@ -41,7 +43,39 @@ public class StudentController {
         List<Quiz> availableQuizzes = quizService.findOpenQuizzes();
 
         // 获取学生的测试记录
-        List<Submission> submissions = quizService.getStudentSubmissions(student);
+        List<Submission> allSubmissions = quizService.getStudentSubmissions(student);
+        
+        // 按quiz分组，只保留每个quiz的最后一次提交
+        Map<Long, Submission> latestSubmissionsByQuiz = new HashMap<>();
+        for (Submission submission : allSubmissions) {
+            Long quizId = submission.getQuiz().getId();
+            Submission currentLatest = latestSubmissionsByQuiz.get(quizId);
+            
+            // 如果这个quiz还没有记录，或者当前提交比已有记录更新，则更新
+            if (currentLatest == null || 
+                (submission.getSubmitTime() != null && currentLatest.getSubmitTime() != null &&
+                 submission.getSubmitTime().isAfter(currentLatest.getSubmitTime())) ||
+                (submission.getSubmitTime() != null && currentLatest.getSubmitTime() == null) ||
+                (submission.getStartTime() != null && currentLatest.getStartTime() != null &&
+                 submission.getStartTime().isAfter(currentLatest.getStartTime()))) {
+                latestSubmissionsByQuiz.put(quizId, submission);
+            }
+        }
+        
+        // 转换为List
+        List<Submission> submissions = new ArrayList<>(latestSubmissionsByQuiz.values());
+        // 按提交时间降序排序（最新的在前）
+        submissions.sort((s1, s2) -> {
+            if (s1.getSubmitTime() != null && s2.getSubmitTime() != null) {
+                return s2.getSubmitTime().compareTo(s1.getSubmitTime());
+            } else if (s1.getSubmitTime() != null) {
+                return -1;
+            } else if (s2.getSubmitTime() != null) {
+                return 1;
+            } else {
+                return s2.getStartTime().compareTo(s1.getStartTime());
+            }
+        });
 
         model.addAttribute("student", student);
         model.addAttribute("availableQuizzes", availableQuizzes);
