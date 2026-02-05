@@ -529,9 +529,8 @@
             </div>
 
             <nav class="nav-menu">
-                <a href="/teacher/dashboard" class="nav-item">Overview</a>
+                <a href="/teacher/dashboard" class="nav-item">Dashboard</a>
                 <a href="/teacher/quizzes" class="nav-item">Quiz Bank</a>
-                <a href="/teacher/question/list" class="nav-item active">Questions</a>
                 <a href="/teacher/sql-test" class="nav-item">SQL Tools</a>
             </nav>
 
@@ -572,10 +571,10 @@
                 <a th:href="@{/teacher/quiz/{id}/question/create(id=${quiz.id})}" class="btn btn-primary">
                     + Add Question Node
                 </a>
-                <a href="/teacher/question/ai-generate" class="btn btn-tech">
+                <a th:href="@{/teacher/question/ai-generate(quizId=${quiz.id})}" class="btn btn-tech">
                     <i class="fas fa-robot"></i> AI Generate
                 </a>
-                <a href="/teacher/question/ai-normalize" class="btn btn-tech">
+                <a th:href="@{/teacher/question/ai-normalize(quizId=${quiz.id})}" class="btn btn-tech">
                     <i class="fas fa-magic"></i> AI Normalize
                 </a>
                 <div style="flex:1;"></div>
@@ -624,9 +623,9 @@
                     </div>
 
                     <div class="q-actions">
-                        <button class="q-action-btn" th:onclick="|editQuestion('${question.id}')|">Edit Node</button>
+                        <button class="q-action-btn" th:data-id="${question.id}" onclick="editQuestionFromData(this)">Edit Node</button>
                         <button class="q-action-btn delete"
-                            th:onclick="|deleteQuestion('${question.id}', '${#strings.escapeJava(question.content)}')|">Delete
+                            th:data-id="${question.id}" th:data-content="${question.content}" onclick="deleteQuestionFromData(this)">Delete
                             Node</button>
                     </div>
                 </div>
@@ -709,6 +708,11 @@
         }
 
         // Edit Logic
+        function editQuestionFromData(button) {
+            const id = button.getAttribute('data-id');
+            editQuestion(id);
+        }
+
         function editQuestion(id) {
             document.getElementById('editModal').classList.add('show');
 
@@ -742,6 +746,12 @@
         });
 
         // Delete Logic
+        function deleteQuestionFromData(button) {
+            const id = button.getAttribute('data-id');
+            const content = button.getAttribute('data-content') || '';
+            deleteQuestion(id, content);
+        }
+
         function deleteQuestion(id, content) {
             document.getElementById('deleteModal').classList.add('show');
             document.getElementById('deleteContentPreview').textContent = content;

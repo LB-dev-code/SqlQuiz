@@ -425,13 +425,12 @@
 
                     <div class="q-body">
                         <!-- DESC -->
-                        <div th:if="${question.description}" th:utext="${question.description}">
+                        <div th:if="${question.description}" th:utext="${#strings.substringBefore(question.description, 'Database Context')}">
                             Description...
                         </div>
 
                         <!-- SCHEMA -->
                         <div class="schema-box" th:if="${question.databaseContext}">
-                            <span class="schema-label">Database Schema Context</span>
                             <div th:utext="${question.databaseContext}"
                                 style="white-space: pre-wrap; font-family: var(--font-tech); color: #aaa;">
                             </div>
@@ -520,6 +519,55 @@
             }
         }
 
+        // 存储CodeMirror实例映射
+        const editorMap = new Map();
+
+        // --- Editor Init ---
+        document.querySelectorAll('.sql-editor').forEach(textarea => {
+            const cm = CodeMirror.fromTextArea(textarea, {
+                mode: 'text/x-mysql',
+                theme: 'neo',
+                lineNumbers: true,
+                viewportMargin: Infinity
+            });
+            const questionId = textarea.getAttribute('data-question-id');
+            editorMap.set(questionId, cm);
+
+            // 自动保存：当输入停止1秒后自动保存答案
+            let saveTimeout;
+            cm.on('change', () => {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    saveAnswer(questionId, cm.getValue());
+                }, 1000);
+            });
+        });
+
+        // 保存单个答案
+        function saveAnswer(questionId, sql) {
+            const submissionId = /*[[${submission.id}]]*/ 0;
+
+            fetch('/student/submission/' + submissionId + '/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    questionId: questionId,
+                    sql: sql
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                if (data !== 'success' && !data.startsWith('error')) {
+                    console.log('Answer saved for question ' + questionId);
+                }
+            })
+            .catch(error => {
+                console.error('Auto-save failed for question ' + questionId + ':', error);
+            });
+        }
+
         function submitQuiz() {
             if (!confirm("CONFIRM TERMINATION?")) return;
 
@@ -528,30 +576,55 @@
             // Disable button to prevent double submission
             const btn = document.querySelector('.btn-submit-all');
             btn.disabled = true;
-            btn.textContent = 'Submitting...';
+            btn.textContent = 'Saving answers...';
 
-            fetch('/student/submission/' + submissionId + '/submit', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
+            // 先保存所有答案
+            const savePromises = [];
+            editorMap.forEach((cm, questionId) => {
+                const sql = cm.getValue();
+                if (sql && sql.trim()) {
+                    savePromises.push(
+                        fetch('/student/submission/' + submissionId + '/answer', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            },
+                            body: new URLSearchParams({
+                                questionId: questionId,
+                                sql: sql
+                            })
+                        })
+                    );
                 }
-            })
-            .then(response => response.text())
-            .then(data => {
-                if (data === 'success' || !data.startsWith('error')) {
-                    window.location.href = '/student/submission/' + submissionId + '/result';
-                } else {
-                    alert('Submit failed: ' + data);
+            });
+
+            // 等待所有答案保存完成，然后提交测试
+            Promise.all(savePromises)
+                .then(() => {
+                    btn.textContent = 'Submitting...';
+                    return fetch('/student/submission/' + submissionId + '/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                })
+                .then(response => response.text())
+                .then(data => {
+                    if (data === 'success' || !data.startsWith('error')) {
+                        window.location.href = '/student/submission/' + submissionId + '/result';
+                    } else {
+                        alert('Submit failed: ' + data);
+                        btn.disabled = false;
+                        btn.textContent = 'Terminating Session // Submit All';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Submit failed: ' + error);
                     btn.disabled = false;
                     btn.textContent = 'Terminating Session // Submit All';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Submit failed: ' + error);
-                btn.disabled = false;
-                btn.textContent = 'Terminating Session // Submit All';
-            });
+                });
         }
     </script>
 

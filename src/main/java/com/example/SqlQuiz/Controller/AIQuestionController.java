@@ -48,11 +48,50 @@ public class AIQuestionController {
 
     @PostMapping("/normalize")
     public ResponseEntity<?> normalizeQuestion(
-            @RequestBody Map<String, String> request,
+            @RequestParam(required = false) String input,
+            @RequestParam(required = false) String inputType,
+            @RequestParam(required = false) MultipartFile imageFile,
             Authentication auth) {
         try {
-            String input = request.get("input");
-            String inputType = request.get("inputType");
+            // Handle image file if provided
+            if (imageFile != null && !imageFile.isEmpty()) {
+                try {
+                    // Create temp directory
+                    Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "sqlquiz-ocr");
+                    if (!Files.exists(tempDir)) {
+                        Files.createDirectories(tempDir);
+                    }
+
+                    // Save uploaded file to temp location
+                    String originalFilename = imageFile.getOriginalFilename();
+                    String extension = originalFilename != null && originalFilename.contains(".")
+                        ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                        : ".jpg";
+                    String filename = UUID.randomUUID().toString() + extension;
+                    Path tempFilePath = tempDir.resolve(filename);
+                    imageFile.transferTo(tempFilePath.toFile());
+
+                    // Perform OCR
+                    String recognizedText = glmService.performOCR(tempFilePath.toString());
+
+                    // Clean up temp file
+                    try {
+                        Files.deleteIfExists(tempFilePath);
+                    } catch (IOException e) {
+                        System.err.println("Failed to delete temp file: " + e.getMessage());
+                    }
+
+                    if (recognizedText != null && !recognizedText.trim().isEmpty()) {
+                        input = recognizedText;
+                    }
+                    inputType = "IMAGE";
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "success", false,
+                            "error", "OCR recognition failed: " + e.getMessage()
+                    ));
+                }
+            }
 
             if (input == null || input.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -319,7 +358,7 @@ public class AIQuestionController {
 
             String fullDescription = description;
             if (databaseContext != null && !databaseContext.trim().isEmpty()) {
-                fullDescription = description + "\n\nDatabase Context:\n" + databaseContext;
+                fullDescription = description + "\n\n" + databaseContext;
             }
 
             Question question = quizService.addQuestionToQuiz(

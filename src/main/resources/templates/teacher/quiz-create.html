@@ -1,1043 +1,426 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Quiz - MySQL Knowledge Test Platform</title>
+    <title>Module Create / Berlin Concrete</title>
 
-    <!-- Font Awesome -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 
     <style>
         :root {
-            /* Dark theme with glassmorphism colors matching register page */
-            --bg: #0b0f14;
-            --bg-grad-1: #0b0f14;
-            --bg-grad-2: #0e1219;
-            --panel: rgba(18, 22, 29, 0.55);
-            --panel-strong: rgba(18, 22, 29, 0.75);
-            --white: #e8edf7;
-            --muted: #9aa6b2;
-            --text-dim: #6b7280;
-            --field: rgba(255,255,255,0.06);
-            --field-border: rgba(255,255,255,0.12);
-            --field-focus: rgba(100, 180, 255, 0.25);
-            --accent-1: #6e74ff;
-            --accent-2: #6ce1ff;
-            --accent: #5b8cff;
-            --accent-hover: #4979ff;
-            --danger: #ff5f8a;
-            --success: #4ff0a7;
-            --warning: #ffc857;
-            --shadow-1: rgba(0, 0, 0, 0.35);
-            --shadow-2: rgba(0, 20, 60, 0.35);
-            --heart: #ff6aa2;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 10px;
-            --spacing-1: 8px;
-            --spacing-2: 12px;
-            --spacing-3: 16px;
-            --spacing-4: 24px;
-            --spacing-5: 32px;
-            --spacing-6: 40px;
-            --spacing-7: 48px;
-            --spacing-8: 64px;
-            --max-w: 980px;
-            --input-h: 44px;
-
-            --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Inter", system-ui, -apple-system, sans-serif;
-            --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Montserrat", var(--font-sans);
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+            --alert-red: #ff003c;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+            --space-unit: 1.5rem;
         }
 
-        * { box-sizing: border-box; }
-        html, body {
-            height: 100%;
-            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
-            margin: 0; padding: 0;
-            font-family: var(--font-sans);
-            color: var(--white);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .page {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: var(--spacing-6) var(--spacing-5);
+        body {
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
         }
 
-        /* ====== Top bar ====== */
-        .topbar {
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-            margin-bottom: var(--spacing-5);
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
         }
 
-        .title-wrap {
+        .sidebar {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
             display: flex;
-            align-items: center;
-            gap: var(--spacing-3);
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
         }
 
-        .app-title {
+        .brand-block h1 {
             font-family: var(--font-display);
-            font-weight: 700;
-            font-size: 32px;
-            letter-spacing: 0.4px;
-            color: var(--white);
-        }
-
-        .user {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
-            padding: var(--spacing-2) var(--spacing-3);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-md);
-            text-decoration: none;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .user:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-        
-        .logout-btn {
-            padding: 6px 10px;
-            margin-left: var(--spacing-2);
-            border-radius: var(--radius-sm);
-            background: rgba(255, 95, 138, 0.1);
-            border: 1px solid rgba(255, 95, 138, 0.3);
-            color: var(--danger);
-            font-size: 12px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .logout-btn:hover {
-            background: rgba(255, 95, 138, 0.2);
-            border-color: var(--danger);
-            transform: translateY(-1px);
-        }
-
-        .avatar {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(91,140,255,0.35), rgba(255,255,255,0.1));
-            border: 1px solid rgba(255,255,255,0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--white);
-        }
-
-        .username {
-            font-weight: 600;
-            color: var(--muted);
-        }
-
-        /* ====== Navigation links ====== */
-        .nav-links {
-            display: flex;
-            gap: var(--spacing-3);
-            margin-top: var(--spacing-3);
-            margin-bottom: var(--spacing-5);
-        }
-
-        .nav-link {
-            color: var(--muted);
-            text-decoration: none;
-            font-size: 14px;
-            padding: var(--spacing-2) var(--spacing-3);
-            border-radius: var(--radius-md);
-            transition: all 0.2s ease;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid transparent;
-        }
-
-        .nav-link:hover {
-            color: var(--white);
-            background: var(--field);
-            border-color: var(--field-border);
-            transform: translateY(-1px);
-        }
-
-        /* ====== KPI cards row ====== */
-        .kpi-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-6);
-        }
-
-        .kpi {
-            padding: var(--spacing-4);
-            border-radius: var(--radius-lg);
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .kpi:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .kpi-label {
-            font-size: 12px;
-            color: var(--text-dim);
-            letter-spacing: 0.4px;
+            font-size: 2rem;
+            line-height: 0.9;
             text-transform: uppercase;
-            margin-bottom: var(--spacing-2);
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
+            color: #fff;
         }
 
-        .kpi-value {
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 3rem;
+            flex: 1;
+        }
+
+        .nav-item {
             font-family: var(--font-display);
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--white);
-        }
-
-        /* ====== Action buttons row ====== */
-        .actions {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--spacing-4);
-            margin-bottom: var(--spacing-8);
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-2);
-            padding: 14px 18px;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            letter-spacing: 0.2px;
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            cursor: pointer;
-            transition: all 0.12s ease;
-            text-align: center;
+            font-size: 1.2rem;
+            color: #888;
             text-decoration: none;
-            font-size: 14px;
-            background: var(--panel);
-        }
-
-        .btn.primary {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91,140,255,0.55);
-            box-shadow:
-                0 14px 28px rgba(108,225,255,0.18),
-                0 4px 10px var(--shadow-1),
-                inset 0 1px 0 rgba(255,255,255,0.45);
-        }
-
-        .btn.secondary {
-            color: var(--white);
-        }
-
-        .btn:hover { 
-            transform: translateY(-1px); 
-            filter: brightness(1.04);
-        }
-
-        .btn.primary:hover {
-            box-shadow:
-                0 16px 32px rgba(108,225,255,0.22),
-                0 6px 14px var(--shadow-1);
-        }
-
-        .btn.secondary:hover {
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .btn:active { 
-            transform: translateY(0); 
-        }
-
-        /* ====== Small deco chips ====== */
-        .chip {
-            display: inline-flex;
+            position: relative;
+            display: flex;
+            gap: 10px;
             align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
-            color: var(--muted);
+            transition: all 0.2s;
         }
 
-        .chip-dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 12px rgba(91,140,255,0.8);
+        .nav-item:hover,
+        .nav-item.active {
+            color: #fff;
+            padding-left: 10px;
         }
 
-        /* ====== Main panels ====== */
+        .nav-item.active::before {
+            content: '→';
+            position: absolute;
+            left: -15px;
+            color: var(--signal-orange);
+        }
+
+        .user-profile {
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-steel);
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .user-name {
+            color: #fff;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .logout-link {
+            color: var(--alert-red);
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+
+        .main-content {
+            padding: 0;
+        }
+
+        .top-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .page-title h2 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+        }
+
+        .page-subtitle {
+            color: var(--blueprint-blue);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* FORM */
+        .form-container {
+            padding: 2rem;
+            max-width: 800px;
+        }
+
         .panel {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            box-shadow: var(--shadow-1);
-            backdrop-filter: saturate(140%) blur(14px);
-            -webkit-backdrop-filter: saturate(140%) blur(14px);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            margin-bottom: var(--spacing-4);
-        }
-
-        .panel:hover {
-            transform: translateY(-1px);
-            border-color: rgba(130, 200, 255, 0.65);
-            box-shadow: 0 0 0 2px var(--field-focus);
-            background: rgba(255,255,255,0.08);
+            background: var(--surface-raw);
+            border: 1px solid var(--border-steel);
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
         }
 
         .panel-header {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            padding: var(--spacing-4) var(--spacing-5);
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-        }
-
-        .panel-title {
             font-family: var(--font-display);
-            font-size: 18px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            color: var(--white);
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-steel);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .panel-subtitle {
-            font-size: 12px;
-            color: var(--text-dim);
+        .panel-header i {
+            color: var(--signal-orange);
         }
 
-        .panel-body {
-            padding: var(--spacing-5);
+        .form-group {
+            margin-bottom: 1.5rem;
         }
 
-        /* Form */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--spacing-4);
-        }
-
-        label {
+        .form-group label {
             display: block;
-            color: var(--muted);
-            font-size: 13px;
-            margin-bottom: var(--spacing-1);
-            letter-spacing: 0.2px;
-            font-weight: 500;
+            color: #888;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
         }
 
-        .input {
-            height: var(--input-h);
+        .form-control,
+        .select-control {
             width: 100%;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--white);
-            padding: 0 var(--spacing-3);
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 1rem;
+            font-family: var(--font-tech);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
             outline: none;
-            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-            font-family: var(--font-sans);
+            border-color: var(--blueprint-blue);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 2px rgba(0, 68, 255, 0.1);
         }
 
-        .input::placeholder { color: var(--text-dim); }
-
-        .input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 6px var(--field-focus);
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
-        }
-
-        .row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-4);
-        }
-
-        .error-text {
-            color: var(--danger);
-            font-size: 12px;
-            margin-top: var(--spacing-1);
-            letter-spacing: 0.2px;
-        }
-
-        .textarea-wrap {
-            position: relative;
-        }
-
-        .textarea {
-            width: 100%;
-            min-height: 140px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--white);
-            padding: var(--spacing-3);
-            outline: none;
-            resize: vertical;
-            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        textarea.form-control {
+            min-height: 120px;
             line-height: 1.6;
-            font-family: var(--font-sans);
-        }
-
-        .textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 6px var(--field-focus);
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
-        }
-
-        .textarea::placeholder { color: var(--text-dim); }
-
-        .counter {
-            position: absolute;
-            right: var(--spacing-3);
-            bottom: var(--spacing-3);
-            color: var(--text-dim);
-            font-size: 12px;
-            letter-spacing: 0.2px;
-        }
-
-        /* Input suffix for "Minutes" */
-        .input-suffix {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .suffix {
-            color: var(--text-dim);
-            font-size: 12px;
-            padding: 0 var(--spacing-1);
-            border-radius: var(--radius-sm);
-            border: 1px dashed rgba(255,255,255,0.15);
-            background: rgba(255,255,255,0.03);
-            height: 28px;
-            display: flex;
-            align-items: center;
-        }
-
-        /* Form */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--spacing-4);
-        }
-
-        label {
-            display: block;
-            color: var(--muted);
-            font-size: 13px;
-            margin-bottom: var(--spacing-1);
-            letter-spacing: 0.2px;
-            font-weight: 500;
-        }
-
-        .input {
-            height: var(--input-h);
-            width: 100%;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--white);
-            padding: 0 var(--spacing-3);
-            outline: none;
-            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-            font-family: var(--font-sans);
-        }
-
-        .input::placeholder { color: var(--text-dim); }
-
-        .input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 6px var(--field-focus);
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
-        }
-
-        .row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-4);
-        }
-
-        .error-text {
-            color: var(--danger);
-            font-size: 12px;
-            margin-top: var(--spacing-1);
-            letter-spacing: 0.2px;
-        }
-
-        .textarea-wrap {
-            position: relative;
-        }
-
-        .textarea {
-            width: 100%;
-            min-height: 140px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--white);
-            padding: var(--spacing-3);
-            outline: none;
             resize: vertical;
-            transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
-            line-height: 1.6;
-            font-family: var(--font-sans);
         }
 
-        .textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 6px var(--field-focus);
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
-        }
-
-        .textarea::placeholder { color: var(--text-dim); }
-
-        .counter {
-            position: absolute;
-            right: var(--spacing-3);
-            bottom: var(--spacing-3);
-            color: var(--text-dim);
-            font-size: 12px;
-            letter-spacing: 0.2px;
-        }
-
-        /* Input suffix for "Minutes" */
-        .input-suffix {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-            gap: var(--spacing-2);
-        }
-
-        .suffix {
-            color: var(--text-dim);
-            font-size: 12px;
-            padding: 0 var(--spacing-1);
-            border-radius: var(--radius-sm);
-            border: 1px dashed rgba(255,255,255,0.15);
-            background: rgba(255,255,255,0.03);
-            height: 28px;
+        .checkbox-group {
             display: flex;
             align-items: center;
+            gap: 10px;
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--border-steel);
+            background: rgba(255, 255, 255, 0.01);
+            cursor: pointer;
         }
 
-        /* Alert styling */
-        .alert {
-            padding: var(--spacing-3) var(--spacing-4);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-4);
-            font-size: 14px;
-            border: 1px solid;
-            display: flex;
+        .checkbox-group input {
+            width: auto;
+        }
+
+        .checkbox-group:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 1rem 2rem;
+            font-family: var(--font-tech);
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
             align-items: center;
-            gap: var(--spacing-2);
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 0.9rem;
         }
 
-        .alert-danger {
-            background: rgba(255, 95, 138, 0.1);
-            border-color: var(--danger);
-            color: var(--danger);
+        .btn:hover {
+            background: #fff;
+            color: #000;
         }
 
-        .alert-info {
-            background: rgba(108, 225, 255, 0.1);
-            border-color: var(--accent);
-            color: var(--accent);
+        .btn-primary {
+            background: var(--signal-orange);
+            border-color: var(--signal-orange);
+            color: #000;
         }
 
-        /* Alert styling */
-        .alert {
-            padding: var(--spacing-3) var(--spacing-4);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-4);
-            font-size: 14px;
-            border: 1px solid;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-2);
+        .btn-primary:hover {
+            background: #fff;
+            border-color: #fff;
         }
 
-        .alert-danger {
-            background: rgba(255, 95, 138, 0.1);
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        .alert-info {
-            background: rgba(108, 225, 255, 0.1);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        /* Form validation styling */
-        .is-invalid {
-            border-color: var(--danger) !important;
-            box-shadow: 0 0 0 6px rgba(255, 95, 138, 0.25) !important;
-        }
-
-        .invalid-feedback {
-            color: var(--danger);
-            font-size: 12px;
-            margin-top: var(--spacing-1);
-            letter-spacing: 0.2px;
-        }
-
-        /* Form actions */
-        .form-actions {
+        .actions {
             display: flex;
             justify-content: flex-end;
-            gap: var(--spacing-3);
-            padding-top: var(--spacing-3);
+            gap: 1rem;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-steel);
+            padding-top: 2rem;
         }
 
-        /* Date input calendar styling to match theme */
-        input[type="datetime-local"] {
-            position: relative;
+        .error-msg {
+            color: var(--alert-red);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
         }
 
-        /* Webkit browsers (Chrome, Safari, Edge) */
+        /* Date Input Styling Override */
         input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-            filter: invert(0.8);
-            cursor: pointer;
-            border-radius: 4px;
-            margin-right: 8px;
-            transition: all 0.2s ease;
-        }
-
-        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
             filter: invert(1);
-            background: rgba(91, 140, 255, 0.1);
-        }
-
-        /* Firefox */
-        input[type="datetime-local"]::-moz-calendar-picker-indicator {
-            filter: invert(0.8);
             cursor: pointer;
-            border-radius: 4px;
-            margin-right: 8px;
-            transition: all 0.2s ease;
         }
 
-        input[type="datetime-local"]::-moz-calendar-picker-indicator:hover {
-            filter: invert(1);
-            background: rgba(91, 140, 255, 0.1);
-        }
-
-        /* Calendar dropdown styling */
-        input[type="datetime-local"]::-webkit-datetime-edit {
-            color: var(--white);
-        }
-
-        input[type="datetime-local"]::-webkit-datetime-edit-text {
-            color: var(--muted);
-        }
-
-        input[type="datetime-local"]::-webkit-datetime-edit-month-field,
-        input[type="datetime-local"]::-webkit-datetime-edit-day-field,
-        input[type="datetime-local"]::-webkit-datetime-edit-year-field {
-            color: var(--white);
-        }
-
-        /* Calendar popup styling (via custom properties) */
-        @supports (-webkit-appearance: none) {
-            input[type="datetime-local"] {
-                -webkit-appearance: none;
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
             }
-        }
 
-        /* Form validation styling */
-        .is-invalid {
-            border-color: var(--danger) !important;
-            box-shadow: 0 0 0 6px rgba(255, 95, 138, 0.25) !important;
-        }
-
-        .invalid-feedback {
-            color: var(--danger);
-            font-size: 12px;
-            margin-top: var(--spacing-1);
-            letter-spacing: 0.2px;
-        }
-
-        /* Responsive */
-        @media (max-width: 1100px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .actions { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 860px) {
-            .row { grid-template-columns: 1fr; }
-            .topbar { grid-template-columns: 1fr; gap: var(--spacing-3); }
-            .user { justify-content: flex-start; }
-            .nav-links { flex-wrap: wrap; }
-            .form-actions {
-                flex-direction: column-reverse;
+            .sidebar {
+                height: auto;
+                position: relative;
+                flex-direction: row;
+                align-items: center;
+                flex-wrap: wrap;
             }
-            .btn {
-                width: 100%;
+
+            .nav-menu {
+                flex-direction: row;
+                margin-left: auto;
+                margin-top: 0;
             }
-        }
-        @media (max-width: 720px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .topbar { grid-template-columns: 1fr; gap: var(--spacing-3); }
-            .user { justify-content: flex-start; }
-            .nav-links { flex-wrap: wrap; }
         }
     </style>
 </head>
+
 <body>
-    <div class="page">
-        <!-- Top bar -->
-        <div class="topbar">
-            <div class="title-wrap">
-                <div class="chip">
-                    <span class="chip-dot"></span>
-                    <span>Create Quiz</span>
-                </div>
-                <div class="app-title">MySQL Knowledge Test Platform</div>
+    <div class="dashboard-grid">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand-block">
+                <h1>Teacher<br>Command<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Admin Access Level</div>
             </div>
-            <div class="user">
-                <div class="avatar">T</div>
-                <div class="username">Teacher</div>
-                <a href="/logout" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </a>
-            </div>
-        </div>
 
-        <!-- Navigation links -->
-        <div class="nav-links" style="display: none;">
-            <a href="/teacher/dashboard" class="nav-link">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a href="/teacher/quizzes" class="nav-link">
-                <i class="fas fa-list"></i> Quiz Management
-            </a>
-            <a href="/teacher/quiz/create" class="nav-link" style="background: var(--field); color: var(--white);">
-                <i class="fas fa-plus"></i> Create Quiz
-            </a>
-            <a href="/teacher/sql-test" class="nav-link">
-                <i class="fas fa-code"></i> SQL Test
-            </a>
-        </div>
+            <nav class="nav-menu">
+                <a href="/teacher/dashboard" class="nav-item">Dashboard</a>
+                <a href="/teacher/quizzes" class="nav-item active">Quiz Bank</a>
+                <a href="/teacher/sql-test" class="nav-item">SQL Tools</a>
+            </nav>
 
-        <!-- KPI cards -->
-        <div class="kpi-row">
-            <div class="kpi">
-                <div class="kpi-label">My Quizzes</div>
-                <div class="kpi-value" th:text="${#lists.size(quizzes)}">0</div>
+            <div class="user-profile">
+                <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
+                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
             </div>
-            <div class="kpi">
-                <div class="kpi-label">Participating Students</div>
-                <div class="kpi-value" th:text="${totalSubmissions > 0 ? totalSubmissions : 0}">0</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Average Score</div>
-                <div class="kpi-value" th:text="${avgCompletionRate > 0 ? #numbers.formatDecimal(avgCompletionRate * 100, 1, 1) + '%' : '0%'}">0%</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Active Status</div>
-                <div class="kpi-value">✓</div>
-            </div>
-        </div>
+        </aside>
 
-        <!-- Action buttons -->
-        <div class="actions">
-            <a href="/teacher/dashboard" class="btn secondary">
-                <i class="fas fa-tachometer-alt"></i>
-                Dashboard
-            </a>
-            <a href="/teacher/quizzes" class="btn primary">
-                <i class="fas fa-list"></i>
-                Go to Quiz Management
-            </a>
-        </div>
-
-        <!-- Main content panels -->
-        <div class="panel">
-            <div class="panel-header">
+        <!-- MAIN -->
+        <main class="main-content">
+            <header class="top-header">
                 <div>
-                    <div class="panel-title">Create New Quiz</div>
-                    <div class="panel-subtitle">Set basic information and parameters for the quiz</div>
+                    <div class="page-subtitle">/// MODULE PROTOCOLS</div>
+                    <div class="page-title">
+                        <h2>Create Module</h2>
+                    </div>
                 </div>
+                <div>
+                    <a href="/teacher/quizzes" class="btn">
+                        ← Cancel Protocol
+                    </a>
+                </div>
+            </header>
+
+            <div class="form-container">
+                <form th:action="@{/teacher/quiz/create}" th:object="${quiz}" method="post">
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <i class="fas fa-cube"></i> Module Parameters
+                        </div>
+
+                        <div th:if="${error}" class="error-msg"
+                            style="margin-bottom:1rem; padding:1rem; border:1px solid var(--alert-red);">
+                            Error: <span th:text="${error}"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Module Designation (Title) *</label>
+                            <input type="text" class="form-control" th:field="*{title}"
+                                placeholder="e.g. SQL Advanced JOINs Assessment" required>
+                            <div th:if="${#fields.hasErrors('title')}" class="error-msg" th:errors="*{title}">Error
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Context Description</label>
+                            <textarea class="form-control" th:field="*{description}"
+                                placeholder="Brief overview of assessment scope..."></textarea>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div class="form-group">
+                                <label>Time Limit (Minutes)</label>
+                                <input type="number" class="form-control" th:field="*{timeLimit}" placeholder="60">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Attempts</label>
+                                <input type="number" class="form-control" th:field="*{maxAttempts}" placeholder="3" value="3">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div class="form-group">
+                                <label>Activation Date</label>
+                                <input type="datetime-local" class="form-control" th:field="*{startTime}">
+                            </div>
+                            <div class="form-group">
+                                <label>Termination Date</label>
+                                <input type="datetime-local" class="form-control" th:field="*{endTime}">
+                            </div>
+                        </div>
+
+                        <label class="checkbox-group">
+                            <input type="checkbox" th:field="*{isActive}">
+                            <span>Module Active (Visible to Candidates)</span>
+                        </label>
+
+                        <div class="actions">
+                            <a href="/teacher/quizzes" class="btn">Abort</a>
+                            <button type="submit" class="btn btn-primary">Initialize Module</button>
+                        </div>
+                    </div>
+
+                </form>
             </div>
-            <div class="panel-body">
-                <!-- Error message -->
-                <div th:if="${error}" class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span th:text="${error}">Creation Failed</span>
-                </div>
-
-        <!-- Form Content -->
-        <form th:action="@{/teacher/quiz/create}" method="post" id="quizForm" novalidate>
-            <!-- Basic Information Panel -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="fas fa-info-circle" style="color: var(--accent);"></i>
-                        Basic Information
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <div class="form-grid">
-
-                        <!-- Quiz Title -->
-                        <div>
-                            <label for="title">Quiz Title *</label>
-                            <input id="title" class="input" type="text" name="title" 
-                                   placeholder="Please enter quiz title" required maxlength="100" />
-                            <div class="error-text">Recommend using a concise and clear title, such as "MySQL Basic Syntax Test"</div>
-                        </div>
-
-                        <!-- Description + counter -->
-                        <div class="textarea-wrap">
-                            <label for="description">Quiz Description *</label>
-                            <textarea id="description" class="textarea" name="description" 
-                                      placeholder="Detailed description of the test content, purpose and requirements" maxlength="500" required></textarea>
-                            <div class="counter">0 / 500</div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <!-- Test Settings Panel -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="fas fa-cog" style="color: var(--accent);"></i>
-                        Quiz Settings
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <div class="form-grid">
-                        <div class="row">
-                            <!-- Time Limit with Minutes suffix -->
-                            <div>
-                                <label for="timeLimit">Time Limit *</label>
-                                <div class="input-suffix">
-                                    <input id="timeLimit" class="input" type="number" name="timeLimit" 
-                                           min="1" max="600" placeholder="60" required />
-                                    <span class="suffix">Minutes</span>
-                                </div>
-                                <div class="error-text">Please set quiz time limit</div>
-                            </div>
-
-                            <!-- Max Attempts -->
-                            <div>
-                                <label for="maxAttempts">Max Attempts *</label>
-                                <input id="maxAttempts" class="input" type="number" name="maxAttempts" 
-                                       min="1" max="10" placeholder="3" required />
-                                <div class="error-text">Please set maximum attempts</div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Start Time -->
-                            <div>
-                                <label for="startTime">Start Time *</label>
-                                <input id="startTime" class="input" type="datetime-local" name="startTime" required />
-                                <div class="error-text">Please set quiz start time</div>
-                            </div>
-
-                            <!-- End Time -->
-                            <div>
-                                <label for="endTime">End Time *</label>
-                                <input id="endTime" class="input" type="datetime-local" name="endTime" required />
-                                <div class="error-text">Please set quiz end time</div>
-                            </div>
-                        </div>
-
-                        <!-- Tips -->
-                        <div class="alert alert-info">
-                            <i class="fas fa-lightbulb"></i>
-                            <strong>Tip:</strong> After creating a quiz, you can add questions and set more detailed parameters.
-                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="form-actions">
-                            <a href="/teacher/quizzes" class="btn secondary">
-                                <i class="fas fa-arrow-left"></i>
-                                Cancel
-                            </a>
-                            <button type="submit" class="btn primary">
-                                <i class="fas fa-check"></i>
-                                Create Quiz
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-
+        </main>
     </div>
-
-    <script>
-        // 表单验证和用户体验优化
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('quizForm');
-            const titleInput = document.getElementById('title');
-            const descriptionInput = document.getElementById('description');
-            const timeLimitInput = document.getElementById('timeLimit');
-            const maxAttemptsInput = document.getElementById('maxAttempts');
-            const startTimeInput = document.getElementById('startTime');
-            const endTimeInput = document.getElementById('endTime');
-            const submitBtn = form.querySelector('button[type="submit"]');
-
-            // 实时字数统计
-            function updateCharCount(input, maxLength) {
-                const current = input.value.length;
-                const counter = input.parentNode.querySelector('.counter');
-                if (counter) {
-                    counter.textContent = `${current} / ${maxLength}`;
-                    
-                    if (current > maxLength * 0.9) {
-                        counter.style.color = 'var(--warning)';
-                    } else {
-                        counter.style.color = 'var(--text-dim)';
-                    }
-                }
-            }
-
-            // 绑定字数统计
-            titleInput.addEventListener('input', () => updateCharCount(titleInput, 100));
-            descriptionInput.addEventListener('input', () => updateCharCount(descriptionInput, 500));
-
-            // 表单验证
-            form.addEventListener('submit', function(event) {
-                let isValid = true;
-
-                // 清除之前的错误状态
-                form.querySelectorAll('.is-invalid').forEach(el => {
-                    el.classList.remove('is-invalid');
-                });
-                form.querySelectorAll('.invalid-feedback').forEach(el => {
-                    el.remove();
-                });
-
-                // 验证标题
-                if (!titleInput.value.trim()) {
-                    showFieldError(titleInput, 'Please enter quiz title');
-                    isValid = false;
-                } else if (titleInput.value.length > 100) {
-                    showFieldError(titleInput, '标题长度不能超过100个字符');
-                    isValid = false;
-                }
-
-                // 验证描述
-                if (!descriptionInput.value.trim()) {
-                    showFieldError(descriptionInput, 'Please enter quiz description');
-                    isValid = false;
-                } else if (descriptionInput.value.length > 500) {
-                    showFieldError(descriptionInput, '描述长度不能超过500个字符');
-                    isValid = false;
-                }
-
-                // 验证时间限制
-                if (!timeLimitInput.value || timeLimitInput.value === "") {
-                    showFieldError(timeLimitInput, 'Please enter time limit');
-                    isValid = false;
-                } else {
-                    const timeLimitValue = parseInt(timeLimitInput.value);
-                    if (isNaN(timeLimitValue) || timeLimitValue < 1 || timeLimitValue > 600) {
-                        showFieldError(timeLimitInput, '时间限制必须是1-600之间的数字');
-                        isValid = false;
-                    }
-                }
-
-                // 验证最大尝试次数
-                if (!maxAttemptsInput.value || maxAttemptsInput.value === "") {
-                    showFieldError(maxAttemptsInput, 'Please enter maximum attempts');
-                    isValid = false;
-                } else {
-                    const maxAttemptsValue = parseInt(maxAttemptsInput.value);
-                    if (isNaN(maxAttemptsValue) || maxAttemptsValue < 1 || maxAttemptsValue > 10) {
-                        showFieldError(maxAttemptsInput, '最大尝试次数必须是1-10之间的数字');
-                        isValid = false;
-                    }
-                }
-
-                // 验证开始时间
-                if (!startTimeInput.value) {
-                    showFieldError(startTimeInput, 'Please select quiz start time');
-                    isValid = false;
-                }
-                
-                // 验证结束时间
-                if (!endTimeInput.value) {
-                    showFieldError(endTimeInput, 'Please select quiz end time');
-                    isValid = false;
-                }
-                
-                // 验证时间范围
-                if (startTimeInput.value && endTimeInput.value) {
-                    const startDateTime = new Date(startTimeInput.value);
-                    const endDateTime = new Date(endTimeInput.value);
-
-                    if (startDateTime >= endDateTime) {
-                        showFieldError(endTimeInput, 'End time must be later than start time');
-                        isValid = false;
-                    }
-                }
-
-                if (!isValid) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    // 滚动到第一个错误字段
-                    const firstError = form.querySelector('.is-invalid');
-                    if (firstError) {
-                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        firstError.focus();
-                    }
-                } else {
-                    // 显示提交中状态
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-                }
-            });
-
-            // 显示字段错误
-            function showFieldError(field, message) {
-                field.classList.add('is-invalid');
-                const feedback = document.createElement('div');
-                feedback.className = 'invalid-feedback';
-                feedback.textContent = message;
-                field.parentNode.appendChild(feedback);
-            }
-        });
-    </script>
 </body>
+
 </html>

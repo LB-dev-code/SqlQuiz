@@ -1,448 +1,336 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Question Normalization - MySQL Knowledge Test Platform</title>
+    <title>Normalizer / Berlin Concrete</title>
 
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 
     <style>
-        :root{
-            --bg: #0b0f14;
-            --bg-grad-1: #0b0f14;
-            --bg-grad-2: #0e1219;
-            --panel: rgba(18, 22, 29, 0.55);
-            --white: #e8edf7;
-            --muted: #9aa6b2;
-            --text-dim: #6b7280;
-            --field: rgba(255,255,255,0.06);
-            --field-border: rgba(255,255,255,0.12);
-            --field-focus: rgba(100, 180, 255, 0.25);
-            --accent-1: #6e74ff;
-            --accent-2: #6ce1ff;
-            --accent: #5b8cff;
-            --danger: #ff5f8a;
-            --success: #4ff0a7;
-            --warning: #ffc857;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --spacing-3: 16px;
-            --spacing-4: 24px;
-            --spacing-5: 32px;
+        :root {
+            --bg-concrete: #141414;
+            --surface-raw: rgba(255, 255, 255, 0.03);
+            --glass-smoke: rgba(10, 10, 10, 0.6);
+            --border-steel: rgba(255, 255, 255, 0.15);
+            --signal-orange: #ff3c00;
+            --blueprint-blue: #0044ff;
+            --success-green: #00ff66;
+            --alert-red: #ff003c;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-tech: 'IBM Plex Mono', monospace;
+            --space-unit: 1.5rem;
         }
 
-        * { box-sizing: border-box; }
-        html, body {
-            height: 100%;
-            background: linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
-            color: var(--white);
-            font-family: "Segoe UI", "PingFang SC", system-ui, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        .page {
-            max-width: 1400px;
-            margin: 0 auto;
+        body {
+            background-color: var(--bg-concrete);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            color: #e0e0e0;
+            font-family: var(--font-tech);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        .topbar {
+        /* LAYOUT */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--glass-smoke);
+            backdrop-filter: blur(20px) grayscale(100%);
+            border-right: 1px solid var(--border-steel);
+            padding: var(--space-unit);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .brand-block h1 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            line-height: 0.9;
+            text-transform: uppercase;
+            letter-spacing: -0.05em;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .brand-meta {
+            font-size: 0.7rem;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 3rem;
+            flex: 1;
+        }
+
+        .nav-item {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: #888;
+            text-decoration: none;
+            transition: color 0.2s, padding-left 0.2s;
+            position: relative;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: #fff;
+            padding-left: 10px;
+        }
+
+        .nav-item.active::before {
+            content: '→';
+            position: absolute;
+            left: -15px;
+            color: var(--signal-orange);
+        }
+
+        .user-profile {
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-steel);
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .user-name {
+            color: #fff;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .logout-link {
+            color: var(--alert-red);
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            padding: 0;
+        }
+
+        .top-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-steel);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-5);
-            padding-bottom: var(--spacing-4);
-            border-bottom: 1px solid var(--field-border);
+            align-items: flex-end;
         }
 
-        .title-group h1 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
+        .page-title h2 {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 0.9;
+            text-transform: uppercase;
         }
 
-        .subtitle {
-            color: var(--muted);
-            margin-top: 8px;
+        .page-subtitle {
+            color: var(--blueprint-blue);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
         }
 
-        .main-grid {
+        /* NORMALIZER GRID */
+        .norm-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-5);
+            gap: 2rem;
+            padding: 2rem;
         }
 
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-4);
-            backdrop-filter: blur(14px);
+        .panel {
+            background: var(--surface-raw);
+            border: 1px solid var(--border-steel);
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
         }
 
-        .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: var(--spacing-4);
+        .panel-header {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-steel);
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .card-title i {
-            color: var(--accent);
+        .panel-header i {
+            color: var(--signal-orange);
         }
 
-        .input-group {
-            margin-bottom: var(--spacing-4);
-        }
-
-        .label {
-            display: block;
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        .input, .select, .textarea {
+        .form-control,
+        .select-control {
             width: 100%;
-            background: var(--field);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
-            padding: 12px;
-            color: var(--white);
-            font-size: 14px;
-            outline: none;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 0.8rem;
+            font-family: var(--font-tech);
+            font-size: 0.9rem;
             transition: all 0.2s;
+            margin-bottom: 1rem;
         }
 
-        .textarea {
+        .form-control:focus,
+        .select-control:focus {
+            outline: none;
+            border-color: var(--blueprint-blue);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        textarea.form-control {
             min-height: 150px;
             resize: vertical;
-            font-family: ui-monospace, monospace;
         }
 
-        .select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239aa6b2' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 40px;
+        .upload-area {
+            border: 2px dashed var(--border-steel);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.01);
         }
 
-        .input:focus, .select:focus, .textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--field-focus);
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--blueprint-blue);
+            background: rgba(0, 68, 255, 0.05);
+        }
+
+        .upload-area i {
+            font-size: 2rem;
+            color: var(--blueprint-blue);
+            margin-bottom: 1rem;
         }
 
         .btn {
-            padding: 12px 24px;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            border: 1px solid var(--field-border);
+            background: transparent;
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            padding: 1rem 1.5rem;
+            font-family: var(--font-tech);
+            text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            font-size: 0.9rem;
             text-decoration: none;
-            font-size: 14px;
         }
 
-        .btn.primary {
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            color: #0b0f14;
-            border-color: rgba(91,140,255,0.55);
+        .btn:hover {
+            background: #fff;
+            color: #000;
         }
 
-        .btn.primary:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.1);
+        .btn-primary {
+            background: var(--signal-orange);
+            border-color: var(--signal-orange);
+            color: #000;
         }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .btn-primary:hover {
+            background: #fff;
+            border-color: #fff;
         }
 
+        /* PREVIEW STYLES */
         .preview-section {
-            margin-bottom: var(--spacing-4);
+            margin-bottom: 2rem;
         }
 
         .section-label {
-            font-size: 13px;
-            color: var(--accent);
-            font-weight: 600;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--blueprint-blue);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
         }
 
         .editable-content {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-3);
-        }
-
-        .editable-content:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--field-focus);
-        }
-
-        .editable-content[contenteditable="true"] {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-steel);
+            padding: 1rem;
+            font-size: 0.9rem;
             min-height: 50px;
         }
 
-        /* Markdown渲染内容样式 */
-        .markdown-content {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--field-border);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-3);
-            line-height: 1.8;
-            color: var(--white);
+        .editable-content:focus {
+            outline: 1px solid var(--blueprint-blue);
         }
 
-        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
-            color: var(--accent);
-            margin-top: 16px;
-            margin-bottom: 8px;
-        }
-
-        .markdown-content p {
-            margin-bottom: 12px;
-        }
-
-        .markdown-content code {
-            background: rgba(0,0,0,0.5);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: ui-monospace, monospace;
-            font-size: 13px;
-        }
-
-        .markdown-content pre {
-            background: rgba(0,0,0,0.5);
-            padding: var(--spacing-3);
-            border-radius: var(--radius-md);
-            overflow-x: auto;
-            margin: 12px 0;
-        }
-
-        .markdown-content ul, .markdown-content ol {
-            margin-left: 24px;
-            margin-bottom: 12px;
-        }
-
-        .markdown-content li {
-            margin-bottom: 6px;
-        }
-
-        /* 可编辑表格样式 - 参考学生练习样式 */
-        .editable-table-container {
-            margin-bottom: var(--spacing-4);
-        }
-
-        .table-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--accent);
-            margin: 16px 0 10px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .editable-data-table {
+        /* TABLES */
+        #renderTables table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+
+        #renderTables th {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-steel);
+            padding: 5px;
+            text-align: left;
+        }
+
+        #renderTables td {
+            border: 1px solid var(--border-steel);
+            padding: 5px;
             background: rgba(0, 0, 0, 0.2);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            display: table !important;
-            visibility: visible !important;
         }
 
-        .editable-data-table th {
-            background: rgba(91, 140, 255, 0.3);
-            color: var(--white);
-            padding: 12px 10px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid var(--accent);
-            font-size: 13px;
+        #renderTables td:focus {
+            background: rgba(0, 68, 255, 0.1);
+            outline: none;
         }
 
-        .editable-data-table td {
-            padding: 10px;
-            border-bottom: 1px solid var(--field-border);
-            color: var(--white);
-            cursor: text;
-            transition: background 0.2s;
-            font-size: 13px;
-            min-height: 40px;
-            min-width: 60px;
-            line-height: 1.5 !important;
-            height: auto !important;
-        }
-
-        .editable-data-table td:hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        .editable-data-table td:focus {
-            outline: 2px solid var(--accent);
-            background: rgba(91, 140, 255, 0.1);
-        }
-
-        .editable-data-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* 确保renderTables容器可见 */
-        #renderTables {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            min-height: 100px;
-        }
-
-        /* 强制显示表格行和单元格 */
-        .editable-data-table tbody {
-            display: table-row-group !important;
-        }
-        
-        .editable-data-table thead {
-            display: table-header-group !important;
-        }
-        
-        .editable-data-table tr {
-            display: table-row !important;
-            height: auto !important;
-            min-height: 40px !important;
-        }
-        
-        .editable-data-table td,
-        .editable-data-table th {
-            display: table-cell !important;
-            visibility: visible !important;
-        }
-
-        .table-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .table-actions button {
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-            background: var(--field);
-            color: var(--white);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .table-actions button:hover {
-            background: rgba(91, 140, 255, 0.2);
-            border-color: var(--accent);
-        }
-
-        .editable-content table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: var(--spacing-3) 0;
-        }
-
-        .editable-content th, .editable-content td {
-            border: 1px solid var(--field-border);
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        .editable-content th {
-            background: rgba(91,140,255,0.2);
-            color: var(--white);
-            font-weight: 600;
-        }
-
-        .editable-content code {
-            background: rgba(0,0,0,0.5);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: ui-monospace, monospace;
-        }
-
-        .editable-content pre {
-            background: rgba(0,0,0,0.5);
-            padding: var(--spacing-3);
-            border-radius: var(--radius-md);
-            overflow-x: auto;
-        }
-
-        .data-table-container {
-            margin-top: var(--spacing-3);
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-        }
-
-        .data-table th {
-            background: rgba(91, 140, 255, 0.3);
-            color: var(--white);
-            padding: 10px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .data-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid var(--field-border);
-            color: var(--white);
-        }
-
-        .data-table tr:hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        .actions {
-            display: flex;
-            gap: var(--spacing-3);
-            margin-top: var(--spacing-4);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--muted);
-        }
-
-        .empty-state i {
-            font-size: 48px;
-            margin-bottom: var(--spacing-3);
-            opacity: 0.5;
-        }
-
+        /* LOADING */
         .loading {
             display: none;
             text-align: center;
-            padding: 40px;
+            padding: 3rem;
+            color: var(--blueprint-blue);
         }
 
         .loading.active {
@@ -450,944 +338,591 @@
         }
 
         .spinner {
-            border: 3px solid var(--field-border);
-            border-top-color: var(--accent);
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--border-steel);
+            border-top-color: var(--blueprint-blue);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto var(--spacing-3);
+            margin: 0 auto 1rem;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .badge {
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge.easy {
-            background: rgba(79, 240, 167, 0.2);
-            color: var(--success);
-        }
-
-        .badge.medium {
-            background: rgba(255, 200, 87, 0.2);
-            color: var(--warning);
-        }
-
-        .badge.hard {
-            background: rgba(255, 95, 138, 0.2);
-            color: var(--danger);
-        }
-
-        .alert {
-            padding: var(--spacing-3);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--spacing-4);
-            display: none;
-        }
-
-        .alert.show {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-error {
-            background: rgba(255, 95, 138, 0.1);
-            border: 1px solid var(--danger);
-            color: var(--danger);
-        }
-
-        .alert-success {
-            background: rgba(79, 240, 167, 0.1);
-            border: 1px solid var(--success);
-            color: var(--success);
-        }
-
-        .title-input {
-            font-size: 20px;
-            font-weight: 600;
-            background: transparent;
-            border: none;
-            color: var(--white);
-            width: 100%;
-            outline: none;
-            margin-bottom: 10px;
-        }
-
-        .title-input:focus {
-            border-bottom: 1px solid var(--accent);
-        }
-
-        /* 图片上传区域样式 */
-        .upload-area {
-            border: 2px dashed var(--field-border);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-5);
-            text-align: center;
-            transition: all 0.3s;
-            cursor: pointer;
-            background: rgba(255,255,255,0.03);
-            display: none;
-        }
-
-        .upload-area.show {
-            display: block;
-        }
-
-        .upload-area.dragover {
-            border-color: var(--accent);
-            background: rgba(91,140,255,0.1);
-        }
-
-        .upload-area i {
-            font-size: 48px;
-            color: var(--accent);
-            margin-bottom: var(--spacing-3);
-        }
-
-        .upload-area p {
-            color: var(--muted);
-            margin: 8px 0;
-        }
-
-        .upload-area input[type="file"] {
-            display: none;
-        }
-
-        #imagePreview {
-            margin-top: var(--spacing-3);
-            position: relative;
-            display: none;
-        }
-
-        #imagePreview.show {
-            display: block;
+            padding: 2px 6px;
+            border: 1px solid var(--border-steel);
+            font-size: 0.7rem;
+            margin-right: 5px;
+            text-transform: uppercase;
         }
 
         #imagePreview img {
             max-width: 100%;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--field-border);
-        }
-
-        .remove-image-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--danger);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .remove-image-btn:hover {
-            transform: scale(1.1);
+            border: 1px solid var(--border-steel);
+            margin-top: 1rem;
         }
     </style>
 </head>
+
 <body>
-    <div class="page">
-        <div class="topbar">
-            <div class="title-group">
-                <h1><i class="fas fa-magic"></i> AI Question Normalization</h1>
-                <p class="subtitle">Paste your question and let AI structure it for your quiz system</p>
-            </div>
-            <a href="/teacher/quizzes" class="btn">
-                <i class="fas fa-arrow-left"></i> Back to Quiz List
-            </a>
-        </div>
 
-        <div class="main-grid">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-edit"></i>
-                    Input Question
-                </div>
-
-                <div class="alert alert-error" id="errorAlert">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span id="errorMessage"></span>
-                </div>
-
-                <div class="alert alert-success" id="successAlert">
-                    <i class="fas fa-check-circle"></i>
-                    <span id="successMessage"></span>
-                </div>
-
-                <div class="input-group">
-                    <label class="label">Select Target Quiz</label>
-                    <select class="select" id="quizId" required>
-                        <option value="">Choose a quiz...</option>
-                        <option th:each="quiz : ${quizzes}" 
-                                th:value="${quiz.id}" 
-                                th:text="${quiz.title}">Quiz Name</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label class="label">Input Type</label>
-                    <select class="select" id="inputType">
-                        <option value="TEXT">Plain Text</option>
-                        <option value="IMAGE">Image (OCR)</option>
-                    </select>
-                </div>
-
-                <div class="input-group" id="textInputGroup">
-                    <label class="label">Question Content</label>
-                    <textarea class="textarea" id="inputContent" 
-                              placeholder="Paste your question here...&#10;&#10;Example:&#10;Find all students who scored more than 80 in the math exam. Display their name and score in descending order."></textarea>
-                </div>
-
-                <div class="input-group" id="imageInputGroup">
-                    <label class="label">Upload Question Image</label>
-                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p style="font-weight: 600; font-size: 15px;">Click to upload or drag and drop</p>
-                        <p style="font-size: 13px;">Supports: JPG, PNG, WebP (Max 5MB)</p>
-                        <input type="file" id="fileInput" accept="image/*" onchange="handleImageSelect(event)">
-                    </div>
-                    <div id="imagePreview">
-                        <button class="remove-image-btn" onclick="clearImage(event)" title="Remove image">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <img id="previewImg" src="" alt="Preview">
-                    </div>
-                </div>
-
-                <button class="btn primary" onclick="normalizeQuestion()" id="normalizeBtn">
-                    <i class="fas fa-wand-magic-sparkles"></i>
-                    Normalize with AI
-                </button>
-
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p>AI is processing your question...</p>
-                </div>
+    <div class="dashboard-grid">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="brand-block">
+                <h1>Teacher<br>Command<span style="color:var(--signal-orange)">.</span></h1>
+                <div class="brand-meta">Admin Access Level</div>
             </div>
 
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-eye"></i>
-                    Preview Result
-                </div>
+            <nav class="nav-menu">
+                <a href="/teacher/dashboard" class="nav-item">Dashboard</a>
+                <a href="/teacher/quizzes" class="nav-item">Quiz Bank</a>
+                <a href="/teacher/sql-test" class="nav-item">SQL Tools</a>
+            </nav>
 
-                <div id="previewEmpty" class="empty-state">
-                    <i class="fas fa-file-alt"></i>
-                    <p>Enter a question and click "Normalize with AI" to see the structured result here</p>
-                </div>
+            <div class="user-profile">
+                <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
+                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+            </div>
+        </aside>
 
-                <div id="previewContent" style="display: none;">
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-heading"></i> Question Title</div>
-                        <input type="text" class="title-input" id="editTitle" placeholder="Enter question title">
+        <!-- MAIN -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <div class="page-subtitle">/// AI PROCESSING</div>
+                    <div class="page-title">
+                        <h2>Normalizer</h2>
+                    </div>
+                </div>
+                <div>
+                    <a href="/teacher/question/list" class="btn">
+                        ← Back to Index
+                    </a>
+                </div>
+            </header>
+
+            <div class="norm-grid">
+                <!-- INPUT CARD -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <i class="fas fa-magic"></i> Source Material
                     </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-tags"></i> Type & Difficulty</div>
-                        <div style="margin-top: 10px;">
-                            <span class="badge" id="previewType" style="margin-right: 10px;"></span>
-                            <span class="badge" id="previewDifficulty"></span>
+                    <div id="statusMsg"
+                        style="margin-bottom:1rem; display:none; padding:1rem; border:1px solid transparent;"></div>
+
+                    <select class="select-control" id="quizId" required>
+                        <option value="">// SELECT TARGET MODULE //</option>
+                        <option th:each="quiz : ${quizzes}" th:value="${quiz.id}" th:text="${quiz.title}">Quiz</option>
+                    </select>
+
+                    <select class="select-control" id="inputType" onchange="toggleInput()">
+                        <option value="TEXT">Mode: Pure Text / Raw SQL</option>
+                        <option value="IMAGE">Mode: Vision / OCR</option>
+                    </select>
+
+                    <div id="textInputGroup">
+                        <textarea class="form-control" id="inputContent"
+                            placeholder="Paste unstructured question, requirements, or raw SQL here..."></textarea>
+                    </div>
+
+                    <div id="imageInputGroup" style="display:none;">
+                        <input type="file" id="fileInput" accept="image/*" style="display:none;"
+                            onchange="handleImage(this)">
+                        <div class="upload-area" onclick="document.getElementById('fileInput').click()" id="uploadZone">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <div>DROP IMAGE SOURCE OR CLICK TO BROWSE</div>
+                        </div>
+                        <div id="imagePreview" style="display:none; position:relative;">
+                            <button onclick="clearImage()"
+                                style="position:absolute; top:5px; right:5px; background:red; border:none; color:white; width:24px; height:24px;">×</button>
+                            <img id="previewImg" src="">
                         </div>
                     </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-file-alt"></i> Question Description (Editable)</div>
-                        <div class="markdown-content" id="renderDescription" contenteditable="true"></div>
+                    <button class="btn btn-primary" onclick="normalizeQuestion()"
+                        style="width:100%; justify-content:center; margin-top:1rem;">
+                        <i class="fas fa-wand-magic-sparkles"></i> Process & Normalize
+                    </button>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <div>ANALYZING PATTERNS...</div>
+                    </div>
+                </div>
+
+                <!-- PREVIEW CARD -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <i class="fas fa-eye"></i> Structured Output
                     </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-table"></i> Database Tables (Click cells to edit)</div>
-                        <div id="renderTables"></div>
+                    <div id="previewEmpty"
+                        style="text-align:center; padding:3rem; color:#666; border:1px dashed var(--border-steel);">
+                        AWAITING INPUT PROCESSING
                     </div>
 
-                    <div class="preview-section" style="display: none;">
-                        <div class="section-label"><i class="fas fa-code"></i> Setup SQL (Hidden)</div>
-                        <textarea class="textarea" id="editSetupSql" placeholder="CREATE TABLE and INSERT statements"></textarea>
-                    </div>
+                    <div id="previewContent" style="display:none;">
+                        <div class="preview-section">
+                            <div class="section-label">Node Title</div>
+                            <input type="text" class="form-control" id="editTitle">
+                        </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-check-circle"></i> Expected SQL (Editable)</div>
-                        <textarea class="textarea" id="editExpectedSql" placeholder="Expected answer SQL"></textarea>
-                    </div>
+                        <div class="preview-section">
+                            <div class="section-label">Metadata</div>
+                            <div>
+                                <span class="badge" id="previewType" style="color:var(--blueprint-blue)">TYPE</span>
+                                <span class="badge" id="previewDifficulty" style="color:white">DIFF</span>
+                            </div>
+                        </div>
 
-                    <div class="preview-section">
-                        <div class="section-label"><i class="fas fa-lightbulb"></i> Answer Explanation (Editable)</div>
-                        <div class="markdown-content" id="renderAnswer" contenteditable="true"></div>
-                    </div>
+                        <div class="preview-section">
+                            <div class="section-label">Description (Markdown)</div>
+                            <div class="editable-content" id="renderDescription" contenteditable="true"></div>
+                        </div>
 
-                    <div class="input-group" style="margin-top: 20px;">
-                        <label class="label">Question Score</label>
-                        <input type="number" class="input" id="questionScore" value="10" min="1" max="100">
-                    </div>
+                        <div class="preview-section">
+                            <div class="section-label">Detected Schema</div>
+                            <div id="renderTables"></div>
+                        </div>
 
-                    <div class="actions">
-                        <button class="btn primary" onclick="confirmQuestion()" id="confirmBtn">
-                            <i class="fas fa-check"></i> Confirm & Add to Quiz
-                        </button>
-                        <button class="btn" onclick="normalizeQuestion()">
-                            <i class="fas fa-redo"></i> Re-normalize
-                        </button>
+                        <div class="preview-section">
+                            <div class="section-label">Expected SQL</div>
+                            <textarea class="form-control" id="editExpectedSql"
+                                style="font-family:'Courier New', monospace; height:100px;"></textarea>
+                        </div>
+
+                        <div class="preview-section">
+                            <div class="section-label">Value</div>
+                            <input type="number" class="form-control" id="questionScore" value="10"
+                                style="width:100px;">
+                        </div>
+
+                        <!-- Hidden Fields -->
+                        <textarea id="editSetupSql" style="display:none;"></textarea>
+                        <div id="renderAnswer" style="display:none;"></div>
+
+                        <div style="display:flex; gap:1rem; margin-top:2rem;">
+                            <button class="btn btn-primary" onclick="confirmQuestion()" style="flex:1;">Confirm</button>
+                            <button class="btn" onclick="normalizeQuestion()">Retry</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
-    <script>
-        let currentQuestionData = null;
-        let uploadedImageFile = null;
+    <script th:inline="javascript">
+        let currentData = null;
+        let imageFile = null;
 
-        // 监听输入类型切换
-        document.getElementById('inputType').addEventListener('change', function(e) {
-            const inputType = e.target.value;
-            const textGroup = document.getElementById('textInputGroup');
-            const imageGroup = document.getElementById('imageInputGroup');
-            const uploadArea = document.getElementById('uploadArea');
-            
-            if (inputType === 'IMAGE') {
-                textGroup.style.display = 'none';
-                imageGroup.style.display = 'block';
-                uploadArea.classList.add('show');
-            } else {
-                textGroup.style.display = 'block';
-                imageGroup.style.display = 'none';
-                uploadArea.classList.remove('show');
-                clearImage();
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const qId = params.get('quizId');
+            if (qId) {
+                const sel = document.getElementById('quizId');
+                if (sel) {
+                    sel.value = qId;
+                    sel.disabled = true;
+                }
             }
         });
 
-        // 处理拖拽上传
-        const uploadArea = document.getElementById('uploadArea');
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        function toggleInput() {
+            const type = document.getElementById('inputType').value;
+            document.getElementById('textInputGroup').style.display = type === 'TEXT' ? 'block' : 'none';
+            document.getElementById('imageInputGroup').style.display = type === 'IMAGE' ? 'block' : 'none';
         }
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.add('dragover');
-            }, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.remove('dragover');
-            }, false);
-        });
-
-        uploadArea.addEventListener('drop', function(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files.length > 0) {
-                handleImageFile(files[0]);
-            }
-        }, false);
-
-        // 处理图片选择
-        function handleImageSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                handleImageFile(file);
+        function handleImage(input) {
+            if (input.files && input.files[0]) {
+                imageFile = input.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                    document.getElementById('uploadZone').style.display = 'none';
+                }
+                reader.readAsDataURL(imageFile);
             }
         }
 
-        // 处理图片文件
-        function handleImageFile(file) {
-            // 验证文件类型
-            if (!file.type.startsWith('image/')) {
-                showAlert('Please select an image file', 'error');
-                return;
-            }
-
-            // 验证文件大小（5MB）
-            if (file.size > 5 * 1024 * 1024) {
-                showAlert('File size exceeds 5MB limit', 'error');
-                return;
-            }
-
-            uploadedImageFile = file;
-
-            // 显示预览
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('previewImg').src = e.target.result;
-                document.getElementById('imagePreview').classList.add('show');
-                document.getElementById('uploadArea').style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // 清除图片
-        function clearImage(event) {
-            if (event) {
-                event.stopPropagation();
-            }
-            uploadedImageFile = null;
-            document.getElementById('previewImg').src = '';
-            document.getElementById('imagePreview').classList.remove('show');
-            document.getElementById('uploadArea').style.display = 'block';
+        function clearImage() {
+            imageFile = null;
             document.getElementById('fileInput').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('uploadZone').style.display = 'block';
+        }
+
+        function setMsg(msg, type) {
+            const el = document.getElementById('statusMsg');
+            el.style.display = 'block';
+            el.textContent = msg;
+            el.style.color = type === 'err' ? 'var(--alert-red)' : 'var(--success-green)';
+            el.style.borderColor = type === 'err' ? 'var(--alert-red)' : 'var(--success-green)';
+            el.style.background = type === 'err' ? 'rgba(255,0,0,0.1)' : 'rgba(0,255,0,0.1)';
         }
 
         async function normalizeQuestion() {
             const quizId = document.getElementById('quizId').value;
-            const inputType = document.getElementById('inputType').value;
+            if (!quizId) return setMsg('Target Quiz Required', 'err');
 
-            if (!quizId) {
-                showAlert('Please select a target quiz', 'error');
-                return;
-            }
+            const type = document.getElementById('inputType').value;
+            const content = document.getElementById('inputContent').value;
 
-            let inputContent = '';
+            if (type === 'TEXT' && !content.trim()) return setMsg('Content Required', 'err');
+            if (type === 'IMAGE' && !imageFile) return setMsg('Image Required', 'err');
 
-            // 如果是图片模式，先进行OCR识别
-            if (inputType === 'IMAGE') {
-                if (!uploadedImageFile) {
-                    showAlert('Please upload an image', 'error');
-                    return;
-                }
+            document.getElementById('loading').classList.add('active');
+            setMsg('Processing...', 'info');
 
-                document.getElementById('loading').classList.add('active');
-                document.getElementById('normalizeBtn').disabled = true;
-
-                try {
-                    // 上传图片并进行OCR
-                    const formData = new FormData();
-                    formData.append('file', uploadedImageFile);
-
-                    const ocrResponse = await fetch('/teacher/api/question/upload-image', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    const ocrResult = await ocrResponse.json();
-
-                    if (!ocrResult.success) {
-                        showAlert('OCR recognition failed: ' + (ocrResult.error || 'Unknown error'), 'error');
-                        document.getElementById('loading').classList.remove('active');
-                        document.getElementById('normalizeBtn').disabled = false;
-                        return;
-                    }
-
-                    inputContent = ocrResult.text;
-                    
-                    // 显示识别结果到textarea（可选）
-                    document.getElementById('inputContent').value = inputContent;
-                    showAlert('OCR recognition completed! Normalizing question...', 'success');
-
-                } catch (error) {
-                    showAlert('Image upload failed: ' + error.message, 'error');
-                    document.getElementById('loading').classList.remove('active');
-                    document.getElementById('normalizeBtn').disabled = false;
-                    return;
-                }
-            } else {
-                // 文本模式
-                inputContent = document.getElementById('inputContent').value.trim();
-                if (!inputContent) {
-                    showAlert('Please enter question content', 'error');
-                    return;
-                }
-
-                document.getElementById('loading').classList.add('active');
-                document.getElementById('normalizeBtn').disabled = true;
+            // Always use FormData for consistent backend handling
+            const formData = new FormData();
+            formData.append('input', content);
+            formData.append('inputType', type);
+            if (type === 'IMAGE' && imageFile) {
+                formData.append('imageFile', imageFile);
             }
 
             try {
-                const response = await fetch('/teacher/api/question/normalize', {
+                const res = await fetch('/teacher/api/question/normalize', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        input: inputContent,
-                        inputType: 'TEXT' // 总是以TEXT方式规范化（OCR后的文本）
-                    })
+                    body: formData
                 });
-
-                const result = await response.json();
+                const result = await res.json();
 
                 if (result.success) {
-                    currentQuestionData = result.data;
-                    currentQuestionData.quizId = quizId;
+                    currentData = result.data;
+                    currentData.quizId = quizId;
                     renderPreview(result.data);
-                    showAlert('Question normalized successfully!', 'success');
+                    setMsg('Normalization Complete', 'suc');
                 } else {
-                    showAlert(result.error || 'Normalization failed', 'error');
+                    setMsg(result.error || 'Failed', 'err');
                 }
-            } catch (error) {
-                showAlert('Network error: ' + error.message, 'error');
+            } catch (e) {
+                setMsg('Error: ' + e.message, 'err');
             } finally {
                 document.getElementById('loading').classList.remove('active');
-                document.getElementById('normalizeBtn').disabled = false;
             }
         }
 
         function renderPreview(data) {
-            document.getElementById('previewEmpty').style.display = 'none';
             document.getElementById('previewContent').style.display = 'block';
+            document.getElementById('previewEmpty').style.display = 'none';
 
             document.getElementById('editTitle').value = data.title || '';
-
-            const typeMap = {
-                'SELECT_BASIC': 'Basic SELECT',
-                'SELECT_JOIN': 'JOIN Query',
-                'SELECT_SUBQUERY': 'Subquery',
-                'SELECT_AGGREGATE': 'Aggregate',
-                'SELECT_COMPLEX': 'Complex',
-                'DML_INSERT': 'INSERT',
-                'DML_UPDATE': 'UPDATE',
-                'DML_DELETE': 'DELETE'
-            };
-
-            const typeElem = document.getElementById('previewType');
-            typeElem.textContent = typeMap[data.questionType] || data.questionType || 'Unknown';
-            typeElem.className = 'badge';
-
-            const diffElem = document.getElementById('previewDifficulty');
-            diffElem.textContent = data.difficulty || 'MEDIUM';
-            diffElem.className = 'badge ' + (data.difficulty ? data.difficulty.toLowerCase() : 'medium');
-
-            // 使用marked.js渲染Markdown描述
-            if (typeof marked !== 'undefined') {
-                marked.setOptions({
-                    breaks: true,
-                    gfm: true,
-                    sanitize: false
-                });
-                document.getElementById('renderDescription').innerHTML = marked.parse(data.description || '');
-                document.getElementById('renderAnswer').innerHTML = marked.parse(data.answer || '');
-            } else {
-                console.warn('marked.js is not loaded! Displaying raw text.');
-                document.getElementById('renderDescription').innerHTML = data.description || '';
-                document.getElementById('renderAnswer').innerHTML = data.answer || '';
-            }
-
-            // 存储setupSQL但不显示
+            document.getElementById('previewType').textContent = data.questionType || 'UNKNOWN';
+            document.getElementById('previewDifficulty').textContent = data.difficultyLevel || 'MEDIUM';
+            document.getElementById('renderDescription').innerHTML = marked.parse(data.description || '');
+            document.getElementById('editExpectedSql').value = data.expectedSql || '';
             document.getElementById('editSetupSql').value = data.setupSql || '';
-            
-            // 移除expectedSql中的表名前缀后显示
-            const cleanedExpectedSql = removeTablePrefixFromSql(data.expectedSql || '');
-            document.getElementById('editExpectedSql').value = cleanedExpectedSql;
 
-            // 渲染可编辑的数据表格
-            console.log('About to call renderEditableTables');
-            console.log('setupSql:', data.setupSql);
-            renderEditableTables(data.setupSql);
-            console.log('renderEditableTables called');
-            console.log('Final check - TD count:', document.querySelectorAll('#renderTables td').length);
+            // Parse setupSql and render tables (same logic as AI generation)
+            renderEditableTables(data.setupSql || '');
         }
 
-        // 渲染可编辑表格
         function renderEditableTables(setupSql) {
             const container = document.getElementById('renderTables');
             container.innerHTML = '';
 
             if (!setupSql) {
-                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data available</p>';
+                container.innerHTML = '<div style="color:#666; font-size:0.8rem;">No schema definition provided.</div>';
                 return;
             }
 
-            const tables = parseSetupSql(setupSql);
-            tablesData = tables; // 初始化全局变量
-            
-            if (tables.length === 0) {
-                container.innerHTML = '<p style="color: var(--muted); font-size: 13px;">No table data found</p>';
+            // Clean SQL: remove single-line comments (-- ...) and multi-line comments (/* ... */)
+            const cleanSql = setupSql
+                .replace(/--.*$/gm, '')  // Remove single-line comments
+                .replace(/\/\*[\s\S]*?\*\//g, '')  // Remove multi-line comments
+                .replace(/`\s*\n\s*`/g, '');  // Fix broken multi-line backtick strings
+
+            // Parse CREATE TABLE statements to get table structure
+            const tables = {};
+            const createRegex = /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?`?(\w+)`?\s*\(([^;]+)\);/gi;
+            let match;
+            while ((match = createRegex.exec(cleanSql)) !== null) {
+                const tableName = match[1];
+                const colDefs = match[2];
+                // Parse columns (skip constraints like PRIMARY KEY, FOREIGN KEY, etc.)
+                const columns = [];
+                const lines = colDefs.split(',').map(c => c.trim());
+                for (const line of lines) {
+                    const upper = line.toUpperCase();
+                    // Skip constraint definitions
+                    if (upper.startsWith('PRIMARY KEY') || upper.startsWith('FOREIGN KEY') ||
+                        upper.startsWith('UNIQUE') || upper.startsWith('CHECK') ||
+                        upper.startsWith('CONSTRAINT') || upper.startsWith('INDEX')) continue;
+
+                    // Extract column name - must be a valid identifier
+                    const colMatch = line.match(/^`?(\w+)`?\s/);
+                    if (colMatch) {
+                        const colName = colMatch[1];
+                        // Basic validation: column name should be letters, numbers, underscore only
+                        if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(colName)) {
+                            columns.push(colName);
+                        }
+                    }
+                }
+                if (columns.length > 0) {
+                    tables[tableName] = { columns };
+                }
+            }
+
+            // Parse INSERT statements - use cleaned SQL
+            const tableData = {};
+            const insertPattern = /INSERT\s+INTO\s+(?:`?(\w+)`?)(?:\s*\([^)]+\))?\s+VALUES\s*/gi;
+            let insertMatch;
+            let sqlPos = 0;
+
+            while ((insertMatch = insertPattern.exec(cleanSql)) !== null) {
+                const tableName = insertMatch[1];
+                const valuesStart = insertMatch.index + insertMatch[0].length;
+
+                // Manually parse VALUES by matching parentheses
+                const valuesList = [];
+                let parenCount = 0;
+                let currentValues = '';
+                let inString = false;
+                let stringChar = '';
+                let i = valuesStart;
+
+                while (i < cleanSql.length) {
+                    const char = cleanSql[i];
+                    const nextChar = i + 1 < cleanSql.length ? cleanSql[i + 1] : '';
+
+                    // Handle string literals
+                    if ((char === "'" || char === '"') && (i === 0 || cleanSql[i - 1] !== '\\')) {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            // Check for escaped quotes ('')
+                            if (nextChar === stringChar) {
+                                currentValues += char + nextChar;
+                                i++;
+                            } else {
+                                inString = false;
+                                stringChar = '';
+                            }
+                        }
+                        currentValues += char;
+                    }
+                    // Track parentheses outside strings
+                    else if (!inString) {
+                        if (char === '(') {
+                            if (parenCount === 0) {
+                                currentValues = char; // Start new value group
+                            } else {
+                                currentValues += char;
+                            }
+                            parenCount++;
+                        } else if (char === ')') {
+                            parenCount--;
+                            currentValues += char;
+                            if (parenCount === 0) {
+                                // Complete value group
+                                valuesList.push(currentValues);
+                                // Check for comma (more values) or semicolon (end)
+                                let j = i + 1;
+                                while (j < cleanSql.length && /\s/.test(cleanSql[j])) j++;
+                                if (j < cleanSql.length && cleanSql[j] === ',') {
+                                    // More values coming
+                                    i = j;
+                                } else if (j < cleanSql.length && cleanSql[j] === ';') {
+                                    // End of statement
+                                    break;
+                                }
+                            }
+                        } else if (parenCount > 0) {
+                            currentValues += char;
+                        } else if (char === ';') {
+                            break; // End of statement
+                        }
+                    } else {
+                        currentValues += char;
+                    }
+                    i++;
+                }
+
+                // Parse each value group
+                for (const valuesStr of valuesList) {
+                    const values = parseValues(valuesStr);
+                    if (!tableData[tableName]) tableData[tableName] = [];
+                    tableData[tableName].push(values);
+                }
+
+                // Move position forward
+                sqlPos = i;
+                insertPattern.lastIndex = sqlPos;
+            }
+
+            if (Object.keys(tables).length === 0) {
+                container.innerHTML = '<div style="color:#666;">Generated Schema (Implicit)</div>';
                 return;
             }
 
-            tables.forEach((tableData, tableIndex) => {
-                const tableContainer = document.createElement('div');
-                tableContainer.className = 'editable-table-container';
-                tableContainer.dataset.tableIndex = tableIndex;
+            // Render each table
+            for (const [tableName, tableInfo] of Object.entries(tables)) {
+                const title = document.createElement('div');
+                title.style.color = 'var(--blueprint-blue)';
+                title.style.fontSize = '0.8rem';
+                title.style.marginTop = '1rem';
+                title.textContent = '> TABLE: ' + tableName;
+                container.appendChild(title);
 
-                // 表格标题 - 显示简化的表名
-                const tableTitle = document.createElement('div');
-                tableTitle.className = 'table-title';
-                tableTitle.innerHTML = `<i class="fas fa-table"></i> ${tableData.displayName || tableData.tableName}`;
-                tableContainer.appendChild(tableTitle);
+                const table = document.createElement('table');
+                table.className = 'editable-data-table';
 
-                if (tableData.columns && tableData.columns.length > 0) {
-                    // 创建可编辑表格
-                    const table = document.createElement('table');
-                    table.className = 'editable-data-table';
+                // Create header
+                const header = document.createElement('tr');
+                tableInfo.columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    header.appendChild(th);
+                });
+                table.appendChild(header);
 
-                    // 表头
-                    const thead = document.createElement('thead');
-                    const headerRow = document.createElement('tr');
-                    tableData.columns.forEach(col => {
-                        const th = document.createElement('th');
-                        th.textContent = col;
-                        headerRow.appendChild(th);
+                // Add data rows if available, otherwise show empty row
+                const rows = tableData[tableName] || [];
+                if (rows.length === 0) {
+                    // Show one empty editable row
+                    const row = document.createElement('tr');
+                    tableInfo.columns.forEach(() => {
+                        const td = document.createElement('td');
+                        td.contentEditable = true;
+                        td.style.color = '#666';
+                        td.style.fontStyle = 'italic';
+                        td.textContent = '(click to edit)';
+                        row.appendChild(td);
                     });
-                    thead.appendChild(headerRow);
-                    table.appendChild(thead);
-
-                    console.log(`Table ${tableData.displayName}: columns=${tableData.columns.length}, data rows=${tableData.data.length}`);
-                    console.log('Table data:', tableData.data);
-
-                    // 表体 - 可编辑
-                    const tbody = document.createElement('tbody');
-                    tableData.data.forEach((row, rowIndex) => {
-                        console.log(`Creating row ${rowIndex}:`, row);
-                        const tr = document.createElement('tr');
-                        tableData.columns.forEach((col, colIndex) => {
+                    table.appendChild(row);
+                } else {
+                    rows.forEach(rowData => {
+                        const row = document.createElement('tr');
+                        tableInfo.columns.forEach((col, idx) => {
                             const td = document.createElement('td');
                             td.contentEditable = true;
-                            td.textContent = row[colIndex] || '';
-                            console.log(`  Cell [${rowIndex}][${colIndex}] = ${row[colIndex]}`);
-                            td.dataset.tableIndex = tableIndex;
-                            td.dataset.rowIndex = rowIndex;
-                            td.dataset.colIndex = colIndex;
-                            
-                            // 监听编辑事件
-                            td.addEventListener('blur', function() {
-                                updateTableData(tableIndex, rowIndex, colIndex, this.textContent);
-                            });
-
-                            tr.appendChild(td);
+                            td.textContent = rowData[idx] || '';
+                            row.appendChild(td);
                         });
-                        tbody.appendChild(tr);
+                        table.appendChild(row);
                     });
-                    table.appendChild(tbody);
-                    console.log('tbody children count:', tbody.children.length);
-                    console.log('tbody HTML:', tbody.innerHTML.substring(0, 200));
-                    console.log('table element:', table);
-
-                    tableContainer.appendChild(table);
-                    console.log('table appended to container');
-                    console.log('tableContainer HTML:', tableContainer.innerHTML.substring(0, 300));
-
-                    // 添加操作按钮
-                    const actions = document.createElement('div');
-                    actions.className = 'table-actions';
-                    actions.innerHTML = `
-                        <button onclick="addTableRow(${tableIndex})"><i class="fas fa-plus"></i> Add Row</button>
-                        <button onclick="removeTableRow(${tableIndex})"><i class="fas fa-minus"></i> Remove Last Row</button>
-                    `;
-                    tableContainer.appendChild(actions);
                 }
 
-                container.appendChild(tableContainer);
-                console.log('tableContainer appended to main container');
+                container.appendChild(table);
+            }
+        }
+
+        // Helper function to parse comma-separated values with quote handling
+        function parseValues(valuesStr) {
+            // Remove outer parentheses if present
+            let str = valuesStr.trim();
+            if (str.startsWith('(') && str.endsWith(')')) {
+                str = str.substring(1, str.length - 1);
+            }
+
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            let parenDepth = 0;
+            let i = 0;
+
+            while (i < str.length) {
+                const char = str[i];
+                const nextChar = i + 1 < str.length ? str[i + 1] : '';
+
+                // Handle escaped quotes ('')
+                if (char === "'" && nextChar === "'") {
+                    current += "''";
+                    i += 2;
+                    continue;
+                }
+
+                if (char === "'" && (i === 0 || str[i - 1] !== '\\')) {
+                    inQuotes = !inQuotes;
+                    current += char;
+                } else if (char === '(' && !inQuotes) {
+                    parenDepth++;
+                    current += char;
+                } else if (char === ')' && !inQuotes) {
+                    parenDepth--;
+                    current += char;
+                } else if (char === ',' && !inQuotes && parenDepth === 0) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+                i++;
+            }
+
+            if (current.trim()) {
+                values.push(current.trim());
+            }
+
+            // Clean values (remove outer quotes, keep escaped quotes)
+            return values.map(v => {
+                if (v.startsWith("'") && v.endsWith("'")) {
+                    return v.slice(1, -1);
+                }
+                return v;
             });
-            
-            console.log('Final container HTML length:', container.innerHTML.length);
-            console.log('Container element:', container);
-            console.log('Tables in DOM:', document.querySelectorAll('#renderTables table').length);
-            console.log('TDs in DOM:', document.querySelectorAll('#renderTables td').length);
-        }
-
-        // 存储表格数据的全局变量
-        let tablesData = [];
-
-        // 更新表格数据
-        function updateTableData(tableIndex, rowIndex, colIndex, value) {
-            if (!tablesData[tableIndex]) {
-                tablesData[tableIndex] = parseSetupSql(document.getElementById('editSetupSql').value)[tableIndex];
-            }
-            
-            if (tablesData[tableIndex] && tablesData[tableIndex].data[rowIndex]) {
-                tablesData[tableIndex].data[rowIndex][colIndex] = value;
-                
-                // 同步更新setupSQL
-                updateSetupSql();
-            }
-        }
-
-        // 添加行
-        function addTableRow(tableIndex) {
-            const setupSql = document.getElementById('editSetupSql').value;
-            tablesData = parseSetupSql(setupSql);
-            
-            if (tablesData[tableIndex]) {
-                const newRow = new Array(tablesData[tableIndex].columns.length).fill('');
-                tablesData[tableIndex].data.push(newRow);
-                
-                updateSetupSql();
-                renderEditableTables(document.getElementById('editSetupSql').value);
-            }
-        }
-
-        // 删除最后一行
-        function removeTableRow(tableIndex) {
-            const setupSql = document.getElementById('editSetupSql').value;
-            tablesData = parseSetupSql(setupSql);
-            
-            if (tablesData[tableIndex] && tablesData[tableIndex].data.length > 0) {
-                tablesData[tableIndex].data.pop();
-                
-                updateSetupSql();
-                renderEditableTables(document.getElementById('editSetupSql').value);
-            }
-        }
-
-        // 根据tablesData更新setupSQL
-        function updateSetupSql() {
-            let newSetupSql = '';
-            
-            tablesData.forEach(table => {
-                // CREATE TABLE语句（保持原样，只更新INSERT）
-                const currentSql = document.getElementById('editSetupSql').value;
-                const createTablePattern = new RegExp(`CREATE TABLE.*?${table.tableName}.*?\\);`, 's');
-                const createMatch = currentSql.match(createTablePattern);
-                
-                if (createMatch) {
-                    newSetupSql += createMatch[0] + '\n\n';
-                }
-
-                // 重新生成INSERT语句
-                if (table.data.length > 0) {
-                    table.data.forEach(row => {
-                        const values = row.map(v => {
-                            // 如果是数字，不加引号
-                            if (!isNaN(v) && v !== '') {
-                                return v;
-                            }
-                            // 字符串加引号
-                            return `'${v.replace(/'/g, "\\'")}'`;
-                        }).join(', ');
-                        
-                        newSetupSql += `INSERT INTO ${table.tableName} (${table.columns.join(', ')}) VALUES (${values});\n`;
-                    });
-                    newSetupSql += '\n';
-                }
-            });
-            
-            document.getElementById('editSetupSql').value = newSetupSql.trim();
-        }
-
-        function parseSetupSql(setupSql) {
-            const tables = [];
-            if (!setupSql || setupSql.trim() === '') {
-                return tables;
-            }
-        
-            // 使用正则表达式匹配CREATE TABLE和INSERT语句
-            const createTableRegex = /CREATE TABLE\s+`?([\w_]+)`?\s*\([^;]+\);?/gi;
-            // 修改为支持多行VALUES的正则表达式
-            const insertRegex = /INSERT INTO\s+`?([\w_]+)`?\s*\(([^)]+)\)\s*VALUES\s+([\s\S]+?);/gi;
-        
-            // 解析CREATE TABLE语句以获取表名
-            const tableMap = new Map();
-            let match;
-                    
-            while ((match = createTableRegex.exec(setupSql)) !== null) {
-                const fullTableName = match[1];
-                const displayName = removeTablePrefix(fullTableName);
-                if (!tableMap.has(fullTableName)) {
-                    tableMap.set(fullTableName, {
-                        tableName: fullTableName, // 数据库中的完整表名
-                        displayName: displayName, // 显示用的简化表名
-                        columns: [],
-                        data: []
-                    });
-                }
-            }
-        
-            // 解析INSERT语句
-            while ((match = insertRegex.exec(setupSql)) !== null) {
-                const fullTableName = match[1];
-                const displayName = removeTablePrefix(fullTableName);
-                const columns = match[2].split(',').map(c => c.trim().replace(/[`\s]/g, ''));
-                const valuesBlock = match[3]; // 整个VALUES块
-                
-                // 解析多行值：('Y', 'N'), ('Y', 'Y'), ...
-                const valueRowRegex = /\(([^)]+)\)/g;
-                let valueMatch;
-                
-                if (!tableMap.has(fullTableName)) {
-                    tableMap.set(fullTableName, {
-                        tableName: fullTableName,
-                        displayName: displayName,
-                        columns: columns,
-                        data: []
-                    });
-                } else if (tableMap.get(fullTableName).columns.length === 0) {
-                    tableMap.get(fullTableName).columns = columns;
-                }
-                
-                // 提取每一行的VALUES
-                while ((valueMatch = valueRowRegex.exec(valuesBlock)) !== null) {
-                    const values = valueMatch[1].split(',').map(v => {
-                        v = v.trim();
-                        // 移除引号
-                        if ((v.startsWith("'") && v.endsWith("'")) || 
-                            (v.startsWith('"') && v.endsWith('"'))) {
-                            return v.slice(1, -1);
-                        }
-                        // 保持原始值（包括布尔值、数字等）
-                        return v;
-                    });
-                    tableMap.get(fullTableName).data.push(values);
-                }
-            }
-        
-            // 转换为数组
-            tableMap.forEach(table => {
-                if (table.data.length > 0) {
-                    tables.push(table);
-                }
-            });
-        
-            console.log('Parsed tables:', tables); // 调试日志
-            return tables;
-        }
-        
-        // 移除表名前缀，只显示原始表名
-        function removeTablePrefix(tableName) {
-            // quiz_q_14dbfc95_1769492438429_customers -> customers
-            if (tableName.match(/^quiz_q_[\w]+_\d+_(.+)$/)) {
-                return tableName.replace(/^quiz_q_[\w]+_\d+_/, '');
-            }
-            return tableName;
-        }
-
-        // 从SQL语句中移除表名前缀
-        function removeTablePrefixFromSql(sql) {
-            if (!sql) return sql;
-            
-            // 匹配SQL中所有的quiz_q_前缀表名并替换为简化表名
-            // 匹配模式：quiz_q_[任意字符]_[数字]_[表名]
-            return sql.replace(/quiz_q_[\w]+_\d+_([\w]+)/g, '$1');
-        }
-
-        // 为SQL语句中的表名添加前缀
-        function addTablePrefixToSql(sql, setupSql) {
-            if (!sql || !setupSql) return sql;
-            
-            // 从setupSql中提取所有表名及其前缀的映射
-            const tables = parseSetupSql(setupSql);
-            let result = sql;
-            
-            tables.forEach(table => {
-                // 使用displayName（简化表名）匹配并替换为tableName（完整表名）
-                const displayName = table.displayName || removeTablePrefix(table.tableName);
-                const fullTableName = table.tableName;
-                
-                // 使用单词边界匹配，确保只替换完整的表名
-                const regex = new RegExp('\\b' + displayName + '\\b', 'g');
-                result = result.replace(regex, fullTableName);
-            });
-            
-            return result;
         }
 
         async function confirmQuestion() {
-            if (!currentQuestionData) {
-                showAlert('No question to confirm', 'error');
-                return;
-            }
+            if (!currentData) return;
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
 
-            const confirmBtn = document.getElementById('confirmBtn');
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            // Get content from description (used as both content and description)
+            const description = document.getElementById('renderDescription').innerText;
+
+            const payload = {
+                quizId: currentData.quizId,
+                title: document.getElementById('editTitle').value,
+                description: description,
+                content: description,
+                databaseContext: currentData.databaseContext || '',
+                questionType: document.getElementById('previewType').textContent,
+                difficulty: document.getElementById('previewDifficulty').textContent,
+                score: document.getElementById('questionScore').value,
+                expectedSql: document.getElementById('editExpectedSql').value,
+                answer: currentData.answer || '',
+                setupSql: document.getElementById('editSetupSql').value
+            };
 
             try {
-                // 从Markdown渲染后的内容获取数据
-                const description = document.getElementById('renderDescription').innerHTML;
-                const answer = document.getElementById('renderAnswer').innerHTML;
-                
-                // 获取setupSql和expectedSql
-                const setupSql = document.getElementById('editSetupSql').value;
-                const displayExpectedSql = document.getElementById('editExpectedSql').value;
-                
-                // 将expectedSql中的简化表名恢复为完整表名
-                const fullExpectedSql = addTablePrefixToSql(displayExpectedSql, setupSql);
-                
-                const requestData = {
-                    quizId: String(currentQuestionData.quizId),
-                    title: document.getElementById('editTitle').value,
-                    description: description,
-                    databaseContext: currentQuestionData.databaseContext || '', // 保留原始数据
-                    setupSql: setupSql,
-                    expectedSql: fullExpectedSql,  // 使用恢复前缀后的SQL
-                    answer: answer,
-                    questionType: currentQuestionData.questionType,
-                    difficulty: currentQuestionData.difficulty,
-                    score: String(document.getElementById('questionScore').value)
-                };
-
-                console.log('Sending request:', requestData);
-
-                const response = await fetch('/teacher/api/question/confirm', {
+                const res = await fetch('/teacher/api/question/confirm', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestData)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
-                console.log('Response status:', response.status);
-                
-                const result = await response.json();
-                console.log('Response data:', result);
+                const result = await res.json();
 
                 if (result.success) {
-                    showAlert('Question added to quiz successfully!', 'success');
+                    setMsg('Question saved successfully!', 'suc');
                     setTimeout(() => {
-                        window.location.href = '/teacher/quiz/' + currentQuestionData.quizId + '/questions';
-                    }, 1500);
+                        window.location.href = '/teacher/quiz/' + payload.quizId + '/questions';
+                    }, 1000);
                 } else {
-                    showAlert(result.error || 'Failed to add question', 'error');
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+                    setMsg(result.error || 'Save Failed', 'err');
+                    btn.disabled = false;
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('Network error: ' + error.message, 'error');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Confirm & Add to Quiz';
+            } catch (e) {
+                setMsg('Error: ' + e.message, 'err');
+                btn.disabled = false;
             }
         }
-
-        function showAlert(message, type) {
-            const alertElem = document.getElementById(type === 'error' ? 'errorAlert' : 'successAlert');
-            const msgElem = document.getElementById(type === 'error' ? 'errorMessage' : 'successMessage');
-
-            msgElem.textContent = message;
-            alertElem.classList.add('show');
-
-            setTimeout(() => {
-                alertElem.classList.remove('show');
-            }, 5000);
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const editableElements = document.querySelectorAll('[contenteditable="true"]');
-            editableElements.forEach(el => {
-                el.addEventListener('focus', function() {
-                    if (this.textContent === '') {
-                        this.innerHTML = '';
-                    }
-                });
-                
-                el.addEventListener('blur', function() {
-                    if (this.innerHTML.trim() === '') {
-                        this.innerHTML = '';
-                    }
-                });
-            });
-        });
     </script>
 </body>
+
 </html>
