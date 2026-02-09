@@ -31,7 +31,7 @@ public class QuizService {
 
     @Autowired
     private  GLMService glmService;
-    // 创建测试
+    // Create quiz
     public Quiz createQuiz(String title, String description, Integer timeLimit,
                            Integer maxAttempts, User teacher) throws JsonProcessingException {
         Quiz quiz = new Quiz();
@@ -45,7 +45,7 @@ public class QuizService {
         return quizRepository.save(quiz);
     }
 
-    // 更新测试
+    // Update quiz
     public Quiz updateQuiz(Long quizId, String title, String description,
                            Integer timeLimit, Integer maxAttempts,
                            LocalDateTime startTime, LocalDateTime endTime) {
@@ -61,36 +61,36 @@ public class QuizService {
 
             return quizRepository.save(quiz);
         } else {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
     }
 
-    // 根据ID查找测试
+    // Find quiz by ID
     public Optional<Quiz> findById(Long id) {
         return quizRepository.findById(id);
     }
 
-    // 获取所有测试
+    // Get all quizzes
     public List<Quiz> findAllQuizzes() {
         return quizRepository.findAll();
     }
 
-    // 获取活跃的测试
+    // Get active quizzes
     public List<Quiz> findActiveQuizzes() {
         return quizRepository.findByIsActiveTrueOrderByCreatedAtDesc();
     }
 
-    // 获取当前开放的测试
+    // Get currently open quizzes
     public List<Quiz> findOpenQuizzes() {
         return quizRepository.findOpenQuizzes(LocalDateTime.now());
     }
 
-    // 根据教师查找测试
+    // Find quizzes by teacher
     public List<Quiz> findQuizzesByTeacher(User teacher) {
         return quizRepository.findByTeacherOrderByCreatedAtDesc(teacher);
     }
 
-    // 启用/禁用测试
+    // Enable/disable quiz
     public void toggleQuizStatus(Long quizId) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (quizOpt.isPresent()) {
@@ -98,20 +98,20 @@ public class QuizService {
             quiz.setIsActive(!quiz.getIsActive());
             quizRepository.save(quiz);
         } else {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
     }
 
-    // 删除测试
+    // Delete quiz
     public void deleteQuiz(Long quizId) {
         if (quizRepository.existsById(quizId)) {
             quizRepository.deleteById(quizId);
         } else {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
     }
 
-    // 添加题目到测试
+    // Add question to quiz
     public Question addQuestionToQuiz(Long quizId, String content, Question.QuestionType questionType,
                                       String description, String databaseContext, String expectedSql,
                                       String testData, String expectedResult, Double score,
@@ -120,7 +120,7 @@ public class QuizService {
                 expectedSql, null, testData, expectedResult, score, difficultyLevel);
     }
 
-    // 添加题目到测试（包含setupSql）
+    // Add question to quiz (including setupSql)
     public Question addQuestionToQuiz(Long quizId, String content, Question.QuestionType questionType,
                                       String description, String databaseContext, String expectedSql,
                                       String setupSql, String testData, String expectedResult, Double score,
@@ -135,24 +135,24 @@ public class QuizService {
             question.setDescription(description);
             question.setDatabaseContext(databaseContext);
             question.setExpectedSql(expectedSql);
-            question.setSetupSql(setupSql);  // 设置setupSql
+            question.setSetupSql(setupSql);  // Set setupSql
             question.setTestData(testData);
             question.setExpectedResult(expectedResult);
             question.setScore(score);
             question.setDifficultyLevel(difficultyLevel);
             question.setQuiz(quiz);
 
-            // 设置题目顺序
+            // Set question order
             Integer maxOrder = questionRepository.getMaxOrderIndexByQuiz(quiz);
             question.setOrderIndex(maxOrder + 1);
 
             return questionRepository.save(question);
         } else {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
     }
 
-    // 更新题目
+    // Update question
     public Question updateQuestion(Long questionId, String content, Question.QuestionType questionType,
                                    String description, String databaseContext, String expectedSql,
                                    String testData, String expectedResult, Double score,
@@ -172,44 +172,44 @@ public class QuizService {
 
             return questionRepository.save(question);
         } else {
-            throw new RuntimeException("题目不存在");
+            throw new RuntimeException("Question does not exist");
         }
     }
 
-    // 删除题目
+    // Delete question
     public void deleteQuestion(Long questionId) {
         if (questionRepository.existsById(questionId)) {
             questionRepository.deleteById(questionId);
         } else {
-            throw new RuntimeException("题目不存在");
+            throw new RuntimeException("Question does not exist");
         }
     }
 
-    // 获取测试的所有题目
+    // Get all questions for quiz
     public List<Question> getQuestionsByQuiz(Long quizId) {
         return questionRepository.findByQuizIdOrderByOrderIndexAsc(quizId);
     }
 
-    // 根据ID获取题目
+    // Get question by ID
     public Optional<Question> getQuestionById(Long questionId) {
         return questionRepository.findById(questionId);
     }
 
-    // 开始测试（学生）
+    // Start quiz (student)
     public Submission startQuiz(Long quizId, User student) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (!quizOpt.isPresent()) {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
 
         Quiz quiz = quizOpt.get();
 
-        // 检查测试是否开放
+        // Check if quiz is open
         if (!quiz.isOpen()) {
-            throw new RuntimeException("测试当前不可用");
+            throw new RuntimeException("Quiz is not currently available");
         }
 
-        // 检查学生是否有正在进行的提交
+        // Check if student has in-progress submission
         Optional<Submission> inProgressSubmission = submissionRepository
                 .findByStudentAndQuizAndStatus(student, quiz, Submission.SubmissionStatus.IN_PROGRESS);
         if (inProgressSubmission.isPresent()) {
@@ -217,18 +217,18 @@ public class QuizService {
             return inProgressSubmission.get();
         }
 
-        // 检查尝试次数限制
+        // Check attempt limit
         long attemptCount = submissionRepository.countByStudentAndQuiz(student, quiz);
         if (attemptCount >= quiz.getMaxAttempts()) {
-            throw new RuntimeException("已达到最大尝试次数限制");
+            throw new RuntimeException("Maximum attempt limit reached");
         }
 
-        // 创建新的提交记录
+        // Create new submission record
         Submission submission = new Submission(student, quiz, (int)(attemptCount + 1));
         submission = submissionRepository.save(submission);
         System.out.println("[StartQuiz] Created new submission: " + submission.getId());
 
-        // 为每道题目创建答题记录
+        // Create question answer records for each question
         List<Question> questions = questionRepository.findByQuizOrderByOrderIndexAsc(quiz);
         System.out.println("[StartQuiz] Creating QuestionAnswer records for " + questions.size() + " questions");
         
@@ -241,33 +241,33 @@ public class QuizService {
         return submission;
     }
 
-    // 提交答案
+    // Submit answer
     public void submitAnswer(Long submissionId, Long questionId, String sql) {
         System.out.println("[SubmitAnswer] submissionId:" + submissionId + ", questionId:" + questionId);
-        
+
         Optional<Submission> submissionOpt = submissionRepository.findById(submissionId);
         Optional<Question> questionOpt = questionRepository.findById(questionId);
 
         if (!submissionOpt.isPresent()) {
             System.err.println("[SubmitAnswer] ERROR: Submission not found: " + submissionId);
-            throw new RuntimeException("提交记录不存在");
+            throw new RuntimeException("Submission record does not exist");
         }
 
         if (!questionOpt.isPresent()) {
             System.err.println("[SubmitAnswer] ERROR: Question not found: " + questionId);
-            throw new RuntimeException("题目不存在");
+            throw new RuntimeException("Question does not exist");
         }
 
         Submission submission = submissionOpt.get();
         Question question = questionOpt.get();
 
-        // 检查提交状态
+        // Check submission status
         if (!submission.isInProgress()) {
             System.err.println("[SubmitAnswer] ERROR: Submission is not IN_PROGRESS, status: " + submission.getStatus());
-            throw new RuntimeException("测试已结束，无法提交答案");
+            throw new RuntimeException("Quiz has ended, cannot submit answer");
         }
 
-        // 查找对应的答题记录
+        // Find corresponding question answer record
         Optional<QuestionAnswer> qaOpt = questionAnswerRepository
                 .findBySubmissionAndQuestion(submission, question);
 
@@ -279,52 +279,52 @@ public class QuizService {
             System.out.println("[SubmitAnswer] Successfully saved answer for QuestionAnswer id=" + questionAnswer.getId());
         } else {
             System.err.println("[SubmitAnswer] ERROR: QuestionAnswer not found for submission=" + submissionId + ", question=" + questionId);
-            
-            // 列出当前 submission 的所有 QuestionAnswer
+
+            // List all QuestionAnswers for current submission
             List<QuestionAnswer> allQAs = questionAnswerRepository.findBySubmission(submission);
             System.err.println("[SubmitAnswer] Available QuestionAnswers for this submission:");
             for (QuestionAnswer qa : allQAs) {
                 System.err.println("  - QuestionAnswer id=" + qa.getId() + ", questionId=" + qa.getQuestion().getId());
             }
-            
-            throw new RuntimeException("答题记录不存在");
+
+            throw new RuntimeException("Question answer record does not exist");
         }
     }
 
-    // 完成测试提交
+    // Complete quiz submission
     public Submission submitQuiz(Long submissionId) {
         Optional<Submission> submissionOpt = submissionRepository.findById(submissionId);
         if (submissionOpt.isPresent()) {
             Submission submission = submissionOpt.get();
 
             if (!submission.isInProgress()) {
-                throw new RuntimeException("测试已经提交过了");
+                throw new RuntimeException("Quiz has already been submitted");
             }
 
             submission.submit();
             return submissionRepository.save(submission);
         } else {
-            throw new RuntimeException("提交记录不存在");
+            throw new RuntimeException("Submission record does not exist");
         }
     }
 
-    // 获取学生的测试记录
+    // Get student's quiz records
     public List<Submission> getStudentSubmissions(User student) {
         return submissionRepository.findCompletedSubmissionsByStudent(
                 student, Submission.SubmissionStatus.IN_PROGRESS);
     }
 
-    // 获取测试的所有提交记录
+    // Get all submission records for quiz (only latest submission per student)
     public List<Submission> getQuizSubmissions(Long quizId) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (quizOpt.isPresent()) {
-            return submissionRepository.findByQuiz(quizOpt.get());
+            return submissionRepository.findLatestSubmissionsByQuiz(quizOpt.get());
         } else {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
     }
 
-    // 检查学生是否可以参加测试
+    // Check if student can take quiz
     public boolean canStudentTakeQuiz(Long quizId, User student) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (!quizOpt.isPresent()) {
@@ -333,28 +333,28 @@ public class QuizService {
 
         Quiz quiz = quizOpt.get();
 
-        // 检查测试是否开放
+        // Check if quiz is open
         if (!quiz.isOpen()) {
             return false;
         }
 
-        // 检查是否有正在进行的提交
+        // Check if there's an in-progress submission
         Optional<Submission> inProgressSubmission = submissionRepository
                 .findByStudentAndQuizAndStatus(student, quiz, Submission.SubmissionStatus.IN_PROGRESS);
         if (inProgressSubmission.isPresent()) {
-            return true; // 可以继续进行中的测试
+            return true; // Can continue in-progress quiz
         }
 
-        // 检查尝试次数限制
+        // Check attempt limit
         long attemptCount = submissionRepository.countByStudentAndQuiz(student, quiz);
         return attemptCount < quiz.getMaxAttempts();
     }
 
-    // 获取测试统计信息
+    // Get quiz statistics
     public QuizStatistics getQuizStatistics(Long quizId) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (!quizOpt.isPresent()) {
-            throw new RuntimeException("测试不存在");
+            throw new RuntimeException("Quiz does not exist");
         }
 
         Quiz quiz = quizOpt.get();
@@ -366,7 +366,7 @@ public class QuizService {
         return new QuizStatistics(participantCount, averageScore != null ? averageScore : 0.0);
     }
 
-    // 内部类：测试统计信息
+    // Inner class: Quiz statistics
     public static class QuizStatistics {
         private long participantCount;
         private double averageScore;
@@ -376,7 +376,7 @@ public class QuizService {
             this.averageScore = averageScore;
         }
 
-        // getters
+        // Getters
         public long getParticipantCount() { return participantCount; }
         public double getAverageScore() { return averageScore; }
     }
@@ -412,27 +412,27 @@ public class QuizService {
               score_feedback = glmService.score_answer(question.getScore(),question.getDescription(),question.getExpectedSql(),student_answer.getStudentSql());
                 System.out.println(score_feedback);
                 try {
-                    // 移除可能的代码块标记
+                    // Remove possible code block markers
                     String cleanJson = score_feedback.replace("```json", "").replace("```", "").trim();
 
                     ObjectMapper objectMapper = new ObjectMapper();
                     JsonNode jsonNode = objectMapper.readTree(cleanJson);
 
-                    // 提取分数
+                    // Extract score
                     double aiScore = jsonNode.get("score").asDouble();
                     String feedback = jsonNode.get("feedback").asText();
 
-                    // 保存分数和反馈到数据库
+                    // Save score and feedback to database
                     student_answer.setScore(aiScore);
                     student_answer.setIsCorrect(aiScore == question.getScore());
                     student_answer.setAutoFeedback(feedback);
                     questionAnswerRepository.save(student_answer);
                 } catch (Exception e) {
-                    System.err.println("解析AI评分反馈时出错: " + e.getMessage());
-                    // 如果解析失败，给0分并记录错误
+                    System.err.println("Error parsing AI scoring feedback: " + e.getMessage());
+                    // If parsing fails, give 0 score and log error
                     student_answer.setScore(0.0);
                     student_answer.setIsCorrect(false);
-                    student_answer.setAutoFeedback("评分解析失败: " + e.getMessage());
+                    student_answer.setAutoFeedback("Score parsing failed: " + e.getMessage());
                     questionAnswerRepository.save(student_answer);
                 }
                 } // end of else block for null answer check
@@ -443,33 +443,33 @@ public class QuizService {
 
         };
         
-        // 评分完成后计算总分并更新提交状态
+        // Calculate total score and update submission status after grading
         calculateAndSaveTotalScore(submission);
         
         return score_feedback;
     }
     
     /**
-     * 计算并保存提交记录的总分
+     * Calculate and save total score for submission record
      */
     @Transactional
     public void calculateAndSaveTotalScore(Submission submission) {
-        // 重新获取答题记录，确保获取到最新的分数
+        // Re-fetch question answer records to ensure latest scores
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
         submission.setQuestionAnswers(questionAnswers);
-        
-        // 计算总分
+
+        // Calculate total score
         submission.calculateScore();
-        
-        // 更新状态为已评分
+
+        // Update status to GRADED
         submission.setStatus(Submission.SubmissionStatus.GRADED);
-        
-        // 保存更新后的提交记录
+
+        // Save updated submission record
         submissionRepository.save(submission);
     }
-    
+
     /**
-     * 根据提交ID计算并保存总分（对外部调用）
+     * Calculate and save total score by submission ID (for external calls)
      */
     @Transactional
     public void calculateAndSaveTotalScore(Long submissionId) {
@@ -477,12 +477,12 @@ public class QuizService {
         submissionOpt.ifPresent(this::calculateAndSaveTotalScore);
     }
 
-    // 获取教师的所有题目
+    // Get all questions for teacher
     public List<Question> getAllQuestionsByTeacher(User teacher) {
         return questionRepository.findByQuiz_Teacher(teacher);
     }
 
-    // 获取教师的所有提交记录
+    // Get all submission records for teacher
     public List<Submission> getAllSubmissionsByTeacher(User teacher) {
         return submissionRepository.findByQuiz_Teacher(teacher);
     }

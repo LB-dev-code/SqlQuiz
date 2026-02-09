@@ -86,4 +86,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     // 根据ID查找提交记录，并预加载关联对象（student, quiz）
     @Query("SELECT s FROM Submission s LEFT JOIN FETCH s.student LEFT JOIN FETCH s.quiz WHERE s.id = :id")
     Optional<Submission> findByIdWithDetails(@Param("id") Long id);
+
+    // 查找每个学生在某个quiz中的最新提交记录（按提交时间排序）
+    @Query("SELECT s FROM Submission s WHERE s.quiz = :quiz " +
+           "AND s.submitTime = (SELECT MAX(s2.submitTime) FROM Submission s2 " +
+           "WHERE s2.student = s.student AND s2.quiz = s.quiz) " +
+           "ORDER BY s.submitTime DESC")
+    List<Submission> findLatestSubmissionsByQuiz(@Param("quiz") Quiz quiz);
 }

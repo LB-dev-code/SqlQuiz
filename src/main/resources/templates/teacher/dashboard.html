@@ -181,7 +181,7 @@
 
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
             margin-bottom: 3rem;
         }
@@ -347,7 +347,9 @@
 
             <div class="user-profile">
                 <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
-                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
             </div>
         </aside>
 
@@ -380,10 +382,6 @@
                     <div class="kpi-card">
                         <div class="kpi-label">Submissions</div>
                         <div class="kpi-value" th:text="${totalSubmissions}">0</div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-label">Completion</div>
-                        <div class="kpi-value">--%</div>
                     </div>
                 </div>
 

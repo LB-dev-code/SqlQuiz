@@ -34,25 +34,25 @@ public class StudentController {
     @Autowired
     private SubmissionRepository submissionRepository;
 
-    // 学生仪表板
+    // Student dashboard
     @GetMapping("/dashboard")
     public String dashboard(Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
 
-        // 获取可参加的测试
+        // Get available quizzes
         List<Quiz> availableQuizzes = quizService.findOpenQuizzes();
 
-        // 获取学生的测试记录
+        // Get student's quiz records
         List<Submission> allSubmissions = quizService.getStudentSubmissions(student);
-        
-        // 按quiz分组，只保留每个quiz的最后一次提交
+
+        // Group by quiz, keep only last submission for each quiz
         Map<Long, Submission> latestSubmissionsByQuiz = new HashMap<>();
         for (Submission submission : allSubmissions) {
             Long quizId = submission.getQuiz().getId();
             Submission currentLatest = latestSubmissionsByQuiz.get(quizId);
-            
-            // 如果这个quiz还没有记录，或者当前提交比已有记录更新，则更新
-            if (currentLatest == null || 
+
+            // If this quiz has no record yet, or current submission is newer than existing record, update
+            if (currentLatest == null ||
                 (submission.getSubmitTime() != null && currentLatest.getSubmitTime() != null &&
                  submission.getSubmitTime().isAfter(currentLatest.getSubmitTime())) ||
                 (submission.getSubmitTime() != null && currentLatest.getSubmitTime() == null) ||
@@ -61,10 +61,10 @@ public class StudentController {
                 latestSubmissionsByQuiz.put(quizId, submission);
             }
         }
-        
-        // 转换为List
+
+        // Convert to List
         List<Submission> submissions = new ArrayList<>(latestSubmissionsByQuiz.values());
-        // 按提交时间降序排序（最新的在前）
+        // Sort by submission time descending (newest first)
         submissions.sort((s1, s2) -> {
             if (s1.getSubmitTime() != null && s2.getSubmitTime() != null) {
                 return s2.getSubmitTime().compareTo(s1.getSubmitTime());
@@ -84,21 +84,21 @@ public class StudentController {
         return "student/dashboard";
     }
 
-    // 测试列表
+    // Quiz list
     @GetMapping("/quizzes")
     public String quizList(Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
         List<Quiz> availableQuizzes = quizService.findOpenQuizzes();
-        
-        // 获取学生的测试记录
+
+        // Get student's quiz records
         List<Submission> submissions = quizService.getStudentSubmissions(student);
-        
-        // 计算统计数据
+
+        // Calculate statistics
         int totalQuizzes = availableQuizzes.size();
         int completedQuizzes = 0;
         double totalScore = 0.0;
         double maxTotalScore = 0.0;
-        
+
         for (Submission submission : submissions) {
             if (submission.isCompleted()) {
                 completedQuizzes++;
@@ -110,20 +110,20 @@ public class StudentController {
                 }
             }
         }
-        
+
         double averageScore = maxTotalScore > 0 ? (totalScore / maxTotalScore) * 100 : 0.0;
-        
+
         model.addAttribute("quizzes", availableQuizzes);
         model.addAttribute("student", student);
         model.addAttribute("totalQuizzes", totalQuizzes);
         model.addAttribute("completedQuizzes", completedQuizzes);
         model.addAttribute("averageScore", averageScore);
         model.addAttribute("submissions", submissions.size());
-        
+
         return "student/quiz-list";
     }
 
-    // 测试详情
+    // Quiz detail
     @GetMapping("/quiz/{id}")
     public String quizDetail(@PathVariable Long id, Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
@@ -140,14 +140,14 @@ public class StudentController {
         return "student/quiz-detail";
     }
 
-    // 开始测试
+    // Start quiz
     @PostMapping("/quiz/{id}/start")
     public String startQuiz(@PathVariable Long id, Authentication auth, RedirectAttributes redirectAttributes) {
         try {
             User student = (User) auth.getPrincipal();
 
             if (!quizService.canStudentTakeQuiz(id, student)) {
-                redirectAttributes.addFlashAttribute("error", "无法参加此测试");
+                redirectAttributes.addFlashAttribute("error", "Cannot take this quiz");
                 return "redirect:/student/quiz/" + id;
             }
 
@@ -155,17 +155,17 @@ public class StudentController {
             return "redirect:/student/submission/" + submission.getId();
 
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "开始测试失败: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Failed to start quiz: " + e.getMessage());
             return "redirect:/student/quiz/" + id;
         }
     }
 
-    // 答题页面
+    // Take quiz page
     @GetMapping("/submission/{id}")
     public String takeQuiz(@PathVariable Long id, Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
 
-        // 获取提交记录
+        // Get submission record
         Optional<Submission> submissionOpt = submissionRepository.findById(id);
         if (!submissionOpt.isPresent()) {
             return "redirect:/student/quizzes";
@@ -173,43 +173,43 @@ public class StudentController {
 
         Submission submission = submissionOpt.get();
 
-        // 验证权限
+        // Verify permission
         if (!submission.getStudent().getId().equals(student.getId())) {
             return "redirect:/student/quizzes";
         }
 
-        // 检查提交状态
+        // Check submission status
         if (!submission.isInProgress()) {
             return "redirect:/student/submission/" + id + "/result";
         }
 
-        // 获取测试和题目信息
+        // Get quiz and question information
         Quiz quiz = submission.getQuiz();
         List<Question> questions = quizService.getQuestionsByQuiz(quiz.getId());
 
-        // 获取学生的答题记录
+        // Get student's question answer records
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
 
-        // 确保所有必要属性不为null
+        // Ensure all necessary properties are not null
         model.addAttribute("submission", submission);
         model.addAttribute("quiz", quiz != null ? quiz : new Quiz());
         model.addAttribute("questions", questions != null ? questions : new ArrayList<>());
         model.addAttribute("questionAnswers", questionAnswers != null ? questionAnswers : new ArrayList<>());
         model.addAttribute("student", student);
 
-        // 计算剩余时间（如果有时间限制）
+        // Calculate remaining time (if there's a time limit)
         if (quiz.hasTimeLimit()) {
             long timeElapsed = java.time.Duration.between(submission.getStartTime(), java.time.LocalDateTime.now()).toMinutes();
             long timeRemaining = quiz.getTimeLimit() - timeElapsed;
             model.addAttribute("timeRemaining", Math.max(0, timeRemaining));
         } else {
-            model.addAttribute("timeRemaining", -1); // 无时间限制
+            model.addAttribute("timeRemaining", -1); // No time limit
         }
 
         return "student/take-quiz";
     }
 
-    // 提交答案
+    // Submit answer
     @PostMapping("/submission/{submissionId}/answer")
     @ResponseBody
     public String submitAnswer(@PathVariable Long submissionId,
@@ -225,12 +225,12 @@ public class StudentController {
         }
     }
 
-    // 答案检查页面
+    // Review answers page
     @GetMapping("/submission/{id}/review")
     public String reviewAnswers(@PathVariable Long id, Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
 
-        // 获取提交记录
+        // Get submission record
         Optional<Submission> submissionOpt = submissionRepository.findById(id);
         if (!submissionOpt.isPresent()) {
             return "redirect:/student/quizzes";
@@ -238,20 +238,20 @@ public class StudentController {
 
         Submission submission = submissionOpt.get();
 
-        // 验证权限
+        // Verify permission
         if (!submission.getStudent().getId().equals(student.getId())) {
             return "redirect:/student/quizzes";
         }
 
-        // 检查提交状态
+        // Check submission status
         if (!submission.isInProgress()) {
             return "redirect:/student/submission/" + id + "/result";
         }
 
-        // 获取答题记录
+        // Get question answer records
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
-        
-        // 统计已答题数量
+
+        // Count answered questions
         long answeredCount = questionAnswers.stream()
             .filter(qa -> qa.getStudentSql() != null && !qa.getStudentSql().trim().isEmpty())
             .count();
@@ -264,24 +264,24 @@ public class StudentController {
         return "student/quiz-review";
     }
 
-    // 提交测试
+    // Submit quiz
     @PostMapping("/submission/{id}/submit")
     @ResponseBody
     public String submitQuiz(@PathVariable Long id, Authentication auth) {
         try {
             User student = (User) auth.getPrincipal();
-            
-            // 验证权限
+
+            // Verify permission
             Optional<Submission> submissionOpt = submissionRepository.findById(id);
             if (!submissionOpt.isPresent()) {
                 return "error: Submission not found";
             }
-            
+
             Submission submission = submissionOpt.get();
             if (!submission.getStudent().getId().equals(student.getId())) {
                 return "error: Access denied";
             }
-            
+
             quizService.submitQuiz(id);
             return "success";
         } catch (Exception e) {
@@ -289,12 +289,12 @@ public class StudentController {
         }
     }
 
-    // 查看测试结果
+    // View quiz result
     @GetMapping("/submission/{id}/result")
     public String viewResult(@PathVariable Long id, Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
 
-        // 获取提交记录
+        // Get submission record
         Optional<Submission> submissionOpt = submissionRepository.findById(id);
         if (!submissionOpt.isPresent()) {
             return "redirect:/student/submissions";
@@ -302,12 +302,12 @@ public class StudentController {
 
         Submission submission = submissionOpt.get();
 
-        // 验证权限
+        // Verify permission
         if (!submission.getStudent().getId().equals(student.getId())) {
             return "redirect:/student/submissions";
         }
 
-        // 检查提交状态 - 只有已完成的提交才能查看结果
+        // Check submission status - only completed submissions can view results
         if (submission.isInProgress()) {
             return "redirect:/student/submission/" + id;
         }
@@ -318,7 +318,7 @@ public class StudentController {
         return "student/quiz-result";
     }
 
-    // 我的测试记录
+    // My quiz records
     @GetMapping("/submissions")
     public String mySubmissions(Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
@@ -328,13 +328,13 @@ public class StudentController {
         return "student/my-submissions";
     }
 
-    // SQL测试页面（学生练习用）
+    // SQL practice page (for student practice)
     @GetMapping("/sql-practice")
     public String sqlPractice() {
         return "student/sql-practice";
     }
 
-    // 执行练习SQL
+    // Execute practice SQL
     @PostMapping("/sql-practice")
     @ResponseBody
     public SqlValidationService.SqlExecutionResult practiceSQL(@RequestParam String sql) {

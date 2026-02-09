@@ -424,8 +424,15 @@
                     </div>
 
                     <div class="q-body">
-                        <!-- DESC -->
-                        <div th:if="${question.description}" th:utext="${#strings.substringBefore(question.description, 'Database Context')}">
+                        <!-- Question stem: always show content as main question text -->
+                        <div style="margin-bottom: 1rem; color: #e0e0e0; font-size: 1.05rem; line-height: 1.7;">
+                            <span th:text="${question.content}">Question text</span>
+                        </div>
+
+                        <!-- Additional description (if exists and non-empty) -->
+                        <div th:if="${question.description != null and !question.description.trim().isEmpty()}"
+                             style="margin-bottom: 1rem; color: #aaa; line-height: 1.6;"
+                             th:utext="${question.description}">
                             Description...
                         </div>
 
@@ -519,7 +526,7 @@
             }
         }
 
-        // 存储CodeMirror实例映射
+        // Store CodeMirror instance mapping
         const editorMap = new Map();
 
         // --- Editor Init ---
@@ -533,7 +540,7 @@
             const questionId = textarea.getAttribute('data-question-id');
             editorMap.set(questionId, cm);
 
-            // 自动保存：当输入停止1秒后自动保存答案
+            // Auto-save: Save answer when input stops for 1 second
             let saveTimeout;
             cm.on('change', () => {
                 clearTimeout(saveTimeout);
@@ -543,7 +550,7 @@
             });
         });
 
-        // 保存单个答案
+        // Save single answer
         function saveAnswer(questionId, sql) {
             const submissionId = /*[[${submission.id}]]*/ 0;
 
@@ -578,7 +585,7 @@
             btn.disabled = true;
             btn.textContent = 'Saving answers...';
 
-            // 先保存所有答案
+            // Save all answers first
             const savePromises = [];
             editorMap.forEach((cm, questionId) => {
                 const sql = cm.getValue();
@@ -598,7 +605,7 @@
                 }
             });
 
-            // 等待所有答案保存完成，然后提交测试
+            // Wait for all answers to be saved, then submit quiz
             Promise.all(savePromises)
                 .then(() => {
                     btn.textContent = 'Submitting...';

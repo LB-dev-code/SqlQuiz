@@ -54,22 +54,22 @@ public class TeacherController {
     @Autowired
     private com.example.SqlQuiz.service.SandboxDatabaseService sandboxService;
 
-    // 教师仪表板
+    // Teacher dashboard
     @GetMapping("/dashboard")
     public String dashboard(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
         List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
-        
-        // 统计总题目数
+
+        // Count total questions
         int totalQuestions = 0;
         for (Quiz quiz : quizzes) {
             totalQuestions += quiz.getQuestions().size();
         }
-        
-        // 统计学生提交数
+
+        // Count student submissions
         List<Submission> submissions = quizService.getAllSubmissionsByTeacher(teacher);
         int totalSubmissions = submissions.size();
-        
+
         model.addAttribute("quizzes", quizzes);
         model.addAttribute("teacher", teacher);
         model.addAttribute("totalQuestions", totalQuestions);
@@ -77,23 +77,23 @@ public class TeacherController {
         return "teacher/dashboard";
     }
 
-    // 测试管理页面
+    // Quiz management page
     @GetMapping("/quizzes")
     public String quizManagement(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
         List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
-        
-        // 统计总题目数
+
+        // Count total questions
         int totalQuestions = 0;
         for (Quiz quiz : quizzes) {
             totalQuestions += quiz.getQuestions().size();
         }
-        
-        // 统计学生提交数
+
+        // Count student submissions
         List<Submission> submissions = quizService.getAllSubmissionsByTeacher(teacher);
         int totalSubmissions = submissions.size();
-        
-        // 计算平均完成率
+
+        // Calculate average completion rate
         double avgCompletionRate = 0.0;
         if (!submissions.isEmpty()) {
             long completedCount = submissions.stream()
@@ -101,24 +101,24 @@ public class TeacherController {
                 .sum();
             avgCompletionRate = (double) completedCount / submissions.size();
         }
-        
+
         model.addAttribute("quizzes", quizzes);
         model.addAttribute("teacher", teacher);
         model.addAttribute("totalQuestions", totalQuestions);
         model.addAttribute("totalSubmissions", totalSubmissions);
         model.addAttribute("avgCompletionRate", avgCompletionRate);
-        System.out.println("get 结束");
+        System.out.println("GET request completed");
         return "teacher/quiz-list";
     }
 
      @GetMapping("/quiz/create")
         public String createQuizPage(Model model, Authentication auth) {
-            // 添加调试信息
+            // Add debug info
             User teacher = (User) auth.getPrincipal();
             model.addAttribute("teacher", teacher);
             model.addAttribute("quiz", new Quiz());
 
-            // 获取KPI数据
+            // Get KPI data
             List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
             int totalQuestions = 0;
             for (Quiz quiz : quizzes) {
@@ -126,8 +126,8 @@ public class TeacherController {
             }
             List<Submission> submissions = quizService.getAllSubmissionsByTeacher(teacher);
             int totalSubmissions = submissions.size();
-            
-            // 计算平均完成率
+
+            // Calculate average completion rate
             double avgCompletionRate = 0.0;
             if (!submissions.isEmpty()) {
                 long completedCount = submissions.stream()
@@ -135,17 +135,17 @@ public class TeacherController {
                     .sum();
                 avgCompletionRate = (double) completedCount / submissions.size();
             }
-            
+
             model.addAttribute("quizzes", quizzes);
             model.addAttribute("totalSubmissions", totalSubmissions);
             model.addAttribute("avgCompletionRate", avgCompletionRate);
-            
-            System.out.println("访问创建测试页面 - 教师: " + teacher.getFullName());
+
+            System.out.println("Accessing quiz creation page - Teacher: " + teacher.getFullName());
             return "teacher/quiz-create";
         }
 
 
-    // 处理创建测试
+    // Process quiz creation
 //    @PostMapping("/quiz/create")
 //    public String createQuiz(@RequestParam String title,
 //                             @RequestParam String description,
@@ -175,32 +175,32 @@ public class TeacherController {
         try {
             User teacher = (User) auth.getPrincipal();
 
-            // 解析开始时间和结束时间
+            // Parse start time and end time
             LocalDateTime startDateTime = null;
             LocalDateTime endDateTime = null;
 
             if (startTime != null && !startTime.isEmpty()) {
                 try {
-                    // 解析HTML datetime-local格式 (yyyy-MM-ddTHH:mm)
+                    // Parse HTML datetime-local format (yyyy-MM-ddTHH:mm)
                     startDateTime = LocalDateTime.parse(startTime);
                 } catch (Exception e) {
-                    System.err.println("开始时间解析失败: " + e.getMessage());
+                    System.err.println("Failed to parse start time: " + e.getMessage());
                 }
             }
 
             if (endTime != null && !endTime.isEmpty()) {
                 try {
-                    // 解析HTML datetime-local格式 (yyyy-MM-ddTHH:mm)
+                    // Parse HTML datetime-local format (yyyy-MM-ddTHH:mm)
                     endDateTime = LocalDateTime.parse(endTime);
                 } catch (Exception e) {
-                    System.err.println("结束时间解析失败: " + e.getMessage());
+                    System.err.println("Failed to parse end time: " + e.getMessage());
                 }
             }
 
-            // 创建测试
+            // Create quiz
             Quiz quiz = quizService.createQuiz(title, description, timeLimit, maxAttempts, teacher);
 
-            // 更新测试的开始时间和结束时间
+            // Update quiz start time and end time
             quizService.updateQuiz(quiz.getId(), title, description, timeLimit, maxAttempts, startDateTime, endDateTime);
 
             redirectAttributes.addFlashAttribute("message", "Quiz created successfully!");
@@ -208,11 +208,11 @@ public class TeacherController {
         } catch (Exception e) {
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Failed to create quiz: " + e.getMessage());
-            System.out.println("post结束");
+            System.out.println("POST request completed");
             return "redirect:/teacher/quiz/create";
         }
     }
-    // 题目管理页面
+    // Question management page
     @GetMapping("/quiz/{id}/questions")
     public String questionManagement(@PathVariable Long id, Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -232,7 +232,7 @@ public class TeacherController {
         return "teacher/question-list";
     }
 
-    // 添加题目页面
+    // Add question page
     @GetMapping("/quiz/{quizId}/question/create")
     public String createQuestionPage(@PathVariable Long quizId, Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -250,7 +250,7 @@ public class TeacherController {
         return "teacher/question-create";
     }
 
-    // 处理添加题目
+    // Process add question
     @PostMapping("/quiz/{quizId}/question/create")
     public String createQuestion(@PathVariable Long quizId,
                                  @RequestParam String content,
@@ -270,7 +270,7 @@ public class TeacherController {
                 return "redirect:/teacher/quizzes";
             }
 
-            // 处理可选的枚举类型
+            // Handle optional enum types
             Question.QuestionType qType = null;
             if (questionType != null && !questionType.trim().isEmpty()) {
                 qType = Question.QuestionType.valueOf(questionType);
@@ -281,16 +281,16 @@ public class TeacherController {
                 difficulty = Question.DifficultyLevel.valueOf(difficultyLevel);
             }
 
-            // 使用AI生成题目内容
-            String typeInfo = qType != null ? qType.getDisplayName() : "未指定";
-            String difficultyInfo = difficulty != null ? difficulty.getDisplayName() : "未指定";
-            String glmResponse = glmService.chat_create_quiz(description + "题目类型：" + typeInfo + "题目难度：" + difficultyInfo);
-            System.out.println("GLM给的:" + glmResponse);
+            // Use AI to generate question content
+            String typeInfo = qType != null ? qType.getDisplayName() : "Not specified";
+            String difficultyInfo = difficulty != null ? difficulty.getDisplayName() : "Not specified";
+            String glmResponse = glmService.chat_create_quiz(description + "Question Type: " + typeInfo + "Question Difficulty: " + difficultyInfo);
+            System.out.println("GLM Response: " + glmResponse);
 
-            // 清理响应文本，移除可能的代码块标记
+            // Clean response text, remove possible code block markers
             String cleanResponse = glmResponse.trim();
-            
-            // 移除可能的代码块标记 ```json 和 ```
+
+            // Remove possible code block markers ```json and ```
             if (cleanResponse.startsWith("```json")) {
                 cleanResponse = cleanResponse.substring(7).trim();
             }
@@ -300,28 +300,28 @@ public class TeacherController {
             if (cleanResponse.endsWith("```")) {
                 cleanResponse = cleanResponse.substring(0, cleanResponse.length() - 3).trim();
             }
-            
-            // 移除可能的前后反引号
+
+            // Remove possible surrounding backticks
             if (cleanResponse.startsWith("`") && cleanResponse.endsWith("`")) {
                 cleanResponse = cleanResponse.substring(1, cleanResponse.length() - 1).trim();
             }
-            
-            System.out.println("清理后的响应: " + cleanResponse);
 
-            // 解析JSON响应
+            System.out.println("Cleaned response: " + cleanResponse);
+
+            // Parse JSON response
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode;
-            
+
             try {
                 jsonNode = objectMapper.readTree(cleanResponse);
             } catch (JsonProcessingException e) {
-                System.err.println("JSON解析失败，尝试修复格式: " + e.getMessage());
-                // 尝试简单的格式修复
+                System.err.println("JSON parsing failed, attempting format repair: " + e.getMessage());
+                // Attempt simple format repair
                 cleanResponse = cleanResponse.replaceAll("```json\\s*", "").replaceAll("```\\s*$", "");
                 jsonNode = objectMapper.readTree(cleanResponse);
             }
 
-            // 从JSON中提取数据
+            // Extract data from JSON
             String questionTitle = jsonNode.has("questionTitle") ? jsonNode.get("questionTitle").asText() : content;
             String questionDescription = jsonNode.has("questionDescription") ? jsonNode.get("questionDescription").asText() : description;
             String databaseContext = jsonNode.has("databaseContext") ? jsonNode.get("databaseContext").asText() : null;
@@ -330,30 +330,30 @@ public class TeacherController {
             String hints = jsonNode.has("hints") ? jsonNode.get("hints").asText() : null;
             String setupSql = jsonNode.get("setupSql").asText();
 
-            // 在testdb中执行setup SQL并获取表前缀
+            // Execute setup SQL in testdb and get table prefix
             String tablePrefix = null;
             if (setupSql != null && !setupSql.trim().isEmpty()) {
                 tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
             }
-            // 组合完整的描述信息
+            // Combine full description information
             StringBuilder fullDescription = new StringBuilder();
             fullDescription.append(questionDescription);
             if (databaseContext != null) {
-                fullDescription.append("\n\n数据库表结构：\n").append(databaseContext);
+                fullDescription.append("\n\nDatabase Table Structure:\n").append(databaseContext);
             }
             if (sampleData != null) {
-                fullDescription.append("\n\n示例数据：\n").append(sampleData);
+                fullDescription.append("\n\nSample Data:\n").append(sampleData);
             }
             if (hints != null) {
-                fullDescription.append("\n\n提示：\n").append(hints);
+                fullDescription.append("\n\nHints:\n").append(hints);
             }
 
-            // 创建题目
+            // Create question
             Question question = quizService.addQuestionToQuiz(quizId, questionTitle, qType, fullDescription.toString(),
                     databaseContext, aiExpectedSql != null ? aiExpectedSql : expectedSql, null,
                     null, score, difficulty);
 
-            // 保存表元数据
+            // Save table metadata
             if (tablePrefix != null) {
                 tableMetadataService.createMetadata(tablePrefix, question.getId(), teacher.getId());
             }
@@ -368,7 +368,7 @@ public class TeacherController {
         }
     }
 
-    // 编辑题目页面
+    // Edit question page
     @GetMapping("/question/{questionId}/edit")
     @ResponseBody
     public Question editQuestionPage(@PathVariable Long questionId, Authentication auth) {
@@ -377,7 +377,7 @@ public class TeacherController {
 
         if (questionOpt.isPresent()) {
             Question question = questionOpt.get();
-            // 检查权限：确保是该题目所属测试的创建者
+            // Check permission: ensure it's the creator of the quiz this question belongs to
             if (question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
                 return question;
             }
@@ -385,7 +385,7 @@ public class TeacherController {
         return null;
     }
 
-    // 处理编辑题目
+    // Process edit question
     @PostMapping("/question/{questionId}/edit")
     public String updateQuestion(@PathVariable Long questionId,
                                  @RequestParam String content,
@@ -405,13 +405,13 @@ public class TeacherController {
             Question question = questionOpt.get();
             Long quizId = question.getQuiz().getId();
 
-            // 检查权限
+            // Check permission
             if (!question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
                 redirectAttributes.addFlashAttribute("error", "No permission to operate this question");
                 return "redirect:/teacher/quizzes";
             }
 
-            // 更新题目
+            // Update question
             quizService.updateQuestion(questionId, content, question.getQuestionType(),
                     description, question.getDatabaseContext(), expectedSql,
                     question.getTestData(), question.getExpectedResult(),
@@ -427,7 +427,7 @@ public class TeacherController {
         }
     }
 
-    // 删除题目
+    // Delete question
     @PostMapping("/question/{questionId}/delete")
     public String deleteQuestion(@PathVariable Long questionId,
                                  Authentication auth,
@@ -444,16 +444,16 @@ public class TeacherController {
             Question question = questionOpt.get();
             Long quizId = question.getQuiz().getId();
 
-            // 检查权限
+            // Check permission
             if (!question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
                 redirectAttributes.addFlashAttribute("error", "No permission to operate this question");
                 return "redirect:/teacher/quizzes";
             }
 
-            // 删除题目
+            // Delete question
             quizService.deleteQuestion(questionId);
 
-            // 删除testdb中对应的表格
+            // Delete corresponding tables in testdb
             setupSqlExecutorService.dropTablesByQuestionId(questionId);
 
             redirectAttributes.addFlashAttribute("message", "Question deleted successfully!");
@@ -466,7 +466,7 @@ public class TeacherController {
         }
     }
 
-    // 测试统计页面
+    // Quiz statistics page
     @GetMapping("/quiz/{id}/statistics")
     public String quizStatistics(@PathVariable Long id, Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -477,22 +477,22 @@ public class TeacherController {
         }
 
         List<Submission> allSubmissions = quizService.getQuizSubmissions(id);
-        
-        // 按学生分组，只保留每个学生的最新提交记录
+
+        // Group by student, keep only latest submission for each student
         Map<Long, Submission> latestSubmissionsByStudent = new HashMap<>();
         for (Submission submission : allSubmissions) {
             Long studentId = submission.getStudent().getId();
             Submission currentLatest = latestSubmissionsByStudent.get(studentId);
-            
-            // 如果当前学生还没有最新提交记录，或者当前提交比已有记录更新，则更新
-            if (currentLatest == null || 
+
+            // If current student has no latest submission record, or current submission is newer than existing record, update
+            if (currentLatest == null ||
                 (submission.getSubmitTime() != null && currentLatest.getSubmitTime() != null &&
                  submission.getSubmitTime().isAfter(currentLatest.getSubmitTime())) ||
                 (submission.getSubmitTime() != null && currentLatest.getSubmitTime() == null)) {
                 latestSubmissionsByStudent.put(studentId, submission);
             }
         }
-        
+
         List<Submission> submissions = new ArrayList<>(latestSubmissionsByStudent.values());
         model.addAttribute("quiz", quiz);
         model.addAttribute("submissions", submissions);
@@ -501,7 +501,7 @@ public class TeacherController {
         return "teacher/quiz-statistics";
     }
 
-    // 通用题目列表页面
+    // Generic question list page
     @GetMapping("/question-list")
     public String questionList(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -510,11 +510,11 @@ public class TeacherController {
         model.addAttribute("questionTypes", Question.QuestionType.values());
         model.addAttribute("difficultyLevels", Question.DifficultyLevel.values());
         model.addAttribute("teacher", teacher);
-        
+
         return "teacher/question-list";
     }
 
-    // 通用题目创建页面
+    // Generic question creation page
     @GetMapping("/question-create")
     public String questionCreate(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -523,11 +523,11 @@ public class TeacherController {
         model.addAttribute("questionTypes", Question.QuestionType.values());
         model.addAttribute("difficultyLevels", Question.DifficultyLevel.values());
         model.addAttribute("teacher", teacher);
-        
+
         return "teacher/question-create";
     }
 
-    // 处理通用题目创建
+    // Process generic question creation
     @PostMapping("/question-create")
     public String questionCreate(@RequestParam String content,
                                   @RequestParam(required = false) String questionType,
@@ -547,7 +547,7 @@ public class TeacherController {
                 return "redirect:/teacher/question-create";
             }
 
-            // 处理可选的枚举类型
+            // Handle optional enum types
             Question.QuestionType qType = null;
             if (questionType != null && !questionType.trim().isEmpty()) {
                 qType = Question.QuestionType.valueOf(questionType);
@@ -558,7 +558,7 @@ public class TeacherController {
                 difficulty = Question.DifficultyLevel.valueOf(difficultyLevel);
             }
 
-            // 创建题目
+            // Create question
             quizService.addQuestionToQuiz(quizId, content, qType, description,
                     null, expectedSql, null, null, score, difficulty);
 
@@ -572,21 +572,21 @@ public class TeacherController {
         }
     }
 
-    // 通用统计页面
+    // Generic statistics page
     @GetMapping("/quiz-statistics")
     public String quizStatistics(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
         List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
         List<Submission> allSubmissions = quizService.getAllSubmissionsByTeacher(teacher);
-        
+
         model.addAttribute("quizzes", quizzes);
         model.addAttribute("submissions", allSubmissions);
         model.addAttribute("teacher", teacher);
-        
+
         return "teacher/quiz-statistics";
     }
 
-    // 通用提交详情页面
+    // Generic submission detail page
     @GetMapping("/submission-detail")
     @Transactional(readOnly = true)
     public String submissionDetail(@RequestParam(required = false) Long submission_id,
@@ -595,7 +595,7 @@ public class TeacherController {
         User teacher = (User) auth.getPrincipal();
 
         if (submission_id != null) {
-            // 显示特定提交详情 - 使用预加载查询避免懒加载问题
+            // Show specific submission detail - use preloaded query to avoid lazy loading issues
             Optional<Submission> submissionOpt = submissionRepository.findByIdWithDetails(submission_id);
             if (!submissionOpt.isPresent()) {
                 return "redirect:/teacher/quiz-statistics";
@@ -610,7 +610,7 @@ public class TeacherController {
             model.addAttribute("submission", submission);
             model.addAttribute("questionAnswers", questionAnswers);
         } else if (quiz_id != null) {
-            // 显示特定测试的所有提交
+            // Show all submissions for specific quiz
             Quiz quiz = quizService.findById(quiz_id).orElse(null);
             if (quiz == null || !quiz.getTeacher().getId().equals(teacher.getId())) {
                 return "redirect:/teacher/quiz-statistics";
@@ -620,7 +620,7 @@ public class TeacherController {
             model.addAttribute("quiz", quiz);
             model.addAttribute("submissions", submissions);
         } else {
-            // 显示所有提交
+            // Show all submissions
             List<Submission> allSubmissions = quizService.getAllSubmissionsByTeacher(teacher);
             model.addAttribute("submissions", allSubmissions);
         }
@@ -629,7 +629,7 @@ public class TeacherController {
         return "teacher/submission-detail";
     }
 
-    // SQL测试页面
+    // SQL test page
     @GetMapping("/sql-test")
     public String sqlTestPage(Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
@@ -637,7 +637,7 @@ public class TeacherController {
         return "teacher/sql-test";
     }
 
-    // 测试SQL执行
+    // Test SQL execution
     @PostMapping("/sql-test")
     @ResponseBody
     public Map<String, Object> testSql(@RequestParam String sql, Authentication auth) {
@@ -645,7 +645,7 @@ public class TeacherController {
 
         if (sql == null || sql.trim().isEmpty()) {
             response.put("success", false);
-            response.put("error", "SQL语句不能为空");
+            response.put("error", "SQL statement cannot be empty");
             return response;
         }
 
@@ -653,10 +653,10 @@ public class TeacherController {
         com.example.SqlQuiz.entity.SandboxContext sandbox = null;
 
         try {
-            // 创建教师测试专用沙库
+            // Create teacher test-specific sandbox
             sandbox = sandboxService.createTeacherTestSandbox(teacher.getId());
 
-            // 在沙库中执行SQL
+            // Execute SQL in sandbox
             com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
                 sandboxService.executeInSandbox(sandbox, sql);
 
@@ -668,15 +668,15 @@ public class TeacherController {
 
         } catch (Exception e) {
             response.put("success", false);
-            response.put("error", "SQL执行错误: " + e.getMessage());
+            response.put("error", "SQL execution error: " + e.getMessage());
         } finally {
-            // 清理沙库
+            // Cleanup sandbox
             if (sandbox != null) {
                 try {
                     sandboxService.closeConnection(sandbox);
                     sandboxService.cleanupSandbox(sandbox.getDatabaseName());
                 } catch (Exception e) {
-                    System.err.println("清理教师测试沙库失败: " + e.getMessage());
+                    System.err.println("Failed to cleanup teacher test sandbox: " + e.getMessage());
                 }
             }
         }
@@ -684,12 +684,12 @@ public class TeacherController {
         return response;
     }
 
-    // 查看学生提交详情页面
+    // View student submission detail page
     @GetMapping("/quiz/statistics/submission/{submission_id}")
     public String submissionDetail(@PathVariable Long submission_id, Model model, Authentication auth) {
         User teacher = (User) auth.getPrincipal();
 
-        // 获取提交记录
+        // Get submission record
         Optional<Submission> submissionOpt = submissionRepository.findById(submission_id);
         if (!submissionOpt.isPresent()) {
             return "redirect:/teacher/quizzes";
@@ -697,12 +697,12 @@ public class TeacherController {
 
         Submission submission = submissionOpt.get();
 
-        // 验证权限：确保是该测试的创建者
+        // Verify permission: ensure it's the creator of the quiz
         if (!submission.getQuiz().getTeacher().getId().equals(teacher.getId())) {
             return "redirect:/teacher/quizzes";
         }
 
-        // 获取答题记录
+        // Get question answer records
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
 
         model.addAttribute("submission", submission);
@@ -712,13 +712,13 @@ public class TeacherController {
         return "teacher/submission-detail";
     }
 
-    // AI智能评分
+    // AI intelligent scoring
     @PostMapping("/quiz/statistics/submission/{submission_id}")
     public String scoreSubmissions(@PathVariable Long submission_id, Model model, Authentication auth, RedirectAttributes redirectAttributes) {
         try {
             User teacher = (User) auth.getPrincipal();
 
-            // 验证权限
+            // Verify permission
             Optional<Submission> submissionOpt = submissionRepository.findById(submission_id);
             if (!submissionOpt.isPresent()) {
                 redirectAttributes.addFlashAttribute("error", "Submission record does not exist");
@@ -731,31 +731,31 @@ public class TeacherController {
                 return "redirect:/teacher/quizzes";
             }
 
-            // 调用AI评分
+            // Call AI scoring
             String feedback = quizService.scoreQuiz(submission_id);
-            System.out.println("AI评分反馈：" + feedback);
+            System.out.println("AI scoring feedback: " + feedback);
 
-            // 解析AI返回的JSON，只提取feedback字段
+            // Parse JSON returned by AI, extract only feedback field
             String feedbackContent = "";
             try {
-                // 移除可能的``json````格式
+                // Remove possible ``json```` format
                 String cleanJson = feedback.replace("```json", "").replace("```", "").trim();
 
                 ObjectMapper objectMapper = new ObjectMapper();
                 JsonNode jsonNode = objectMapper.readTree(cleanJson);
 
-                // 提取feedback字段
+                // Extract feedback field
                 if (jsonNode.has("feedback")) {
                     feedbackContent = jsonNode.get("feedback").asText();
                 } else {
-                    feedbackContent = feedback; // 如果没有feedback字段，使用原始反馈
+                    feedbackContent = feedback; // If no feedback field, use original feedback
                 }
             } catch (Exception e) {
-                System.err.println("解析AI评分反馈时出错: " + e.getMessage());
-                feedbackContent = feedback; // 如果解析失败，使用原始反馈
+                System.err.println("Error parsing AI scoring feedback: " + e.getMessage());
+                feedbackContent = feedback; // If parsing fails, use original feedback
             }
 
-            // 重新获取提交记录和答题记录，确保获取到最新的评分信息和总分
+            // Re-fetch submission record and question answer records to ensure latest score and total score
             submissionOpt = submissionRepository.findById(submission_id);
             if (submissionOpt.isPresent()) {
                 submission = submissionOpt.get();
@@ -764,12 +764,12 @@ public class TeacherController {
                 model.addAttribute("questionAnswers", questionAnswers);
             }
 
-            // 获取计算后的总分信息，用于确认评分结果
+            // Get calculated total score info for confirming scoring result
             if (submissionOpt.isPresent()) {
                 Submission updatedSubmission = submissionOpt.get();
-                System.out.println("AI评分完成 - 总分: " + updatedSubmission.getTotalScore() + 
-                                 ", 满分: " + updatedSubmission.getMaxScore() + 
-                                 ", 百分比: " + updatedSubmission.getPercentage() + "%");
+                System.out.println("AI scoring completed - Total score: " + updatedSubmission.getTotalScore() +
+                                 ", Max score: " + updatedSubmission.getMaxScore() +
+                                 ", Percentage: " + updatedSubmission.getPercentage() + "%");
             }
 
             redirectAttributes.addFlashAttribute("message", "AI scoring completed! Total score updated");
@@ -784,7 +784,7 @@ public class TeacherController {
         }
     }
 
-    // 批量AI评分
+    // Batch AI scoring
     @PostMapping("/quiz/{id}/score-all")
     @ResponseBody
     @Transactional
@@ -796,101 +796,101 @@ public class TeacherController {
 
             if (quiz == null) {
                 response.put("success", false);
-                response.put("error", "测验不存在");
+                response.put("error", "Quiz does not exist");
                 return response;
             }
 
-            // 检查权限
+            // Check permission
             if (!quiz.getTeacher().getId().equals(teacher.getId())) {
                 response.put("success", false);
-                response.put("error", "无权限操作此测验");
+                response.put("error", "No permission to operate this quiz");
                 return response;
             }
 
-            // 获取该测验的所有提交记录
+            // Get all submission records for this quiz
             List<Submission> submissions = quizService.getQuizSubmissions(id);
-            
-            // 按学生分组，只保留每个学生的最新提交记录
+
+            // Group by student, keep only latest submission for each student
             Map<Long, Submission> latestSubmissionsByStudent = new HashMap<>();
             for (Submission submission : submissions) {
                 Long studentId = submission.getStudent().getId();
                 Submission currentLatest = latestSubmissionsByStudent.get(studentId);
-                
-                // 如果当前学生还没有最新提交记录，或者当前提交比已有记录更新，则更新
-                if (currentLatest == null || 
+
+                // If current student has no latest submission, or current submission is newer than existing, update
+                if (currentLatest == null ||
                     (submission.getSubmitTime() != null && currentLatest.getSubmitTime() != null &&
                      submission.getSubmitTime().isAfter(currentLatest.getSubmitTime())) ||
                     (submission.getSubmitTime() != null && currentLatest.getSubmitTime() == null)) {
                     latestSubmissionsByStudent.put(studentId, submission);
                 }
             }
-            
+
             List<Submission> latestSubmissions = new ArrayList<>(latestSubmissionsByStudent.values());
             int scoredCount = 0;
             List<String> errors = new ArrayList<>();
             int totalSubmissions = latestSubmissions.size();
 
-            System.out.println("开始批量评分，找到 " + submissions.size() + " 份提交记录，其中 " + totalSubmissions + " 份为各学生的最新提交");
+            System.out.println("Starting batch scoring, found " + submissions.size() + " submission records, of which " + totalSubmissions + " are the latest submissions for each student");
 
-            // 对每个学生的最新提交记录进行AI评分
+            // Perform AI scoring on each student's latest submission
             for (Submission submission : latestSubmissions) {
                 try {
-                    System.out.println("检查提交记录 ID: " + submission.getId() + 
-                                     ", 状态: " + submission.getStatus() + 
-                                     ", 总分: " + submission.getTotalScore());
-                    
-                    // 重新从数据库获取最新的提交状态
+                    System.out.println("Checking submission ID: " + submission.getId() +
+                                     ", Status: " + submission.getStatus() +
+                                     ", Total score: " + submission.getTotalScore());
+
+                    // Re-fetch latest submission status from database
                     Optional<Submission> freshSubmissionOpt = submissionRepository.findById(submission.getId());
                     if (!freshSubmissionOpt.isPresent()) {
-                        errors.add("提交记录 " + submission.getId() + ": 无法找到记录");
+                        errors.add("Submission record " + submission.getId() + ": Cannot find record");
                         continue;
                     }
-                    
+
                     Submission freshSubmission = freshSubmissionOpt.get();
-                    
-                    // 获取最新的答题记录
+
+                    // Get latest question answer records
                     List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(freshSubmission);
                     freshSubmission.setQuestionAnswers(questionAnswers);
-                    
-                    // 只对已提交但未评分的进行评分
-                    boolean needsScoring = (freshSubmission.getStatus().name().equals("SUBMITTED") || 
+
+                    // Only score submitted but ungraded submissions
+                    boolean needsScoring = (freshSubmission.getStatus().name().equals("SUBMITTED") ||
                                            freshSubmission.getStatus().name().equals("AUTO_SUBMITTED")) &&
-                                          (freshSubmission.getTotalScore() == null || 
+                                          (freshSubmission.getTotalScore() == null ||
                                            freshSubmission.getTotalScore() <= 0);
-                    
-                    System.out.println("提交记录 " + freshSubmission.getId() + " 是否需要评分: " + needsScoring);
-                    
+
+                    System.out.println("Submission " + freshSubmission.getId() + " needs scoring: " + needsScoring);
+
                     if (needsScoring) {
-                        System.out.println("开始对提交记录 " + freshSubmission.getId() + " 进行AI评分");
-                        
-                        // 直接调用AI评分，确保每个提交都被独立处理
+                        System.out.println("Starting AI scoring for submission " + freshSubmission.getId());
+
+                        // Directly call AI scoring to ensure each submission is processed independently
                         String feedback = quizService.scoreQuiz(freshSubmission.getId());
-                        System.out.println("AI评分完成，反馈长度: " + (feedback != null ? feedback.length() : 0));
-                        
+                        System.out.println("AI scoring completed, feedback length: " + (feedback != null ? feedback.length() : 0));
+
                         scoredCount++;
-                        System.out.println("成功评分提交记录 " + freshSubmission.getId());
-                        
-                        // 验证评分结果
+                        System.out.println("Successfully scored submission record " + freshSubmission.getId());
+
+                        // Verify scoring result
                         Optional<Submission> updatedSubmissionOpt = submissionRepository.findById(freshSubmission.getId());
                         if (updatedSubmissionOpt.isPresent()) {
                             Submission updated = updatedSubmissionOpt.get();
-                            System.out.println("评分后 - 状态: " + updated.getStatus() + 
-                                             ", 总分: " + updated.getTotalScore() + 
-                                             ", 百分比: " + updated.getPercentage());
+                            System.out.println("After scoring - Status: " + updated.getStatus() +
+                                             ", Total score: " + updated.getTotalScore() +
+                                             ", Percentage: " + updated.getPercentage());
                         }
                     } else {
-                        System.out.println("跳过提交记录 " + freshSubmission.getId() + " (状态: " + 
-                                         freshSubmission.getStatus() + ", 分数: " + 
+                        System.out.println("Skipping submission record " + freshSubmission.getId() + " (Status: " +
+                                         freshSubmission.getStatus() + ", Score: " +
                                          freshSubmission.getTotalScore() + ")");
                     }
                 } catch (Exception e) {
-                    System.err.println("评分提交记录失败，ID: " + submission.getId() + ", 错误: " + e.getMessage());
+                    System.err.println("Failed to score submission record, ID: " + submission.getId() + ", Error: " + e.getMessage());
                     e.printStackTrace();
-                    errors.add("提交记录 " + submission.getId() + ": " + e.getMessage());
+                    errors.add("Submission record " + submission.getId() + ": " + e.getMessage());
                 }
             }
 
-            System.out.println("批量评分完成，成功评分: " + scoredCount + " 份，失败: " + errors.size() + " 份");
+            System.out.println("Batch scoring completed, successfully scored: " + scoredCount + ", failed: " + errors.size());
 
             response.put("success", true);
             response.put("count", scoredCount);
@@ -899,18 +899,18 @@ public class TeacherController {
             if (!errors.isEmpty()) {
                 response.put("errorDetails", errors);
             }
-            
+
             return response;
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             response.put("success", false);
-            response.put("error", "批量评分失败: " + e.getMessage());
+            response.put("error", "Batch scoring failed: " + e.getMessage());
             return response;
         }
     }
 
-    // 删除测验
+    // Delete quiz
     @PostMapping("/quiz/delete/{id}")
     @ResponseBody
     public String deleteQuiz(@PathVariable Long id, Authentication auth) {
@@ -922,12 +922,12 @@ public class TeacherController {
                 return "Quiz does not exist";
             }
 
-            // 检查权限
+            // Check permission
             if (!quiz.getTeacher().getId().equals(teacher.getId())) {
                 return "No permission to delete this quiz";
             }
 
-            // 删除测验
+            // Delete quiz
             quizService.deleteQuiz(id);
 
             return "success";
@@ -955,7 +955,7 @@ public class TeacherController {
         return "teacher/question-ai-generate";
     }
 
-    // 切换Quiz状态
+    // Toggle Quiz status
     @GetMapping("/quiz/{id}/toggle-status")
     public String toggleQuizStatus(@PathVariable Long id, Authentication auth, RedirectAttributes redirectAttributes) {
         try {
@@ -967,7 +967,7 @@ public class TeacherController {
                 return "redirect:/teacher/quizzes";
             }
 
-            // 检查权限
+            // Check permission
             if (!quiz.getTeacher().getId().equals(teacher.getId())) {
                 redirectAttributes.addFlashAttribute("error", "No permission to operate this quiz");
                 return "redirect:/teacher/quizzes";

@@ -52,6 +52,10 @@ public class SetupSqlExecutorService {
             System.out.println("检测到 Markdown 转义字符，已清理");
         }
 
+        // 将 INT/INTEGER 升级为 BIGINT，避免AI生成的大数据（GDP、人口、金额等）溢出
+        cleanedSql = cleanedSql.replaceAll("(?i)\\bINT\\b(?!\\w)", "BIGINT");
+        cleanedSql = cleanedSql.replaceAll("(?i)\\bINTEGER\\b", "BIGINT");
+
         // 提取所有CREATE TABLE语句中的完整表名
         List<String> allTableNames = extractAllTableNames(cleanedSql);
         System.out.println("提取到的表名: " + allTableNames);

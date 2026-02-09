@@ -442,7 +442,7 @@
                         MULTIPLE)</div>
                     <select id="type-select" multiple class="raw-multi-select">
                         <option th:each="type : ${questionTypes}" th:value="${type.name()}"
-                            th:text="${type.displayName}">JOIN OPERATIONS</option>
+                            th:text="${type.englishName}">JOIN OPERATIONS</option>
                     </select>
                 </div>
                 <div class="action-row">
@@ -469,7 +469,7 @@
 
                     <div th:each="stat : ${statistics}" class="mastery-item">
                         <div class="mastery-info">
-                            <span class="topic-name" th:text="${stat.questionType.displayName}">JOINS</span>
+                            <span class="topic-name" th:text="${stat.questionType.englishName}">JOINS</span>
                             <span class="topic-stats"
                                 th:text="${stat.correctCount} + ' / ' + ${stat.totalCount} + ' CORRECT'">5/10</span>
                         </div>
@@ -495,7 +495,7 @@
                     <div th:each="historyItem : ${history}" class="history-item">
                         <strong th:text="${historyItem.totalQuestions} + ' QUESTIONS'">10 QUESTIONS</strong>
                         <div style="display: flex; justify-content: space-between; margin-top: 0.25rem;">
-                            <span th:text="${#temporals.format(historyItem.startTime, 'MMM dd HH:mm')}">JAN 01 12:00</span>
+                            <span th:text="${#temporals.format(historyItem.startTime, 'MMM dd HH:mm', T(java.util.Locale).ENGLISH)}">JAN 01 12:00</span>
                             <span
                                 th:text="${#numbers.formatDecimal(historyItem.overallAccuracy * 100, 0, 0)} + '% ACCURACY'"
                                 style="color: var(--signal-orange)">80% ACCURACY</span>
@@ -555,7 +555,8 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    window.location.href = '/student/practice/round/' + data.roundId;
+                    // 在dashboard页面等待题目生成完成
+                    await waitForQuestionsReady(data.roundId);
                 } else {
                     alert('Round Error: ' + data.error);
                     loading.style.display = 'none';
@@ -564,6 +565,58 @@
                 console.error(err);
                 loading.style.display = 'none';
             }
+        }
+
+        // 等待题目生成完成，然后跳转
+        async function waitForQuestionsReady(roundId) {
+            const maxRetries = 60; // 60次 * 2秒 = 120秒（2分钟）
+            let retryCount = 0;
+
+            while (retryCount < maxRetries) {
+                try {
+                    const response = await fetch(`/student/practice/api/question/${roundId}`);
+                    const data = await response.json();
+
+                    // 更新加载提示
+                    const loadingText = document.querySelector('.loader-text');
+                    if (loadingText) {
+                        loadingText.textContent = `GENERATING... ${retryCount * 2}s`;
+                    }
+
+                    // 如果题目已生成
+                    if (data.success && data.hasMore) {
+                        console.log('[DEBUG] Questions ready, redirecting to round page');
+                        window.location.href = '/student/practice/round/' + roundId;
+                        return;
+                    }
+
+                    // 如果还在生成中，继续等待
+                    if (data.generating) {
+                        retryCount++;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
+                    }
+
+                    // 其他错误情况
+                    alert('Failed to generate questions: ' + (data.message || 'Unknown error'));
+                    loading.style.display = 'none';
+                    return;
+
+                } catch (err) {
+                    console.error('[DEBUG] Error checking questions:', err);
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        alert('Question generation timeout. Please try again.');
+                        loading.style.display = 'none';
+                        return;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            // 超时
+            alert('Question generation timeout after 2 minutes. Please try again.');
+            loading.style.display = 'none';
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
