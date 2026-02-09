@@ -453,7 +453,9 @@
 
             <div class="user-profile">
                 <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
-                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
             </div>
         </aside>
 
@@ -481,7 +483,7 @@
                         <div class="panel-header">
                             <div><i class="fas fa-id-card"></i> Candidate Profile</div>
                             <span class="badge"
-                                th:classappend="${submission.status.displayName == '已提交' ? 'success' : 'warning'}"
+                                th:classappend="${submission.status.displayName == 'Submitted' ? 'success' : 'warning'}"
                                 th:text="${submission.status.displayName}">STATUS</span>
                         </div>
 
@@ -608,7 +610,7 @@
                                     <td th:text="${sub.quiz.title}">Quiz</td>
                                     <td>
                                         <span class="badge"
-                                            th:classappend="${sub.status.displayName == '已提交' ? 'success' : 'warning'}"
+                                            th:classappend="${sub.status.displayName == 'Submitted' ? 'success' : 'warning'}"
                                             th:text="${sub.status.displayName}">Status</span>
                                     </td>
                                     <td>

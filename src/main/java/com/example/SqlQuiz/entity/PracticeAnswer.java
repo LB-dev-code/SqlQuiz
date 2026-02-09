@@ -82,6 +82,9 @@ public class PracticeAnswer {
     @Column(name = "answer_time")
     private LocalDateTime answerTime;
 
+    @Column(name = "answered")
+    private Boolean answered = false; // 标记答案是否已提交
+
     @Column(name = "time_spent_seconds")
     private Integer timeSpentSeconds; // 答题耗时（秒）
 
@@ -209,6 +212,10 @@ public class PracticeAnswer {
 
     public LocalDateTime getAnswerTime() { return answerTime; }
     public void setAnswerTime(LocalDateTime answerTime) { this.answerTime = answerTime; }
+
+    public Boolean isAnswered() { return answered != null && answered; }
+    public Boolean getAnswered() { return answered; }
+    public void setAnswered(Boolean answered) { this.answered = answered; }
 
     public Integer getTimeSpentSeconds() { return timeSpentSeconds; }
     public void setTimeSpentSeconds(Integer timeSpentSeconds) { this.timeSpentSeconds = timeSpentSeconds; }

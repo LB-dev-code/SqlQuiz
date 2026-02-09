@@ -1,5 +1,6 @@
 package com.example.SqlQuiz.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.SqlQuiz.dto.QuestionBlacklistItem;
@@ -135,6 +137,7 @@ public class PracticeService {
 
     /**
      * 开始新一轮练习
+     * 注意：AI调用移出事务，避免长时间持有数据库锁
      */
     @Transactional
     public PracticeRound startNewRound(Long sessionId) {
@@ -166,49 +169,63 @@ public class PracticeService {
         int nextRoundNumber = (maxRoundNumber == null ? 0 : maxRoundNumber) + 1;
         log.info("[步骤1.4] 轮次号 - nextRoundNumber: {}", nextRoundNumber);
 
-        log.info("[步骤2] 保存轮次到数据库 - 开始保存...");
-        // 创建新轮次
-        PracticeRound round = new PracticeRound(session, session.getStudent(), nextRoundNumber);
-        // 使用 saveAndFlush 确保立即持久化，获取ID
-        round = roundRepository.saveAndFlush(round);
-        log.info("[步骤2.1] saveAndFlush完成 - roundId: {}", round.getId());
-
-        // 显式刷新EntityManager以确保round实体已同步到数据库
-        entityManager.flush();
-        log.info("[步骤2.2] entityManager.flush完成");
-
-        // 验证round有ID
-        if (round.getId() == null) {
-            log.error("[步骤2.3] Round ID为null - 保存失败");
-            throw new IllegalStateException("Round ID is null after save");
-        }
-        log.info("[步骤2.3] Round ID验证通过 - roundId: {}", round.getId());
-        log.info("[步骤2] 保存轮次完成 - 耗时: {}ms", System.currentTimeMillis() - startTime);
-
-        // 生成题目（使用批量生成）
+        // 获取题型选择（在事务外使用）
         List<Question.QuestionType> selectedTypes = session.getSelectedTypes();
         if (selectedTypes == null || selectedTypes.isEmpty()) {
-            // 兼容旧数据，使用单一题型
             selectedTypes = new ArrayList<>();
             if (session.getTargetQuestionType() != null) {
                 selectedTypes.add(session.getTargetQuestionType());
             }
         }
-        log.info("[步骤3] 题型选择 - selectedTypes: {}", selectedTypes);
+        log.info("[步骤2] 题型选择 - selectedTypes: {}", selectedTypes);
 
-        long questionGenStart = System.currentTimeMillis();
-        log.info("[步骤4-7] 开始生成题目流程...");
-        generateQuestionsForRoundBatch(round, session.getStudent(), selectedTypes);
-        log.info("[步骤4-7] 题目生成完成 - 耗时: {}ms", System.currentTimeMillis() - questionGenStart);
+        log.info("[步骤3] 保存轮次到数据库 - 开始保存...");
+        // 创建新轮次
+        PracticeRound round = new PracticeRound(session, session.getStudent(), nextRoundNumber);
+        // 使用 saveAndFlush 确保立即持久化，获取ID
+        round = roundRepository.saveAndFlush(round);
+        log.info("[步骤3.1] saveAndFlush完成 - roundId: {}", round.getId());
+
+        // 显式刷新EntityManager以确保round实体已同步到数据库
+        entityManager.flush();
+        log.info("[步骤3.2] entityManager.flush完成");
+
+        // 验证round有ID
+        if (round.getId() == null) {
+            log.error("[步骤3.3] Round ID为null - 保存失败");
+            throw new IllegalStateException("Round ID is null after save");
+        }
+        log.info("[步骤3.3] Round ID验证通过 - roundId: {}", round.getId());
+        log.info("[步骤3] 保存轮次完成 - 耗时: {}ms", System.currentTimeMillis() - startTime);
 
         session.addRound(round);
         sessionRepository.save(session);
-        log.info("[步骤8] 会话更新完成");
+        log.info("[步骤4] 会话更新完成");
 
         long totalTime = System.currentTimeMillis() - startTime;
-        log.info("========== 新轮次创建完成 - 总耗时: {}ms ==========", totalTime);
+        log.info("========== 轮次创建完成（事务结束） - 耗时: {}ms ==========", totalTime);
 
         return round;
+    }
+
+    /**
+     * 生成题目（非事务，在事务外调用）
+     * 应在startNewRound返回后由Controller调用
+     */
+    public void generateQuestionsForRoundAfterCommit(Long roundId, User student, List<Question.QuestionType> selectedTypes) {
+        long startTime = System.currentTimeMillis();
+        log.info("========== 开始生成题目（事务外） ========== roundId: {}", roundId);
+
+        PracticeRound round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new RuntimeException("Round not found"));
+
+        long questionGenStart = System.currentTimeMillis();
+        log.info("[步骤1] 调用批量生成（事务外）...");
+        generateQuestionsForRoundBatch(round, student, selectedTypes);
+        log.info("[步骤1] 题目生成完成 - 耗时: {}ms", System.currentTimeMillis() - questionGenStart);
+
+        long totalTime = System.currentTimeMillis() - startTime;
+        log.info("========== 题目生成完成 - 总耗时: {}ms ==========", totalTime);
     }
 
     /**
@@ -228,6 +245,22 @@ public class PracticeService {
         PracticeRound round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new RuntimeException("Round not found"));
 
+        // 从已评分的答案中重新计算统计数据
+        List<PracticeAnswer> answers = answerRepository.findByRoundOrderByQuestionIndexAsc(round);
+        int answeredCount = 0;
+        int correctCount = 0;
+        for (PracticeAnswer answer : answers) {
+            if (answer.isAnswered()) {
+                answeredCount++;
+                if (answer.getIsCorrect() != null && answer.getIsCorrect()) {
+                    correctCount++;
+                }
+            }
+        }
+        round.setCurrentQuestionIndex(answeredCount);
+        round.setCorrectCount(correctCount);
+        log.info("[结束轮次] roundId={}, 已答={}, 正确={}", roundId, answeredCount, correctCount);
+
         round.completeRound();
 
         // 生成轮次反馈
@@ -246,8 +279,8 @@ public class PracticeService {
 
     /**
      * 为轮次生成题目（核心出题算法）
+     * 注意：非事务方法，AI调用不应在事务内执行
      */
-    @Transactional
     public void generateQuestionsForRound(PracticeRound round, User student, Question.QuestionType targetType) {
         List<QuestionPriority> priorities = calculateQuestionPriorities(student, targetType);
 
@@ -311,7 +344,7 @@ public class PracticeService {
                 );
             }
 
-            answerRepository.save(answer);
+            saveAnswerInNewTransaction(answer);
         }
     }
 
@@ -421,8 +454,8 @@ public class PracticeService {
     /**
      * 批量为轮次生成题目（一次AI调用生成10题）
      * 注意：round必须是已持久化的实体（有有效ID）
+     * 注意：非事务方法，AI调用不应在事务内执行
      */
-    @Transactional
     public void generateQuestionsForRoundBatch(PracticeRound round, User student, List<Question.QuestionType> selectedTypes) {
         long batchStartTime = System.currentTimeMillis();
         log.info("[题目生成] ========== 开始批量生成题目 ==========");
@@ -563,7 +596,7 @@ public class PracticeService {
                             questionIndex, answer.getQuestionTitle(), tablePrefix, 
                             (gq.setupSql != null && !gq.setupSql.trim().isEmpty()));
 
-                    answerRepository.saveAndFlush(answer);
+                    saveAnswerInNewTransaction(answer);
                     log.debug("[步骤7] 保存题目成功 - index: {}, type: {}, roundId: {}, answerId: {}",
                             questionIndex, answer.getQuestionType(), round.getId(), answer.getId());
                     questionIndex++;
@@ -654,13 +687,7 @@ public class PracticeService {
             log.info("[题目生成] 开始清理已创建的数据...");
             // 清理可能已创建的数据
             try {
-                List<PracticeAnswer> existingAnswers = answerRepository.findByRound(round);
-                log.info("[题目生成] 找到已创建的答案数: {}", existingAnswers.size());
-                for (PracticeAnswer ans : existingAnswers) {
-                    answerRepository.delete(ans);
-                }
-                answerRepository.flush();
-                log.info("[题目生成] 清理完成");
+                cleanupAnswersForRound(round);
             } catch (Exception cleanupException) {
                 log.error("[题目生成] 清理失败 - error: {}", cleanupException.getMessage());
             }
@@ -790,7 +817,158 @@ public class PracticeService {
     // ==================== 答题处理 ====================
 
     /**
-     * 提交答案（使用沙库执行，不进行AI评分）
+     * 仅保存答案，不执行也不评分
+     */
+    @Transactional
+    public void saveAnswerOnly(Long answerId, String studentSql) {
+        PracticeAnswer answer = answerRepository.findById(answerId)
+                .orElseThrow(() -> new RuntimeException("Answer not found"));
+
+        if (answer.isAnswered()) {
+            log.warn("[保存答案] 答案已提交，覆盖保存: answerId={}", answerId);
+        }
+
+        // 只保存SQL，不执行不评分
+        answer.setStudentSql(studentSql);
+        answer.setAnswered(true);
+        answer.setAnswerTime(LocalDateTime.now());
+        answerRepository.save(answer);
+
+        log.info("[保存答案] 答案已保存: answerId={}, sqlLength={}", answerId, studentSql.length());
+    }
+
+    /**
+     * 批量评分一个轮次的所有答案
+     * 使用@Transactional确保懒加载正常工作
+     * 在方法开头将所有数据加载到POJO中，后续评分不再依赖JPA实体
+     */
+    @Transactional
+    public void scoreAllAnswersInRound(Long roundId) {
+        // === 第一步：加载所有必要数据到POJO（利用事务内的懒加载） ===
+        PracticeRound round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new RuntimeException("Round not found"));
+
+        Long studentId = round.getSession().getStudent().getId();
+        List<PracticeAnswer> answers = answerRepository.findByRoundOrderByQuestionIndexAsc(round);
+
+        log.info("[批量评分] 开始 - roundId={}, studentId={}, 题目数={}", roundId, studentId, answers.size());
+
+        List<ScoringContext.AnswerData> answerDataList = new ArrayList<>();
+        for (PracticeAnswer answer : answers) {
+            ScoringContext.AnswerData ad = new ScoringContext.AnswerData();
+            ad.answerId = answer.getId();
+            ad.questionIndex = answer.getQuestionIndex();
+            ad.answered = answer.isAnswered();
+            ad.studentSql = answer.getStudentSql();
+            ad.expectedSql = answer.getExpectedSql();
+            ad.questionTitle = answer.getQuestionTitle();
+            ad.questionContent = answer.getQuestionContent();
+            ad.tablePrefix = answer.getTablePrefix();
+            ad.setupSql = answer.getSetupSql();
+            answerDataList.add(ad);
+        }
+
+        // === 第二步：逐题评分（使用POJO数据，不再依赖JPA懒加载） ===
+        int scoredCount = 0;
+        int skippedCount = 0;
+        for (ScoringContext.AnswerData ad : answerDataList) {
+            if (!ad.answered || ad.studentSql == null || ad.studentSql.trim().isEmpty()) {
+                log.warn("[批量评分] 跳过未回答的题目: answerId={}, index={}", ad.answerId, ad.questionIndex);
+                skippedCount++;
+                continue;
+            }
+
+            try {
+                scoreAnswer(ad, studentId);
+                scoredCount++;
+            } catch (Exception e) {
+                log.error("[批量评分] 评分失败: answerId=" + ad.answerId, e);
+            }
+        }
+
+        log.info("[批量评分] 评分完成: roundId={}, 成功={}, 跳过={}, 总数={}", roundId, scoredCount, skippedCount, answerDataList.size());
+    }
+
+    /**
+     * 评分上下文（存储所有需要的数据，避免懒加载）
+     */
+    static class ScoringContext {
+        Long studentId;
+        List<AnswerData> answers;
+
+        static class AnswerData {
+            Long answerId;
+            Integer questionIndex;
+            Boolean answered;
+            String studentSql;
+            String expectedSql;
+            String questionTitle;
+            String questionContent;
+            String tablePrefix;
+            String setupSql;
+        }
+    }
+
+    /**
+     * 对单个答案进行评分（纯AI评分，不需要沙库执行）
+     */
+    private void scoreAnswer(ScoringContext.AnswerData ad, Long studentId) {
+        try {
+            log.info("[评分] ====== 开始评分 answerId={}, questionIndex={} ======", ad.answerId, ad.questionIndex);
+            log.info("[评分] 题目: {}", ad.questionTitle);
+            log.info("[评分] 学生SQL: {}", ad.studentSql);
+            log.info("[评分] 预期SQL: {}", ad.expectedSql);
+
+            boolean isCorrect = false;
+            double score = 0.0;
+            String aiFeedback = "";
+            double fullScore = 10.0;
+
+            // 直接使用AI评分（与教师评分相同的方式）
+            try {
+                String aiResponse = glmService.score_answer(
+                        fullScore,
+                        ad.questionContent != null ? ad.questionContent : ad.questionTitle,
+                        ad.expectedSql != null ? ad.expectedSql : "N/A",
+                        ad.studentSql
+                );
+
+                if (aiResponse != null) {
+                    String cleanJson = aiResponse.replace("```json", "").replace("```", "").trim();
+                    JsonNode jsonNode = objectMapper.readTree(cleanJson);
+
+                    score = jsonNode.get("score").asDouble();
+                    isCorrect = jsonNode.has("isCorrect") ? jsonNode.get("isCorrect").asBoolean() : (score >= fullScore * 0.6);
+                    aiFeedback = jsonNode.has("feedback") ? jsonNode.get("feedback").asText() : "";
+
+                    log.info("[评分] AI评分完成 - answerId={}, score={}, isCorrect={}", ad.answerId, score, isCorrect);
+                }
+            } catch (Exception aiException) {
+                log.warn("[评分] AI评分失败: {}", aiException.getMessage());
+                aiFeedback = "AI scoring failed: " + aiException.getMessage();
+            }
+
+            // 保存评分结果
+            PracticeAnswer answer = answerRepository.findById(ad.answerId)
+                    .orElseThrow(() -> new RuntimeException("Answer not found: " + ad.answerId));
+            answer.setExecutionResult(null);
+            answer.setExecutionError(null);
+            answer.setIsCorrect(isCorrect);
+            answer.setScore(score);
+            answer.setAiFeedback(aiFeedback);
+            answerRepository.save(answer);
+
+            log.info("[评分] ====== 评分完成 answerId={}, score={}/{} ======", ad.answerId, score, fullScore);
+
+        } catch (Exception e) {
+            log.error("[评分] 评分失败: answerId=" + ad.answerId, e);
+            throw new RuntimeException("Scoring failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 提交答案（使用沙库执行，进行AI评分）
+     * @deprecated 改为使用 saveAnswerOnly + scoreAllAnswersInRound
      */
     @Transactional
     public PracticeAnswer submitAnswer(Long answerId, String studentSql) {
@@ -817,37 +995,83 @@ public class PracticeService {
                 }
             }
 
-            // 3. 表名映射：setupSql 中的表名带前缀，学生输入不带前缀
-            // 需要系统映射：teacher -> quiz_q_123_teacher
-            log.debug("[学生答题] 表前缀: {}", tablePrefix);
-
-            // 4. 在沙库中执行SQL，传入 tablePrefix 进行自动映射
-            SandboxDatabaseService.SqlExecutionResult result =
+            // 3. 在沙库中执行学生SQL
+            SandboxDatabaseService.SqlExecutionResult studentResult =
                 sandboxService.executeInSandbox(sandbox, studentSql, tablePrefix);
 
-            // 5. 简单判断是否正确（基于执行结果）
-            boolean isCorrect = result.isSuccess() && 
-                (result.getErrorMessage() == null || result.getErrorMessage().isEmpty());
-            double score = isCorrect ? 10.0 : 0.0;
+            // 4. 如果有预期SQL，也执行预期SQL获取结果用于AI评分
+            SandboxDatabaseService.SqlExecutionResult expectedResult = null;
+            String expectedResultJson = null;
+            if (answer.getExpectedSql() != null && !answer.getExpectedSql().trim().isEmpty()) {
+                try {
+                    expectedResult = sandboxService.executeInSandbox(sandbox, answer.getExpectedSql(), tablePrefix);
+                    if (expectedResult.isSuccess()) {
+                        expectedResultJson = objectMapper.writeValueAsString(expectedResult);
+                    }
+                } catch (Exception e) {
+                    log.warn("[学生答题] 执行预期SQL失败: {}", e.getMessage());
+                }
+            }
 
-            // 6. 更新答案（暂不进行AI评分）
+            // 5. 调用AI评分
+            boolean isCorrect = false;
+            double score = 0.0;
+            String aiFeedback = "";
+            double fullScore = 10.0;
+
+            try {
+                String studentResultJson = studentResult.isSuccess()
+                    ? objectMapper.writeValueAsString(studentResult)
+                    : null;
+
+                String aiResponse = glmService.scorePracticeAnswer(
+                        answer.getQuestionTitle(),
+                        answer.getQuestionContent(),
+                        answer.getExpectedSql() != null ? answer.getExpectedSql() : "N/A",
+                        studentSql,
+                        studentResultJson,
+                        expectedResultJson,
+                        fullScore
+                );
+
+                // 解析AI评分结果
+                if (aiResponse != null) {
+                    String cleanJson = aiResponse.replace("```json", "").replace("```", "").trim();
+                    JsonNode jsonNode = objectMapper.readTree(cleanJson);
+
+                    score = jsonNode.get("score").asDouble();
+                    isCorrect = jsonNode.get("isCorrect").asBoolean();
+                    aiFeedback = jsonNode.get("feedback").asText();
+
+                    log.info("[学生答题] AI评分完成 - score: {}, isCorrect: {}", score, isCorrect);
+                }
+            } catch (Exception aiException) {
+                log.warn("[学生答题] AI评分失败，降级到简单评分: {}", aiException.getMessage());
+                // 降级：简单判断是否正确（基于执行结果）
+                isCorrect = studentResult.isSuccess() &&
+                    (studentResult.getErrorMessage() == null || studentResult.getErrorMessage().isEmpty());
+                score = isCorrect ? fullScore : 0.0;
+                aiFeedback = isCorrect ? "Correct!" : "Incorrect. Please try again.";
+            }
+
+            // 6. 保存答案和评分结果
             try {
                 answer.submitAnswer(
                         studentSql, // 保存原始SQL
-                        result.isSuccess() ? objectMapper.writeValueAsString(result) : null,
-                        result.getErrorMessage(),
+                        studentResult.isSuccess() ? objectMapper.writeValueAsString(studentResult) : null,
+                        studentResult.getErrorMessage(),
                         isCorrect,
                         score,
-                        "" // AI反馈在轮次结束后统一生成
+                        aiFeedback
                 );
             } catch (Exception e) {
                 answer.submitAnswer(
                         studentSql,
                         null,
-                        result.getErrorMessage(),
+                        studentResult.getErrorMessage(),
                         isCorrect,
                         score,
-                        ""
+                        aiFeedback
                 );
             }
             answer = answerRepository.save(answer);
@@ -966,6 +1190,15 @@ public class PracticeService {
      */
     public Optional<PracticeRound> getRound(Long roundId) {
         return roundRepository.findById(roundId);
+    }
+
+    /**
+     * 获取轮次的所有题目
+     */
+    public List<PracticeAnswer> getAnswersByRound(Long roundId) {
+        PracticeRound round = roundRepository.findById(roundId).orElse(null);
+        if (round == null) return new ArrayList<>();
+        return answerRepository.findByRoundOrderByQuestionIndexAsc(round);
     }
 
     // ==================== 统计与反馈 ====================
@@ -1148,5 +1381,27 @@ public class PracticeService {
      */
     public PracticeAnswerRepository getAnswerRepository() {
         return answerRepository;
+    }
+
+    /**
+     * 保存单个答案（独立事务，用于异步线程中调用）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PracticeAnswer saveAnswerInNewTransaction(PracticeAnswer answer) {
+        return answerRepository.saveAndFlush(answer);
+    }
+
+    /**
+     * 清理轮次的答案（独立事务，用于异步线程中调用）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void cleanupAnswersForRound(PracticeRound round) {
+        List<PracticeAnswer> existingAnswers = answerRepository.findByRound(round);
+        log.info("[题目生成] 找到已创建的答案数: {}", existingAnswers.size());
+        for (PracticeAnswer ans : existingAnswers) {
+            answerRepository.delete(ans);
+        }
+        answerRepository.flush();
+        log.info("[题目生成] 清理完成");
     }
 }

@@ -484,7 +484,9 @@
 
             <div class="user-profile">
                 <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
-                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
             </div>
         </aside>
 
@@ -667,7 +669,9 @@ SELECT * FROM ..."></textarea>
                 data.data.forEach((q, idx) => {
                     const opt = document.createElement('option');
                     opt.value = q.id;
-                    opt.textContent = `[${idx + 1}] ${q.title || 'Untitled'} - ${q.questionType}`;
+                    // Use content field and truncate it for display
+                    const title = q.content ? q.content.substring(0, 40) + (q.content.length > 40 ? '...' : '') : 'Untitled';
+                    opt.textContent = `[${idx + 1}] ${title}`;
                     qSel.appendChild(opt);
                 });
             }

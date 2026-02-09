@@ -397,35 +397,35 @@
     </div>
 
     <script>
-        // 倒计时相关变量
+        // Countdown variables
         let countdown = 0;
         let countdownInterval = null;
 
-        // 发送验证码
+        // Send verification code
         async function sendVerificationCode() {
             const emailInput = document.getElementById('email');
             const sendCodeBtn = document.getElementById('sendCodeBtn');
             const emailHelp = document.getElementById('emailHelp');
 
             const email = emailInput.value.trim();
-            console.log('[Send Code] 准备发送验证码到:', email);
+            console.log('[Send Code] Preparing to send verification code to:', email);
 
-            // 验证邮箱格式
+            // Validate email format
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!email || !emailRegex.test(email)) {
-                console.error('[Send Code] 邮箱格式无效');
+                console.error('[Send Code] Invalid email format');
                 emailHelp.textContent = 'ERROR: INVALID EMAIL FORMAT';
                 emailHelp.style.color = 'var(--alert-red)';
                 return;
             }
 
-            // 禁用按钮
+            // Disable button
             sendCodeBtn.disabled = true;
             emailHelp.textContent = 'SENDING...';
             emailHelp.style.color = '#888';
 
             try {
-                console.log('[Send Code] 开始发送请求...');
+                console.log('[Send Code] Starting request...');
                 const response = await fetch('/send-verification-code', {
                     method: 'POST',
                     headers: {
@@ -434,32 +434,32 @@
                     body: 'email=' + encodeURIComponent(email)
                 });
 
-                console.log('[Send Code] 响应状态:', response.status);
+                console.log('[Send Code] Response status:', response.status);
                 const result = await response.json();
-                console.log('[Send Code] 响应结果:', result);
+                console.log('[Send Code] Response result:', result);
 
                 if (result.success) {
                     emailHelp.textContent = 'CODE SENT! CHECK YOUR EMAIL';
                     emailHelp.style.color = 'var(--success-green)';
                     startCountdown();
                 } else {
-                    console.error('[Send Code] 发送失败:', result.message);
+                    console.error('[Send Code] Send failed:', result.message);
                     emailHelp.textContent = 'ERROR: ' + result.message;
                     emailHelp.style.color = 'var(--alert-red)';
                     sendCodeBtn.disabled = false;
                 }
             } catch (error) {
-                console.error('[Send Code] 请求异常:', error);
+                console.error('[Send Code] Request exception:', error);
                 emailHelp.textContent = 'ERROR: FAILED TO SEND CODE';
                 emailHelp.style.color = 'var(--alert-red)';
                 sendCodeBtn.disabled = false;
             }
         }
 
-        // 开始倒计时
+        // Start countdown
         function startCountdown() {
             const sendCodeBtn = document.getElementById('sendCodeBtn');
-            countdown = 60; // 60秒倒计时
+            countdown = 60; // 60 seconds countdown
 
             countdownInterval = setInterval(() => {
                 sendCodeBtn.textContent = 'WAIT ' + countdown + 'S';

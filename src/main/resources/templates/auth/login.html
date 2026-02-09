@@ -312,29 +312,10 @@
 
         <div class="links">
             <a th:href="@{/register}">Create New Identity</a>
-            <a href="#">Security Help</a>
-        </div>
-
-        <!-- Quick Access for Dev/Demo -->
-        <div class="quick-access-grid">
-            <div class="quick-btn" onclick="quickLogin('teacher', 'Teacher123412341234')">
-                <span class="quick-role">Teacher // Admin</span>
-                <span>ID: teacher</span>
-            </div>
-            <div class="quick-btn" onclick="quickLogin('student', 'Student1234')">
-                <span class="quick-role" style="color: var(--success-green);">Student // User</span>
-                <span>ID: student</span>
-            </div>
         </div>
 
     </div>
 
-    <script>
-        function quickLogin(username, password) {
-            document.getElementById('username').value = username;
-            document.getElementById('password').value = password;
-        }
-    </script>
 </body>
 
 </html>

@@ -33,7 +33,7 @@ public class GLMService {
 
     private String score_prompt ;
 
-    // 评分准则知识库ID
+    // Scoring criteria knowledge base ID
     private static final String SCORING_KNOWLEDGE_ID = "2019315389405835264";
 
     @Autowired
@@ -54,24 +54,24 @@ public class GLMService {
     }
 
     /**
-     * 使用 GLM-4V 进行图片 OCR 识别
-     * @param imagePath 图片文件路径
-     * @return 识别出的文本内容
+     * Perform image OCR recognition using GLM-4V
+     * @param imagePath Image file path
+     * @return Recognized text content
      */
     public String performOCR(String imagePath) {
         try {
-            // 1. 读取图片并转为Base64
+            // 1. Read image and convert to Base64
             Path path = Path.of(imagePath);
             byte[] imageBytes = Files.readAllBytes(path);
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
             
-            // 2. 构建多模态请求（图片 + OCR提示词）
+            // 2. Build multimodal request (image + OCR prompt)
             String ocrPrompt = "Please carefully extract all text content from this image. " +
                     "This is likely a SQL quiz question or database exercise. " +
                     "Return the text exactly as it appears, maintaining the structure and format. " +
                     "Include question titles, descriptions, table structures, and any SQL code if present.";
             
-            // 创建多模态消息
+            // Create multimodal message
             Map<String, Object> imageContent = new HashMap<>();
             imageContent.put("type", "image_url");
             Map<String, String> imageUrl = new HashMap<>();
@@ -86,14 +86,14 @@ public class GLMService {
             message.put("role", "user");
             message.put("content", List.of(textContent, imageContent));
             
-            // 3. 调用 glm-4v 模型
+            // 3. Call glm-4v model
             Map<String, Object> body = new HashMap<>();
-            body.put("model", "glm-4v");  // 使用视觉模型
+            body.put("model", "glm-4v");  // Use visual model
             body.put("messages", List.of(message));
             body.put("max_tokens", 2000);
-            body.put("temperature", 0.1);  // 降低temperature提高识别准确性
+            body.put("temperature", 0.1);  // Lower temperature for better recognition accuracy
             
-            // 4. 发送请求
+            // 4. Send request
             String result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
                     .body(body)
@@ -106,18 +106,18 @@ public class GLMService {
                 throw new RuntimeException("OCR API returned empty response");
             }
             
-            // 5. 解析并返回识别结果
+            // 5. Parse and return recognition result
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(result);
             
-            // 检查错误
+            // Check for errors
             JsonNode error = jsonNode.get("error");
             if (error != null) {
                 String errorMessage = error.get("message") != null ? error.get("message").asText() : error.asText();
                 throw new RuntimeException("OCR API returned error: " + errorMessage);
             }
             
-            // 提取识别文本
+            // Extract recognized text
             JsonNode choices = jsonNode.get("choices");
             if (choices != null && choices.isArray() && choices.size() > 0) {
                 JsonNode messageNode = choices.get(0).get("message");
@@ -143,10 +143,10 @@ public class GLMService {
     }
 
     /**
-     * 生成题目的方法
+     * Method to generate questions
      */
     public String chat_create_quiz (String description) throws JsonProcessingException {
-        // 生成唯一标识符，确保表名不会冲突
+        // Generate unique identifier to ensure table names don't conflict
         String uniqueId = String.valueOf(System.currentTimeMillis());
         String randomSuffix = String.valueOf((int)(Math.random() * 1000));
         String tablePrefix = "quiz_q_" + uniqueId.substring(uniqueId.length() - 6) + "_" + randomSuffix;
@@ -280,36 +280,41 @@ public class GLMService {
 
     public String score_answer(Double score, String description, String expected_answer, String student_answer) throws JsonProcessingException {
         score_prompt = String.format(
-                "你是一个SQL作业评分系统。你必须严格按照《SQL作业AI评分系统行为规范文档》的流程进行评分。\n\n" +
-                        "**核心要求：评分必须是确定性的，相同输入必须产生完全相同的输出。**\n\n" +
-                        "**输入信息:**\n" +
-                        "- 题目满分: %.1f 分\n" +
-                        "- 题目描述: %s\n" +
-                        "- 标准答案: %s\n" +
-                        "- 学生答案: %s\n\n" +
-                        "**评分流程（严格执行）:**\n" +
-                        "1. 输入预处理：转小写、去除首尾空白、统一空格\n" +
-                        "2. 精确匹配：标准化后完全相同 = 满分\n" +
-                        "3. 语义等价：逻辑相同但写法不同 = 满分\n" +
-                        "4. 部分得分：计算令牌编辑距离，使用公式 Score = M * (1 - D_min/T)\n" +
-                        "5. 空答案或非 SQL = 0分\n\n" +
-                        "**输出格式（仅返回JSON）:**\n" +
+                "You are a SQL assignment grading system. You must strictly follow the grading process from the 'SQL Assignment AI Grading System Behavior Specification Document'.\n\n" +
+                        "**Core Requirement: Grading must be deterministic; identical inputs must produce identical outputs.**\n\n" +
+                        "**Input Information:**\n" +
+                        "- Full score: %.1f points\n" +
+                        "- Question description: %s\n" +
+                        "- Expected answer: %s\n" +
+                        "- Student answer: %s\n\n" +
+                        "**Grading Process (Strictly Follow):**\n" +
+                        "1. **CRITICAL - SQL Preprocessing**: Before any comparison, you MUST:\n" +
+                        "   - Remove ALL SQL comments (-- comments, /* block comments */, # inline comments)\n" +
+                        "   - Remove ALL non-SQL content (explanations, notes, natural language text)\n" +
+                        "   - Extract ONLY the pure SQL statements for grading\n" +
+                        "   - This step is mandatory - do not skip it\n" +
+                        "2. Input preprocessing: Convert to lowercase, trim whitespace, normalize spaces\n" +
+                        "3. Exact match: After normalization, if identical = full score\n" +
+                        "4. Semantic equivalence: Same logic but different syntax = full score\n" +
+                        "5. Partial credit: Calculate token edit distance, use formula Score = M * (1 - D_min/T)\n" +
+                        "6. Empty answer or non-SQL = 0 points\n\n" +
+                        "**Output Format (Return JSON only):**\n" +
                         "{\n" +
-                        "  \"score\": 数字(到一位小数),\n" +
+                        "  \"score\": number(to one decimal place),\n" +
                         "  \"fullScore\": %.1f,\n" +
-                        "  \"isCorrect\": 布尔值,\n" +
+                        "  \"isCorrect\": boolean,\n" +
                         "  \"matchType\": \"EXACT|SEMANTIC|PARTIAL|ZERO\",\n" +
-                        "  \"editDistance\": 数字(令牌编辑距离),\n" +
-                        "  \"feedback\": \"简短评分说明\"\n" +
+                        "  \"editDistance\": number(token edit distance),\n" +
+                        "  \"feedback\": \"Brief grading explanation in English\"\n" +
                         "}",
                 score, description, expected_answer, student_answer, score
         );
 
         List<Map<String, String>> messages = List.of(
-                Map.of("role", "system", "content", 
-                        "你是SQL作业评分专家。你必须严格遵循知识库中《SQL作业AI评分系统行为规范文档》的所有要求。" +
-                        "你的评分依据必须完全来源于计算出的编辑距离和预设公式，不得引入个人推理或感觉。" +
-                        "相同输入必须产生完全相同的输出。"),
+                Map.of("role", "system", "content",
+                        "You are a SQL grading expert. You must strictly follow all requirements from the 'SQL Assignment AI Grading System Behavior Specification Document' in the knowledge base. " +
+                        "Your grading must be based entirely on calculated edit distance and preset formulas, without introducing personal reasoning or feelings. " +
+                        "Identical inputs must produce identical outputs. All feedback must be in English."),
                 Map.of("role", "user", "content", score_prompt)
         );
 
@@ -326,17 +331,17 @@ public class GLMService {
         tools.put("type", "retrieval");
         tools.put("retrieval", Map.of(
                 "knowledge_id", SCORING_KNOWLEDGE_ID,
-                "prompt_template", "从文档\n\"\"\"\n{{knowledge}}\n\"\"\"\n中找问题\n\"\"\"\n{{question}}\n\"\"\"的答案，找到答案后仅使用文档中的评分规则进行评分。"
+                "prompt_template", "Find the answer to question\n\"\"\"\n{{question}}\n\"\"\"\nfrom the document\n\"\"\"\n{{knowledge}}\n\"\"\"\nAfter finding the answer, use only the scoring rules from the document for grading."
         ));
         body.put("tools", List.of(tools));
 
         String result = "";
         try {
-            System.out.println("[AI Score] ========== 开始AI评分 (使用知识库: " + SCORING_KNOWLEDGE_ID + ") ==========");
-            System.out.println("[AI Score] 题目满分: " + score);
-            System.out.println("[AI Score] 题目描述: " + description);
-            System.out.println("[AI Score] 标准答案: " + expected_answer);
-            System.out.println("[AI Score] 学生答案: " + student_answer);
+            System.out.println("[AI Score] ========== Starting AI scoring (using knowledge base: " + SCORING_KNOWLEDGE_ID + ") ==========");
+            System.out.println("[AI Score] Question full score: " + score);
+            System.out.println("[AI Score] Question description: " + description);
+            System.out.println("[AI Score] Expected answer: " + expected_answer);
+            System.out.println("[AI Score] Student answer: " + student_answer);
 
             result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
@@ -380,7 +385,7 @@ public class GLMService {
                     JsonNode content = message.get("content");
                     if (content != null) {
                         String contentText = content.asText();
-                        System.out.println("[AI Score] 提取到评分结果: " + contentText);
+                        System.out.println("[AI Score] Extracted score result: " + contentText);
                         return contentText;
                     }
                 }
@@ -665,26 +670,26 @@ public class GLMService {
 
     private String getTypeDescription(String questionType) {
         switch (questionType) {
-            case "SINGLE_TABLE": return "单表查询";
-            case "GROUP_AGGREGATE": return "分组聚合";
-            case "MULTI_JOIN": return "多表JOIN";
-            case "SUBQUERY": return "子查询";
-            case "COMPREHENSIVE": return "综合查询";
-            case "UPDATE_DELETE": return "更新删除";
-            case "SELECT_BASIC": return "基础查询";
-            case "SELECT_JOIN": return "表连接";
-            case "SELECT_SUBQUERY": return "子查询";
-            case "SELECT_AGGREGATE": return "聚合函数";
-            case "SELECT_COMPLEX": return "复杂查询";
-            case "DML_INSERT": return "插入数据";
-            case "DML_UPDATE": return "更新数据";
-            case "DML_DELETE": return "删除数据";
-            default: return "未知类型";
+            case "SINGLE_TABLE": return "Single table query";
+            case "GROUP_AGGREGATE": return "Group by and aggregate";
+            case "MULTI_JOIN": return "Multiple table JOIN";
+            case "SUBQUERY": return "Subquery";
+            case "COMPREHENSIVE": return "Comprehensive query";
+            case "UPDATE_DELETE": return "Update and delete";
+            case "SELECT_BASIC": return "Basic SELECT";
+            case "SELECT_JOIN": return "Table JOIN";
+            case "SELECT_SUBQUERY": return "Subquery";
+            case "SELECT_AGGREGATE": return "Aggregate functions";
+            case "SELECT_COMPLEX": return "Complex query";
+            case "DML_INSERT": return "INSERT data";
+            case "DML_UPDATE": return "UPDATE data";
+            case "DML_DELETE": return "DELETE data";
+            default: return "Unknown type";
         }
     }
 
     /**
-     * 为自主练习模式生成题目
+     * Generate question for self-practice mode
      */
     public String generatePracticeQuestion(String questionType, String difficulty) throws JsonProcessingException {
         String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
@@ -776,12 +781,12 @@ public class GLMService {
     }
 
     /**
-     * 批量生成练习题目（10题）
-     * 根据题型分布配置，一次AI调用生成10道题目
+     * Batch generate practice questions (10 questions)
+     * Generate 10 questions in one AI call based on question type distribution
      *
-     * @param distribution 题型分布，如 {SELECT_BASIC: 4, SELECT_JOIN: 3, SELECT_AGGREGATE: 3}
-     * @param blacklist 已存在题目的黑名单（内容归一化后）
-     * @return JSON数组格式的题目列表
+     * @param distribution Question type distribution, e.g., {SELECT_BASIC: 4, SELECT_JOIN: 3, SELECT_AGGREGATE: 3}
+     * @param blacklist Blacklist of existing questions (after content normalization)
+     * @return Question list in JSON array format
      */
     public String generatePracticeQuestionsBatch(
             Map<Question.QuestionType, Integer> distribution,
@@ -789,23 +794,23 @@ public class GLMService {
 
         String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
 
-        // 构建题型分布描述
+        // Build question type distribution description
         StringBuilder distributionDesc = new StringBuilder();
         int totalQuestions = 0;
         for (Map.Entry<Question.QuestionType, Integer> entry : distribution.entrySet()) {
-            distributionDesc.append(String.format("- %s: %d题 (%s)\n",
+            distributionDesc.append(String.format("- %s: %d questions (%s)\n",
                     entry.getKey().name(),
                     entry.getValue(),
                     getTypeDescription(entry.getKey().name())));
             totalQuestions += entry.getValue();
         }
 
-        // 构建黑名单提示（避免重复）
+        // Build blacklist prompt (avoid duplicates)
         StringBuilder blacklistDesc = new StringBuilder();
         if (blacklist != null && !blacklist.isEmpty()) {
             blacklistDesc.append("\n**IMPORTANT - AVOID THESE QUESTIONS:**\n");
             blacklistDesc.append("Do NOT generate questions similar to these existing ones:\n");
-            int count = Math.min(5, blacklist.size()); // 只显示前5个作为示例
+            int count = Math.min(5, blacklist.size()); // Only show first 5 as examples
             for (int i = 0; i < count; i++) {
                 blacklistDesc.append(i + 1).append(". ").append(blacklist.get(i)).append("\n");
             }
@@ -868,24 +873,24 @@ public class GLMService {
                 Map.of("role", "user", "content", batchPrompt)
         );
 
-        // 添加RAG知识库支持
+        // Add RAG knowledge base support
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("messages", messages);
         body.put("max_tokens", 8000);
         body.put("temperature", 0.7);
         
-        // 添加知识库ID
+        // Add knowledge base ID
         Map<String, Object> tools = new HashMap<>();
         tools.put("type", "retrieval");
         tools.put("retrieval", Map.of("knowledge_id", "2013534505419395072"));
         body.put("tools", List.of(tools));
 
         try {
-            System.out.println("[generatePracticeQuestionsBatch] ========== 开始调用AI生成题目 ==========");
+            System.out.println("[generatePracticeQuestionsBatch] ========== Starting AI question generation ==========");
             System.out.println("[generatePracticeQuestionsBatch] tablePrefix: " + tablePrefix);
-            System.out.println("[generatePracticeQuestionsBatch] 题型分布: " + distribution);
-            System.out.println("[generatePracticeQuestionsBatch] 总题目数: " + totalQuestions);
+            System.out.println("[generatePracticeQuestionsBatch] Question type distribution: " + distribution);
+            System.out.println("[generatePracticeQuestionsBatch] Total questions: " + totalQuestions);
             
             String result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
@@ -893,9 +898,9 @@ public class GLMService {
                     .retrieve()
                     .body(String.class);
             
-            System.out.println("[generatePracticeQuestionsBatch] API响应长度: " + (result != null ? result.length() : "null"));
+            System.out.println("[generatePracticeQuestionsBatch] API response length: " + (result != null ? result.length() : "null"));
             if (result != null && result.length() > 0) {
-                System.out.println("[generatePracticeQuestionsBatch] API响应前1000字符: " + 
+                System.out.println("[generatePracticeQuestionsBatch] API response first 1000 characters: " +
                         result.substring(0, Math.min(1000, result.length())));
             }
 
@@ -918,8 +923,8 @@ public class GLMService {
                         if (contentText.endsWith("```")) {
                             contentText = contentText.substring(0, contentText.length() - 3);
                         }
-                        System.out.println("[generatePracticeQuestionsBatch] 提取到content长度: " + contentText.length());
-                        System.out.println("[generatePracticeQuestionsBatch] content前500字符: " + 
+                        System.out.println("[generatePracticeQuestionsBatch] Extracted content length: " + contentText.length());
+                        System.out.println("[generatePracticeQuestionsBatch] Content first 500 characters: " +
                                 contentText.substring(0, Math.min(500, contentText.length())));
                         return contentText.trim();
                     }
@@ -927,15 +932,15 @@ public class GLMService {
             }
             return result;
         } catch (Exception e) {
-            System.err.println("[generatePracticeQuestionsBatch] ========== 调用失败 ==========");
-            System.err.println("[generatePracticeQuestionsBatch] 异常: " + e.getMessage());
+            System.err.println("[generatePracticeQuestionsBatch] ========== Call failed ==========");
+            System.err.println("[generatePracticeQuestionsBatch] Exception: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Batch practice question generation failed: " + e.getMessage());
         }
     }
 
     /**
-     * 为练习答案生成纠错反馈
+     * Generate corrective feedback for practice answers
      */
     public String generatePracticeFeedback(String questionDescription, String expectedSql, 
                                             String studentSql, boolean isCorrect) throws JsonProcessingException {
@@ -1004,30 +1009,30 @@ public class GLMService {
         }
     }
 
-    // ==================== 沙库验证 ====================
+    // ==================== Sandbox Verification ====================
 
     /**
-     * 在沙库中验证AI生成的题目SQL是否正确
-     * 用于验证setupSql和expectedSql的正确性
+     * Verify if AI-generated question SQL is correct in sandbox
+     * Used to verify correctness of setupSql and expectedSql
      */
     public boolean verifyQuestionInSandbox(String setupSql, String expectedSql) {
         SandboxContext sandbox = null;
         try {
-            // 1. 创建AI验证沙库
+            // 1. Create AI verification sandbox
             sandbox = sandboxService.createAISandbox();
 
-            // 2. 执行setupSql
+            // 2. Execute setupSql
             if (setupSql != null && !setupSql.trim().isEmpty()) {
                 sandboxService.executeSetupSql(sandbox, setupSql);
             }
 
-            // 3. 执行expectedSql验证
+            // 3. Execute expectedSql for verification
             if (expectedSql != null && !expectedSql.trim().isEmpty()) {
-                // 从setupSql中提取表前缀
+                // Extract table prefix from setupSql
                 String tablePrefix = extractTablePrefix(setupSql);
                 System.out.println("[AI Verify] Extracted table prefix: " + tablePrefix);
 
-                // 使用带前缀映射的版本执行expectedSql
+                // Execute expectedSql using prefix-mapped version
                 SandboxDatabaseService.SqlExecutionResult result =
                     sandboxService.executeInSandbox(sandbox, expectedSql, tablePrefix);
 
@@ -1052,18 +1057,18 @@ public class GLMService {
     }
 
     /**
-     * 从setupSql中提取表前缀
-     * 格式: quiz_q_<uuid_8chars>_<timestamp>
-     * 例如: CREATE TABLE quiz_q_a1B2c3D4_1738671234567_employees -> 提取 quiz_q_a1B2c3D4_1738671234567
+     * Extract table prefix from setupSql
+     * Format: quiz_q_<uuid_8chars>_<timestamp>
+     * Example: CREATE TABLE quiz_q_a1B2c3D4_1738671234567_employees -> Extract quiz_q_a1B2c3D4_1738671234567
      *
-     * 注意：不包含末尾的下划线，因为addTablePrefixToSql会自动添加下划线和表名
+     * Note: Does not include trailing underscore, as addTablePrefixToSql will automatically add underscore and table name
      */
     private String extractTablePrefix(String setupSql) {
         if (setupSql == null || setupSql.isEmpty()) {
             return null;
         }
-        // 匹配 quiz_q_<8位十六进制>_<13位时间戳> (不包含末尾下划线)
-        // 例如: quiz_q_a1B2c3D4_1738671234567 (后面紧跟着表名如_employees)
+        // Match quiz_q_<8-digit hexadecimal>_<13-digit timestamp> (excluding trailing underscore)
+        // Example: quiz_q_a1B2c3D4_1738671234567 (followed by table name like _employees)
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
             "quiz_q_[a-fA-F0-9]{8}_\\d{13}(?=_)"
         );
@@ -1076,5 +1081,161 @@ public class GLMService {
         System.err.println("[AI Verify] Could not find table prefix in setupSql!");
         System.err.println("[AI Verify] setupSql preview: " + (setupSql.length() > 200 ? setupSql.substring(0, 200) : setupSql));
         return null;
+    }
+
+    /**
+     * 学生自主练习AI评分
+     * 比较学生SQL和预期SQL的执行结果，给出评分和反馈
+     *
+     * @param questionTitle 题目标题
+     * @param questionContent 题目内容
+     * @param expectedSql 预期SQL答案
+     * @param studentSql 学生SQL答案
+     * @param studentResult 学生SQL执行结果（JSON格式）
+     * @param expectedResult 预期SQL执行结果（JSON格式），可为null
+     * @param fullScore 满分
+     * @return AI评分结果JSON字符串
+     */
+    public String scorePracticeAnswer(
+            String questionTitle,
+            String questionContent,
+            String expectedSql,
+            String studentSql,
+            String studentResult,
+            String expectedResult,
+            double fullScore) throws JsonProcessingException {
+
+        String practiceScorePrompt = String.format(
+                "You are a SQL practice grading system for self-learning students. You must strictly follow the grading process.\n\n" +
+                        "**Core Requirement: Grading must be deterministic; identical inputs must produce identical outputs.**\n\n" +
+                        "**Input Information:**\n" +
+                        "- Question: %s\n" +
+                        "- Description: %s\n" +
+                        "- Full score: %.1f points\n" +
+                        "- Expected SQL: %s\n" +
+                        "- Student SQL: %s\n" +
+                        "- Student execution result: %s\n" +
+                        "- Expected execution result: %s\n\n" +
+                        "**Grading Process (Strictly Follow):**\n" +
+                        "0. **CRITICAL - SQL Preprocessing**: Before any comparison, you MUST:\n" +
+                        "   - Remove ALL SQL comments (-- comments, /* block comments */, # inline comments)\n" +
+                        "   - Remove ALL non-SQL content (explanations, notes, natural language text)\n" +
+                        "   - Extract ONLY the pure SQL statements for grading\n" +
+                        "   - This step is mandatory - do not skip it\n\n" +
+                        "1. **Syntax Check (30%%)**: Check if student SQL has syntax errors\n" +
+                        "   - SQL execution failed = 0 points for syntax\n" +
+                        "   - SQL executed successfully = full syntax points\n\n" +
+                        "2. **Result Comparison (50%%)**: Compare execution results\n" +
+                        "   - If expected result provided: Compare row count, column count, and data content\n" +
+                        "   - Results match exactly = full result points\n" +
+                        "   - Partial match (some rows correct) = partial points based on percentage\n" +
+                        "   - No match = 0 result points\n" +
+                        "   - If no expected result: Check if result is reasonable (non-empty, valid structure)\n\n" +
+                        "3. **Semantic Correctness (20%%)**: Check if SQL logic is semantically correct\n" +
+                        "   - Correct logic (even if syntax differs) = full semantic points\n" +
+                        "   - Partially correct logic = partial semantic points\n" +
+                        "   - Wrong logic (missing WHERE, wrong JOIN, etc.) = 0 semantic points\n\n" +
+                        "**Scoring Formula:**\n" +
+                        "Total Score = (Syntax Points × 0.3) + (Result Points × 0.5) + (Semantic Points × 0.2)\n\n" +
+                        "**Output Format (Return JSON only):**\n" +
+                        "{\n" +
+                        "  \"score\": number(to one decimal place),\n" +
+                        "  \"fullScore\": %.1f,\n" +
+                        "  \"isCorrect\": boolean,\n" +
+                        "  \"syntaxScore\": number(out of 10),\n" +
+                        "  \"resultScore\": number(out of 10),\n" +
+                        "  \"semanticScore\": number(out of 10),\n" +
+                        "  \"feedback\": \"Brief grading explanation in English, focusing on what student did well and what to improve\"\n" +
+                        "}",
+                questionTitle, questionContent, fullScore, expectedSql, studentSql,
+                studentResult != null ? studentResult : "No result (execution failed)",
+                expectedResult != null ? expectedResult : "Not provided",
+                fullScore
+        );
+
+        List<Map<String, String>> messages = List.of(
+                Map.of("role", "system", "content",
+                        "You are a SQL grading expert for student practice. " +
+                        "Your grading must be fair, educational, and consistent. " +
+                        "Identical inputs must produce identical outputs. " +
+                        "All feedback must be in English and constructive for learning."),
+                Map.of("role", "user", "content", practiceScorePrompt)
+        );
+
+        // 使用知识库 + temperature=0 确保确定性输出
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        body.put("max_tokens", 1000);
+        body.put("temperature", 0);  // 0 = 完全确定性
+        body.put("top_p", 0.1);       // 进一步限制随机性
+
+        // 添加评分准则知识库
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("type", "retrieval");
+        tools.put("retrieval", Map.of(
+                "knowledge_id", SCORING_KNOWLEDGE_ID,
+                "prompt_template", "Find the answer to question\n\"\"\"\n{{question}}\n\"\"\"\nfrom the document\n\"\"\"\n{{knowledge}}\n\"\"\"\nAfter finding the answer, use only the scoring rules from the document for grading."
+        ));
+        body.put("tools", List.of(tools));
+
+        String result = "";
+        try {
+            System.out.println("[Practice AI Score] ========== Starting AI scoring ==========");
+            System.out.println("[Practice AI Score] Question: " + questionTitle);
+            System.out.println("[Practice AI Score] Student SQL: " + studentSql);
+            System.out.println("[Practice AI Score] Expected SQL: " + expectedSql);
+
+            result = restClient.post()
+                    .uri("/api/paas/v4/chat/completions")
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            System.out.println("[Practice AI Score] API Response: " + result);
+
+            if (result == null || result.trim().isEmpty()) {
+                throw new RuntimeException("Empty response from GLM API");
+            }
+
+            // Parse and validate JSON response
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonNode = mapper.readTree(result);
+
+            // Check for API error
+            JsonNode error = jsonNode.get("error");
+            if (error != null) {
+                String errorMessage = error.get("message") != null ? error.get("message").asText() : error.asText();
+                throw new RuntimeException("GLM scoring API returned error: " + errorMessage);
+            }
+
+            JsonNode choices = jsonNode.get("choices");
+
+            if (choices != null && choices.isArray() && choices.size() > 0) {
+                JsonNode message = choices.get(0).get("message");
+                if (message != null) {
+                    JsonNode content = message.get("content");
+                    if (content != null) {
+                        String contentText = content.asText();
+                        System.out.println("[Practice AI Score] Extracted score result: " + contentText);
+                        return contentText;
+                    }
+                }
+            }
+
+            System.err.println("[Practice AI Score] Unable to extract content from response");
+            return result;
+
+        } catch (JsonProcessingException e) {
+            System.err.println("[Practice AI Score] JSON parsing error: " + e.getMessage());
+            if (result != null && !result.isEmpty()) {
+                System.err.println("[Practice AI Score] Returning original response for debugging");
+                return result;
+            }
+            throw new RuntimeException("[Practice AI Score] JSON parsing failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("[Practice AI Score] API call failed: " + e.getMessage());
+            throw new RuntimeException("[Practice AI Score] API call failed: " + e.getMessage());
+        }
     }
 }

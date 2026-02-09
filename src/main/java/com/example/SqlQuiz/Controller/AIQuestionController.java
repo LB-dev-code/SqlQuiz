@@ -108,7 +108,7 @@ public class AIQuestionController {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(jsonResponse);
 
-            // 在沙库中验证AI规范后的SQL（防止错误的SQL破坏数据库）
+            // Verify AI-normalized SQL in sandbox (prevent incorrect SQL from damaging database)
             if (jsonNode.has("setupSql") && jsonNode.has("expectedSql")) {
                 String setupSql = jsonNode.get("setupSql").asText();
                 String expectedSql = jsonNode.get("expectedSql").asText();
@@ -118,7 +118,7 @@ public class AIQuestionController {
                     if (!isValid) {
                         return ResponseEntity.badRequest().body(Map.of(
                                 "success", false,
-                                "error", "AI规范后的SQL验证失败：setupSql或expectedSql存在错误，请重新规范"
+                                "error", "AI-normalized SQL validation failed: setupSql or expectedSql contains errors, please re-normalize"
                         ));
                     }
                 }
@@ -139,14 +139,14 @@ public class AIQuestionController {
     }
 
     /**
-     * 图片上传和OCR识别接口
+     * Image upload and OCR recognition endpoint
      */
     @PostMapping("/upload-image")
     public ResponseEntity<?> uploadImage(
             @RequestParam("file") MultipartFile file,
             Authentication auth) {
         try {
-            // 验证文件
+            // Validate file
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
@@ -154,7 +154,7 @@ public class AIQuestionController {
                 ));
             }
 
-            // 验证文件类型
+            // Validate file type
             String contentType = file.getContentType();
             if (contentType == null || !contentType.startsWith("image/")) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -163,7 +163,7 @@ public class AIQuestionController {
                 ));
             }
 
-            // 验证文件大小（限制5MB）
+            // Validate file size (5MB limit)
             if (file.getSize() > 5 * 1024 * 1024) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
@@ -171,27 +171,27 @@ public class AIQuestionController {
                 ));
             }
 
-            // 创建临时目录
+            // Create temporary directory
             Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "sqlquiz-ocr");
             if (!Files.exists(tempDir)) {
                 Files.createDirectories(tempDir);
             }
 
-            // 生成唯一文件名
+            // Generate unique filename
             String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".") 
+            String extension = originalFilename != null && originalFilename.contains(".")
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
                 : ".jpg";
             String filename = UUID.randomUUID().toString() + extension;
             Path filePath = tempDir.resolve(filename);
 
-            // 保存文件
+            // Save file
             file.transferTo(filePath.toFile());
 
-            // 调用OCR识别
+            // Perform OCR recognition
             String recognizedText = glmService.performOCR(filePath.toString());
 
-            // 删除临时文件
+            // Delete temporary file
             try {
                 Files.deleteIfExists(filePath);
             } catch (IOException e) {
@@ -278,7 +278,7 @@ public class AIQuestionController {
             String questionTypeStr = (String) request.get("questionType");
             String difficultyStr = (String) request.get("difficulty");
             
-            // 调试日志
+            // Debug logs
             System.out.println("[AI Question] Received questionType: " + questionTypeStr);
             System.out.println("[AI Question] Received difficulty: " + difficultyStr);
             
@@ -334,21 +334,21 @@ public class AIQuestionController {
                 System.err.println("[AI Question] difficulty is null or empty");
             }
 
-            // 在沙库中验证AI生成的SQL（防止错误的SQL破坏数据库）
+            // Verify AI-generated SQL in sandbox (prevent incorrect SQL from damaging database)
             SandboxContext sandbox = null;
             try {
                 if (setupSql != null && !setupSql.trim().isEmpty()) {
-                    // 使用沙库验证setupSql和expectedSql
+                    // Use sandbox to verify setupSql and expectedSql
                     boolean isValid = glmService.verifyQuestionInSandbox(setupSql, expectedSql);
                     if (!isValid) {
                         return ResponseEntity.badRequest().body(Map.of(
                                 "success", false,
-                                "error", "AI生成的SQL验证失败：setupSql或expectedSql存在错误，请重新生成"
+                                "error", "AI-generated SQL validation failed: setupSql or expectedSql contains errors, please regenerate"
                         ));
                     }
                 }
             } finally {
-                // 沙库已在verifyQuestionInSandbox中清理
+                // Sandbox already cleaned up in verifyQuestionInSandbox
             }
 
             String tablePrefix = null;
@@ -356,19 +356,15 @@ public class AIQuestionController {
                 tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
             }
 
-            String fullDescription = description;
-            if (databaseContext != null && !databaseContext.trim().isEmpty()) {
-                fullDescription = description + "\n\n" + databaseContext;
-            }
-
+            // description 和 databaseContext 分开存储，不再拼接
             Question question = quizService.addQuestionToQuiz(
                     quizId,
                     title,
                     questionType,
-                    fullDescription,
+                    description,
                     databaseContext,
                     expectedSql,
-                    setupSql,  // 传递setupSql参数
+                    setupSql,  // Pass setupSql parameter
                     null,
                     answer,
                     score,

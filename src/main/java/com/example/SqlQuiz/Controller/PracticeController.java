@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -29,12 +31,14 @@ import com.example.SqlQuiz.service.PracticeService;
 import com.example.SqlQuiz.service.UserService;
 
 /**
- * 自主练习控制器
- * 提供学生自主练习的REST API和页面路由
+ * Self-practice Controller
+ * Provides REST API and page routing for student self-practice
  */
 @Controller
 @RequestMapping("/student/practice")
 public class PracticeController {
+
+    private static final Logger log = LoggerFactory.getLogger(PracticeController.class);
 
     @Autowired
     private PracticeService practiceService;
@@ -42,10 +46,10 @@ public class PracticeController {
     @Autowired
     private UserService userService;
 
-    // ==================== 页面路由 ====================
+    // ==================== Page Routes ====================
 
     /**
-     * 练习主页/仪表板
+     * Practice main page/dashboard
      */
     @GetMapping("/dashboard")
     public String practiceDashboard(Model model, Authentication auth) {
@@ -88,7 +92,7 @@ public class PracticeController {
     }
 
     /**
-     * 答题页面
+     * Answer page
      */
     @GetMapping("/round/{roundId}")
     public String practiceRound(@PathVariable Long roundId, Model model, Authentication auth) {
@@ -96,25 +100,21 @@ public class PracticeController {
         User student = userService.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        // 获取轮次信息
+        // Get round information
         PracticeRound round = practiceService.getRound(roundId)
                 .orElseThrow(() -> new RuntimeException("Round not found"));
-
-        Optional<PracticeAnswer> currentQuestion = practiceService.getCurrentQuestion(roundId);
-        if (currentQuestion.isEmpty()) {
-            return "redirect:/student/practice/dashboard";
-        }
 
         model.addAttribute("student", student);
         model.addAttribute("roundId", roundId);
         model.addAttribute("roundNumber", round.getRoundNumber());
-        model.addAttribute("currentQuestion", currentQuestion.get());
 
+        // 题目可能还在异步生成中，前端会通过轮询API等待
+        // 不再检查 currentQuestion 是否存在，直接加载页面
         return "student/practice-round";
     }
 
     /**
-     * 轮次结束反馈页面
+     * Round end feedback page
      */
     @GetMapping("/feedback/{roundId}")
     public String practiceFeedback(@PathVariable Long roundId, Model model, Authentication auth) {
@@ -129,7 +129,7 @@ public class PracticeController {
     }
 
     /**
-     * 练习历史页面
+     * Practice history page
      */
     @GetMapping("/history")
     public String practiceHistory(Model model, Authentication auth) {
@@ -148,7 +148,7 @@ public class PracticeController {
     // ==================== REST API ====================
 
     /**
-     * 获取错误统计和推荐题型
+     * Get error statistics and recommended question types
      */
     @GetMapping("/api/statistics")
     @ResponseBody
@@ -160,7 +160,7 @@ public class PracticeController {
 
             List<ErrorTypeStatistics> statistics = practiceService.getErrorStatistics(student);
 
-            // 构建响应数据
+            // Build response data
             List<Map<String, Object>> statisticsData = new ArrayList<>();
             List<String> masteredTypes = new ArrayList<>();
             List<String> recommendedTypes = new ArrayList<>();
@@ -178,12 +178,12 @@ public class PracticeController {
 
                 statisticsData.add(statData);
 
-                // 记录已掌握题型
+                // Record mastered question types
                 if (stat.getIsMastered()) {
                     masteredTypes.add(stat.getQuestionType().getDisplayName());
                 }
 
-                // 推荐高错误率且未掌握的题型
+                // Recommend high error rate and not mastered question types
                 if (!stat.getIsMastered() && stat.getErrorFrequency() >= 0.3) {
                     recommendedTypes.add(stat.getQuestionType().getDisplayName());
                 }
@@ -206,7 +206,7 @@ public class PracticeController {
     }
 
     /**
-     * 开始练习会话（支持多选题型）
+     * Start practice session (supports multi-type selection)
      */
     @PostMapping("/api/start")
     @ResponseBody
@@ -218,12 +218,12 @@ public class PracticeController {
             User student = userService.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Student not found"));
 
-            // 支持多选题型
+            // Support multi-type question selection
             List<Question.QuestionType> selectedTypes = null;
             boolean useMultiType = false;
 
             if (request != null) {
-                // 检查是否使用多选题型
+                // Check if using multi-type questions
                 Object selectedTypesObj = request.get("selectedTypes");
                 if (selectedTypesObj instanceof List) {
                     useMultiType = true;
@@ -236,18 +236,18 @@ public class PracticeController {
                                 selectedTypes.add(Question.QuestionType.valueOf(typeStr));
                             }
                         } catch (IllegalArgumentException e) {
-                            // 忽略无效的类型
+                            // Ignore invalid types
                         }
                     }
                 } else {
-                    // 兼容旧的单选模式
+                    // Compatible with old single selection mode
                     String questionType = (String) request.get("questionType");
                     if (questionType != null && !questionType.isEmpty()) {
                         try {
                             selectedTypes = new ArrayList<>();
                             selectedTypes.add(Question.QuestionType.valueOf(questionType));
                         } catch (IllegalArgumentException e) {
-                            // 忽略无效的类型
+                            // Ignore invalid types
                         }
                     }
                 }
@@ -257,7 +257,7 @@ public class PracticeController {
             if (useMultiType) {
                 session = practiceService.startSession(student, selectedTypes);
             } else {
-                // 兼容旧API
+                // Compatible with old API
                 Question.QuestionType targetType = (selectedTypes != null && !selectedTypes.isEmpty())
                         ? selectedTypes.get(0) : null;
                 session = practiceService.startSession(student, targetType);
@@ -282,7 +282,8 @@ public class PracticeController {
     }
 
     /**
-     * 开始新一轮练习
+     * Start new practice round
+     * 先提交事务创建round，然后在事务外调用AI生成题目
      */
     @PostMapping("/api/round/start")
     @ResponseBody
@@ -298,13 +299,42 @@ public class PracticeController {
                 ));
             }
 
+            // 步骤1: 创建round（事务内快速完成）
             PracticeRound round = practiceService.startNewRound(sessionId);
+
+            // 步骤2: 在事务外异步生成题目（避免长时间持有数据库锁）
+            User student = userService.findByUsername(auth.getName())
+                    .orElseThrow(() -> new RuntimeException("Student not found"));
+
+            // 获取题型选择
+            List<Question.QuestionType> selectedTypes = round.getSession().getSelectedTypes();
+            if (selectedTypes == null || selectedTypes.isEmpty()) {
+                selectedTypes = new ArrayList<>();
+                if (round.getSession().getTargetQuestionType() != null) {
+                    selectedTypes.add(round.getSession().getTargetQuestionType());
+                }
+            }
+
+            // 在新线程中生成题目（事务外）
+            final Long roundId = round.getId();
+            final List<Question.QuestionType> finalSelectedTypes = selectedTypes;
+            Thread genThread = new Thread(() -> {
+                try {
+                    practiceService.generateQuestionsForRoundAfterCommit(roundId, student, finalSelectedTypes);
+                } catch (Exception e) {
+                    System.err.println("[异步生成题目] 失败 - roundId: " + roundId + ", error: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+            genThread.setName("QuestionGen-" + roundId);
+            genThread.start();
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("roundId", round.getId());
             response.put("roundNumber", round.getRoundNumber());
             response.put("totalQuestions", round.getTotalQuestions());
+            response.put("message", "Round created, questions are being generated...");
 
             return ResponseEntity.ok(response);
 
@@ -317,48 +347,67 @@ public class PracticeController {
     }
 
     /**
-     * 获取当前题目（支持通过索引指定）
+     * Get current question (supports specifying by index)
      */
     @GetMapping("/api/question/{roundId}")
     @ResponseBody
     public ResponseEntity<?> getCurrentQuestion(
-            @PathVariable Long roundId, 
+            @PathVariable Long roundId,
             @RequestParam(required = false) Integer index,
             Authentication auth) {
         try {
             Optional<PracticeAnswer> question;
-            
+
             if (index != null) {
-                // 通过索引获取指定题目
+                // Get specified question by index
                 question = practiceService.getQuestionByIndex(roundId, index);
-                System.out.println("[题目查询] roundId=" + roundId + ", index=" + index);
+                System.out.println("[Question Query] roundId=" + roundId + ", index=" + index);
             } else {
-                // 获取当前未回答的题目
+                // Get current unanswered question
                 question = practiceService.getCurrentQuestion(roundId);
-                System.out.println("[题目查询] roundId=" + roundId + ", 获取当前题目");
+                System.out.println("[Question Query] roundId=" + roundId + ", getting current question");
             }
 
             if (question.isEmpty()) {
-                System.out.println("[题目查询] 未找到题目");
+                // 判断是“题目还在生成中”还是“轮次真正完成”
+                PracticeRound round = practiceService.getRound(roundId).orElse(null);
+                if (round != null) {
+                    // 检查当前轮次是否有任何已生成的题目
+                    List<PracticeAnswer> existingAnswers = practiceService.getAnswersByRound(roundId);
+                    boolean isStillGenerating = existingAnswers.isEmpty() && round.isInProgress();
+                    
+                    if (isStillGenerating) {
+                        System.out.println("[Question Query] 题目还在生成中...");
+                        return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "hasMore", false,
+                                "generating", true,
+                                "message", "Questions are still being generated"
+                        ));
+                    }
+                }
+                
+                System.out.println("[Question Query] 轮次完成，没有更多题目");
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "hasMore", false,
+                        "generating", false,
                         "message", "No more questions in this round"
                 ));
             }
 
             PracticeAnswer q = question.get();
-            System.out.println("[题目查询] 题目信息:");
+            System.out.println("[Question Query] Question info:");
             System.out.println("  - answerId: " + q.getId());
             System.out.println("  - questionIndex: " + q.getQuestionIndex());
             System.out.println("  - title: " + q.getQuestionTitle());
             System.out.println("  - tablePrefix: " + q.getTablePrefix());
             System.out.println("  - hasSetupSql: " + (q.getSetupSql() != null && !q.getSetupSql().trim().isEmpty()));
             if (q.getSetupSql() != null && !q.getSetupSql().trim().isEmpty()) {
-                System.out.println("  - setupSql(前100字符): " + q.getSetupSql().substring(0, Math.min(100, q.getSetupSql().length())));
+                System.out.println("  - setupSql(first 100 chars): " + q.getSetupSql().substring(0, Math.min(100, q.getSetupSql().length())));
             }
 
-            // 动态获取真实数据库数据来生成databaseContext（保证前端显示与实际数据一致）
+            // Dynamically get real database data to generate databaseContext (ensures frontend display matches actual data)
             String realDatabaseContext = generateRealDatabaseContext(q);
 
             Map<String, Object> response = new HashMap<>();
@@ -368,10 +417,10 @@ public class PracticeController {
             response.put("questionIndex", q.getQuestionIndex());
             response.put("title", q.getQuestionTitle());
             response.put("content", q.getQuestionContent());
-            response.put("databaseContext", realDatabaseContext);  // 使用真实数据
+            response.put("databaseContext", realDatabaseContext);  // Use real data
             response.put("setupSql", q.getSetupSql());
             response.put("tablePrefix", q.getTablePrefix());
-            response.put("studentSql", q.getStudentSql()); // 已提交的SQL
+            response.put("studentSql", q.getStudentSql()); // Submitted SQL
             response.put("questionType", q.getQuestionType() != null ? q.getQuestionType().name() : null);
             response.put("questionTypeDisplay", q.getQuestionType() != null ? q.getQuestionType().getDisplayName() : null);
             response.put("difficulty", q.getDifficultyLevel() != null ? q.getDifficultyLevel().name() : null);
@@ -380,7 +429,7 @@ public class PracticeController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("[题目查询] 错误: " + e.getMessage());
+            System.err.println("[Question Query] Error: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of(
                     "success", false,
@@ -390,7 +439,54 @@ public class PracticeController {
     }
 
     /**
-     * 提交答案
+     * Save answer (without scoring)
+     */
+    @PostMapping("/api/save-answer")
+    public ResponseEntity<Map<String, Object>> saveAnswer(@RequestBody Map<String, Object> request, Authentication auth) {
+        try {
+            Long answerId = Long.valueOf(request.get("answerId").toString());
+            String sql = (String) request.get("sql");
+
+            practiceService.saveAnswerOnly(answerId, sql);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Answer saved successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[保存答案] Error saving answer", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Finish round and score all answers
+     */
+    @PostMapping("/api/finish-round")
+    public ResponseEntity<Map<String, Object>> finishRound(@RequestBody Map<String, Object> request, Authentication auth) {
+        try {
+            Long roundId = Long.valueOf(request.get("roundId").toString());
+            log.info("[完成轮次] 收到请求 - roundId={}, user={}", roundId, auth.getName());
+            practiceService.scoreAllAnswersInRound(roundId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Round completed and scored");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[完成轮次] Error finishing round", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Submit answer (old API - deprecated, kept for compatibility)
      */
     @PostMapping("/api/answer")
     @ResponseBody
@@ -410,7 +506,7 @@ public class PracticeController {
 
             PracticeAnswer answer = practiceService.submitAnswer(answerId, sql);
 
-            // 解析保存的查询结果
+            // Parse saved query results
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("isCorrect", answer.getIsCorrect());
@@ -418,13 +514,13 @@ public class PracticeController {
             response.put("feedback", answer.getAiFeedback());
             response.put("expectedSql", answer.getExpectedSql());
 
-            // 从保存的executionResult中提取查询结果数据
+            // Extract query result data from saved executionResult
             if (answer.getExecutionResult() != null && !answer.getExecutionResult().isEmpty()) {
                 try {
                     com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                     com.fasterxml.jackson.databind.JsonNode resultNode = mapper.readTree(answer.getExecutionResult());
 
-                    // 添加查询结果数据到响应
+                    // Add query result data to response
                     if (resultNode.has("resultData")) {
                         response.put("data", mapper.convertValue(resultNode.get("resultData"), List.class));
                     } else {
@@ -445,12 +541,12 @@ public class PracticeController {
                         response.put("error", resultNode.get("errorMessage").asText());
                     }
                 } catch (Exception e) {
-                    // 解析失败，返回空数据
+                    // Parse failed, return empty data
                     response.put("data", List.of());
                     response.put("rowCount", 0);
                 }
             } else {
-                // 没有结果数据
+                // No result data
                 response.put("data", List.of());
                 response.put("rowCount", 0);
             }
@@ -466,7 +562,7 @@ public class PracticeController {
     }
 
     /**
-     * 结束轮次
+     * End round
      */
     @PostMapping("/api/round/end")
     @ResponseBody
@@ -502,7 +598,7 @@ public class PracticeController {
     }
 
     /**
-     * 结束练习会话
+     * End practice session
      */
     @PostMapping("/api/end")
     @ResponseBody
@@ -538,7 +634,7 @@ public class PracticeController {
     }
 
     /**
-     * 清理未完成的会话（每次进入Dashboard时调用）
+     * Cleanup incomplete sessions (called every time Dashboard is entered)
      */
     @PostMapping("/api/cleanup")
     @ResponseBody
@@ -547,9 +643,9 @@ public class PracticeController {
             String username = auth.getName();
             User student = userService.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Student not found"));
-            
+
             int cleaned = practiceService.cleanupIncompleteSessions(student);
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "cleaned", cleaned
@@ -563,7 +659,7 @@ public class PracticeController {
     }
 
     /**
-     * 获取练习历史
+     * Get practice history
      */
     @GetMapping("/api/history")
     @ResponseBody
@@ -598,8 +694,8 @@ public class PracticeController {
     }
 
     /**
-     * 在沙库中运行SQL（用于Run按钮，不保存答案）
-     * 使用沙库机制执行SQL，保护主数据库不被修改
+     * Run SQL in sandbox (for Run button, does not save answer)
+     * Uses sandbox mechanism to execute SQL, protecting main database from modifications
      */
     @PostMapping("/api/run-sql")
     @ResponseBody
@@ -618,11 +714,11 @@ public class PracticeController {
                 ));
             }
 
-            // 获取答案信息
+            // Get answer information
             PracticeAnswer answer = practiceService.getAnswerRepository().findById(answerId)
                     .orElseThrow(() -> new RuntimeException("Answer not found"));
 
-            // 创建沙库并执行SQL
+            // Create sandbox and execute SQL
             com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
                     practiceService.getSandboxService();
             sandbox = sandboxService.createPracticeSandbox(
@@ -630,28 +726,28 @@ public class PracticeController {
                     answerId
             );
 
-            // 使用setupSql初始化沙库（确保与题目描述的databaseContext一致）
+            // Use setupSql to initialize sandbox (ensure consistent with question's databaseContext)
             String tablePrefix = answer.getTablePrefix();
             String setupSql = answer.getSetupSql();
 
             if (setupSql != null && !setupSql.trim().isEmpty()) {
-                // 使用题目保存时的setupSql来初始化沙库，确保数据一致
+                // Use setupSql saved with the question to initialize sandbox, ensuring data consistency
                 sandboxService.executeSetupSql(sandbox, setupSql);
             } else if (tablePrefix != null && !tablePrefix.isEmpty()) {
-                // 兼容旧数据：如果没有setupSql，尝试从testdb克隆
+                // Compatible with old data: if no setupSql, try cloning from testdb
                 sandboxService.cloneTablesFromTestDB(sandbox, tablePrefix);
             }
 
-            // 获取表前缀并传递给沙库执行方法
-            // setupSql 中的表名带前缀（quiz_q_123_teacher）
-            // 学生输入的表名不带前缀（teacher）
-            // 需要系统映射：teacher -> quiz_q_123_teacher
+            // Get table prefix and pass to sandbox execution method
+            // Table names in setupSql have prefix (quiz_q_123_teacher)
+            // Student input table names have no prefix (teacher)
+            // Need system mapping: teacher -> quiz_q_123_teacher
 
-            // 在沙库中执行SQL，传入 tablePrefix 进行自动映射
+            // Execute SQL in sandbox, passing tablePrefix for automatic mapping
             com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
                     sandboxService.executeInSandbox(sandbox, sql, tablePrefix);
 
-            // 构建响应
+            // Build response
             Map<String, Object> response = new HashMap<>();
             response.put("success", result.isSuccess());
             response.put("data", result.getResultData());
@@ -664,10 +760,10 @@ public class PracticeController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            // 记录详细错误
-            System.err.println("[runSqlInSandbox] SQL执行失败:");
-            System.err.println("  异常类型: " + e.getClass().getName());
-            System.err.println("  异常信息: " + e.getMessage());
+            // Log detailed error
+            System.err.println("[runSqlInSandbox] SQL execution failed:");
+            System.err.println("  Exception type: " + e.getClass().getName());
+            System.err.println("  Exception message: " + e.getMessage());
             e.printStackTrace();
 
             return ResponseEntity.status(500).body(Map.of(
@@ -675,7 +771,7 @@ public class PracticeController {
                     "error", "Failed to run SQL: " + e.getMessage()
             ));
         } finally {
-            // 清理沙库
+            // Cleanup sandbox
             if (sandbox != null) {
                 try {
                     com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
@@ -683,91 +779,95 @@ public class PracticeController {
                     sandboxService.closeConnection(sandbox);
                     sandboxService.cleanupSandbox(sandbox.getDatabaseName());
                 } catch (Exception e) {
-                    // 忽略清理错误
+                    // Ignore cleanup errors
                 }
             }
         }
     }
 
     /**
-     * 从 setupSQL 动态生成真实的数据库表格展示（Markdown格式）
-     * 流程：创建临时沙库 -> 执行setupSQL -> 查询数据 -> 生成Markdown -> 清理沙库
-     * 这样可以保证前端显示的表格数据与学生实际执行SQL时的数据完全一致
+     * Generate real database table display from setupSQL (Markdown format)
+     * Flow: Create temporary sandbox -> Execute setupSQL -> Query data -> Generate Markdown -> Cleanup sandbox
+     * This ensures frontend displayed table data is completely consistent with student's actual SQL execution data
      */
     private String generateRealDatabaseContext(PracticeAnswer answer) {
         String setupSql = answer.getSetupSql();
         String tablePrefix = answer.getTablePrefix();
-        
-        System.out.println("[generateRealDatabaseContext] ======== 开始生成真实数据 ========");
+
+        System.out.println("[generateRealDatabaseContext] ======== Starting real data generation ========");
         System.out.println("[generateRealDatabaseContext] answerId: " + answer.getId());
         System.out.println("[generateRealDatabaseContext] tablePrefix: " + tablePrefix);
-        System.out.println("[generateRealDatabaseContext] setupSql是否为空: " + (setupSql == null || setupSql.trim().isEmpty()));
-        
-        // 如果没有setupSQL，返回原始的databaseContext
+        System.out.println("[generateRealDatabaseContext] setupSql is empty: " + (setupSql == null || setupSql.trim().isEmpty()));
+
+        // If no setupSQL, return original databaseContext
         if (setupSql == null || setupSql.trim().isEmpty()) {
-            System.out.println("[generateRealDatabaseContext] ⚠️ setupSQL为空，返回原始databaseContext");
+            System.out.println("[generateRealDatabaseContext] ⚠️ setupSQL is empty, returning original databaseContext");
             return answer.getDatabaseContext();
         }
-        
-        System.out.println("[generateRealDatabaseContext] setupSql前200字符: " + setupSql.substring(0, Math.min(200, setupSql.length())));
-        
+
+        System.out.println("[generateRealDatabaseContext] setupSql first 200 chars: " + setupSql.substring(0, Math.min(200, setupSql.length())));
+
         com.example.SqlQuiz.entity.SandboxContext sandbox = null;
         try {
-            // 1. 创建临时沙库
-            com.example.SqlQuiz.service.SandboxDatabaseService sandboxService = 
+            // 1. Create temporary sandbox
+            com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
                     practiceService.getSandboxService();
             sandbox = sandboxService.createAISandbox();
-            System.out.println("[generateRealDatabaseContext] 沙库创建成功: " + sandbox.getDatabaseName());
-            
-            // 2. 执行setupSQL创建表和数据
-            sandboxService.executeSetupSql(sandbox, setupSql);
-            System.out.println("[generateRealDatabaseContext] setupSQL执行成功");
-            
-            // 3. 查询所有表的数据并生成Markdown
+            System.out.println("[generateRealDatabaseContext] Sandbox created successfully: " + sandbox.getDatabaseName());
+
+            // 2. Execute setupSQL to create tables and data
+            // 预处理：将 INT 升级为 BIGINT，避免AI生成的大数据（如GDP、人口等）溢出
+            String processedSql = setupSql
+                .replaceAll("(?i)\\bINT\\b(?!\\w)", "BIGINT")
+                .replaceAll("(?i)\\bINTEGER\\b", "BIGINT");
+            sandboxService.executeSetupSql(sandbox, processedSql);
+            System.out.println("[generateRealDatabaseContext] setupSQL executed successfully");
+
+            // 3. Query all table data and generate Markdown
             StringBuilder markdown = new StringBuilder();
             java.sql.Connection conn = sandbox.getConnection();
-            
-            // 获取沙库中所有表
+
+            // Get all tables in sandbox
             java.sql.DatabaseMetaData metaData = conn.getMetaData();
             java.sql.ResultSet tables = metaData.getTables(sandbox.getDatabaseName(), null, "%", new String[]{"TABLE"});
-            
+
             int tableCount = 0;
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
                 tableCount++;
-                System.out.println("[generateRealDatabaseContext] 发现表: " + tableName);
-                
-                // 生成无前缀的显示表名（quiz_q_123_students -> students）
+                System.out.println("[generateRealDatabaseContext] Found table: " + tableName);
+
+                // Generate display table name without prefix (quiz_q_123_students -> students)
                 String displayTableName = tableName;
                 if (tablePrefix != null && tableName.startsWith(tablePrefix + "_")) {
                     displayTableName = tableName.substring(tablePrefix.length() + 1);
                 }
-                System.out.println("[generateRealDatabaseContext] 显示表名: " + displayTableName);
-                
+                System.out.println("[generateRealDatabaseContext] Display table name: " + displayTableName);
+
                 markdown.append(displayTableName).append(" table:\n\n");
-                
-                // 查询表数据
+
+                // Query table data
                 try (java.sql.Statement stmt = conn.createStatement();
                      java.sql.ResultSet rs = stmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
-                    
+
                     java.sql.ResultSetMetaData rsmd = rs.getMetaData();
                     int columnCount = rsmd.getColumnCount();
-                    System.out.println("[generateRealDatabaseContext] 表 " + displayTableName + " 列数: " + columnCount);
-                    
-                    // 生成表头
+                    System.out.println("[generateRealDatabaseContext] Table " + displayTableName + " column count: " + columnCount);
+
+                    // Generate table header
                     markdown.append("|");
                     for (int i = 1; i <= columnCount; i++) {
                         String colName = rsmd.getColumnName(i);
                         markdown.append(" ").append(colName).append(" |");
-                        System.out.println("[generateRealDatabaseContext]   列名: " + colName);
+                        System.out.println("[generateRealDatabaseContext]   Column name: " + colName);
                     }
                     markdown.append("\n|");
                     for (int i = 1; i <= columnCount; i++) {
-                        markdown.append("----|" );
+                        markdown.append("----|");
                     }
                     markdown.append("\n");
-                    
-                    // 生成数据行
+
+                    // Generate data rows
                     int rowCount = 0;
                     while (rs.next()) {
                         markdown.append("|");
@@ -778,42 +878,42 @@ public class PracticeController {
                         markdown.append("\n");
                         rowCount++;
                     }
-                    System.out.println("[generateRealDatabaseContext] 表 " + displayTableName + " 数据行数: " + rowCount);
+                    System.out.println("[generateRealDatabaseContext] Table " + displayTableName + " data rows: " + rowCount);
                 }
-                
+
                 markdown.append("\n");
             }
-            
+
             tables.close();
-            System.out.println("[generateRealDatabaseContext] 总表数: " + tableCount);
-            
+            System.out.println("[generateRealDatabaseContext] Total tables: " + tableCount);
+
             String result = markdown.toString().trim();
-            System.out.println("[generateRealDatabaseContext] ✅ 生成真实数据成功，长度: " + result.length());
-            System.out.println("[generateRealDatabaseContext] 生成内容前500字符: " + result.substring(0, Math.min(500, result.length())));
-            
+            System.out.println("[generateRealDatabaseContext] ✅ Real data generation successful, length: " + result.length());
+            System.out.println("[generateRealDatabaseContext] Generated content first 500 chars: " + result.substring(0, Math.min(500, result.length())));
+
             if (result.isEmpty()) {
-                System.out.println("[generateRealDatabaseContext] ⚠️ 生成结果为空，返回原始databaseContext");
+                System.out.println("[generateRealDatabaseContext] ⚠️ Generation result is empty, returning original databaseContext");
                 return answer.getDatabaseContext();
             }
-            
+
             return result;
-            
+
         } catch (Exception e) {
-            System.err.println("[generateRealDatabaseContext] ❌ 生成真实数据失败: " + e.getMessage());
+            System.err.println("[generateRealDatabaseContext] ❌ Real data generation failed: " + e.getMessage());
             e.printStackTrace();
-            // 失败时返回原始的databaseContext
+            // Return original databaseContext on failure
             return answer.getDatabaseContext();
         } finally {
-            // 4. 清理沙库
+            // 4. Cleanup sandbox
             if (sandbox != null) {
                 try {
-                    com.example.SqlQuiz.service.SandboxDatabaseService sandboxService = 
+                    com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
                             practiceService.getSandboxService();
                     sandboxService.closeConnection(sandbox);
                     sandboxService.cleanupSandbox(sandbox.getDatabaseName());
-                    System.out.println("[generateRealDatabaseContext] 沙库清理完成");
+                    System.out.println("[generateRealDatabaseContext] Sandbox cleanup completed");
                 } catch (Exception e) {
-                    // 忽略清理错误
+                    // Ignore cleanup errors
                 }
             }
         }

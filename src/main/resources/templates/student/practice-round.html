@@ -287,6 +287,67 @@
         .markdown-table tr:hover {
             background: rgba(255, 255, 255, 0.02);
         }
+
+        /* Result Table Styles (for SQL execution results) */
+        .result-status {
+            padding: 0.5rem;
+            font-family: var(--font-tech);
+            font-size: 0.8rem;
+            color: #ccc;
+            white-space: nowrap;
+        }
+        .result-error {
+            padding: 0.5rem;
+            font-family: var(--font-tech);
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            color: var(--alert-red);
+        }
+        .result-table-wrapper {
+            overflow-x: auto;
+            margin-top: 0.5rem;
+        }
+        .result-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.8rem;
+            font-family: var(--font-tech);
+        }
+        .result-table thead {
+            position: sticky;
+            top: 0;
+        }
+        .result-table th {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--signal-orange);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-steel);
+            white-space: nowrap;
+        }
+        .result-table td {
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #e0e0e0;
+            white-space: nowrap;
+        }
+        .result-table tr:last-child td {
+            border-bottom: none;
+        }
+        .result-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .result-table .null-value {
+            color: #666;
+            font-style: italic;
+        }
+        .no-results {
+            padding: 1rem;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+        }
     </style>
     <!-- CodeMirror JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
@@ -342,8 +403,9 @@
                 <span id="btn-status"
                     style="margin-right: auto; color: #666; font-size: 0.8rem; align-self: center;"></span>
                 <button onclick="runCode()" class="btn btn-run">TEST RUN</button>
-                <button onclick="submitAnswer()" class="btn btn-submit" id="submit-btn">SUBMIT</button>
-                <button onclick="nextQuestion()" class="btn" id="next-btn" style="display: none;">NEXT NODE →</button>
+                <button onclick="saveAnswer()" class="btn btn-submit" id="save-btn">SAVE ANSWER</button>
+                <button onclick="nextQuestion()" class="btn" id="next-btn" style="display: none;">NEXT →</button>
+                <button onclick="finishRound()" class="btn btn-submit" id="finish-btn" style="display: none;">FINISH ROUND</button>
             </div>
         </div>
 
@@ -358,18 +420,25 @@
         });
 
         // --- Mock Data / Logic from original file adapted ---
-        const roundId = [[${ roundId }]];
+        const roundId = [[${roundId}]];
         let currentAnswerId = null;
         let questionIndex = 0;
-        let startTime = Date.now();
-
-        // Timer
-        setInterval(() => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const s = String(elapsed % 60).padStart(2, '0');
-            document.getElementById('timer').innerText = `${m}:${s}`;
-        }, 1000);
+        let startTime = null; // 不立即开始计时，等题目加载完成后再开始
+        let timerInterval = null;
+        
+        // Timer - 只有startTime不为null时才计时
+        function startTimer() {
+            if (timerInterval) return; // 避免重复启动
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                if (startTime) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                    const s = String(elapsed % 60).padStart(2, '0');
+                    document.getElementById('timer').innerText = `${m}:${s}`;
+                }
+            }, 1000);
+        }
 
         // Fetch Question Logic ( Simplified for this edit to match structure )
         async function fetchQuestion() {
@@ -389,47 +458,90 @@
             document.getElementById('q-loading').style.display = 'block';
             document.getElementById('q-content').style.display = 'none';
 
-            // ... (Rest of fetch logic)
-            // Since I cannot include 200 lines of JS here easily without bloating, 
-            // I assume the user will need the JS logic. I will paste the critical parts.
+            // 题目应该已经在dashboard页面生成完，轮询次数减少
+            const maxRetries = 10; // 10次 * 2秒 = 20秒
+            let retryCount = 0;
 
-            try {
-                const url = targetIndex !== null
-                    ? `/student/practice/api/question/${roundId}?index=${targetIndex}`
-                    : `/student/practice/api/question/${roundId}`;
+            while (retryCount < maxRetries) {
+                try {
+                    const url = targetIndex !== null
+                        ? `/student/practice/api/question/${roundId}?index=${targetIndex}`
+                        : `/student/practice/api/question/${roundId}`;
 
-                const response = await fetch(url);
-                const data = await response.json();
+                    const response = await fetch(url);
+                    const data = await response.json();
 
-                if (data.success && data.hasMore) {
-                    currentAnswerId = data.answerId;
-                    questionIndex = data.questionIndex;
+                    if (data.success && data.hasMore) {
+                        currentAnswerId = data.answerId;
+                        questionIndex = data.questionIndex;
 
-                    document.getElementById('q-title').innerText = data.title;
-                    document.getElementById('q-desc').innerText = data.content;
+                        document.getElementById('q-title').innerText = data.title;
+                        document.getElementById('q-desc').innerText = data.content;
 
-                    // Render Markdown table for databaseContext
-                    const renderedDb = marked.parse(data.databaseContext || '*No schema available*');
-                    document.getElementById('q-db').innerHTML = '<div class="markdown-table">' + renderedDb + '</div>';
+                        // Render Markdown table for databaseContext
+                        const renderedDb = marked.parse(data.databaseContext || '*No schema available*');
+                        document.getElementById('q-db').innerHTML = '<div class="markdown-table">' + renderedDb + '</div>';
 
-                    document.getElementById('q-loading').style.display = 'none';
-                    document.getElementById('q-content').style.display = 'block';
+                        document.getElementById('q-loading').style.display = 'none';
+                        document.getElementById('q-content').style.display = 'block';
 
-                    // Update dots
-                    const dots = document.getElementById('round-steps');
-                    dots.innerHTML = '';
-                    for (let i = 0; i < 10; i++) {
-                        const d = document.createElement('div');
-                        d.className = 'dot ' + (i < questionIndex ? 'completed' : (i === questionIndex ? 'active' : ''));
-                        dots.appendChild(d);
+                        // 清空编辑器内容，准备输入新答案
+                        editor.setValue('');
+                        editor.clearHistory();
+
+                        // Update dots
+                        const dots = document.getElementById('round-steps');
+                        dots.innerHTML = '';
+                        for (let i = 0; i < 10; i++) {
+                            const d = document.createElement('div');
+                            d.className = 'dot ' + (i < questionIndex ? 'completed' : (i === questionIndex ? 'active' : ''));
+                            dots.appendChild(d);
+                        }
+
+                        // 只有第一次加载题目时启动计时器
+                        if (questionIndex === 0 && !startTime) {
+                            startTimer();
+                        }
+
+                        return; // Success, exit the function
+                    } else if (data.success && !data.hasMore && !data.generating) {
+                        // 轮次真正完成
+                        alert("ROUND COMPLETE");
+                        window.location.href = `/student/practice/feedback/${roundId}`;
+                        return;
+                    } else if (data.success && data.generating) {
+                        // 题目还在生成中，继续轮询
+                        retryCount++;
+                        const loadingText = document.getElementById('q-loading');
+                        loadingText.innerText = `GENERATING QUESTIONS... ${retryCount * 2}s`;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        continue;
                     }
-                } else if (data.success && !data.hasMore) {
-                    alert("ROUND COMPLETE");
-                    window.location.href = `/student/practice/feedback/${roundId}`;
+
+                    // If we get here, questions might still be generating
+                    // Check if it's a "not found" case (might be generating)
+                    if (!data.success && data.error && data.error.includes('not found')) {
+                        retryCount++;
+                        const loadingText = document.getElementById('q-loading');
+                        loadingText.innerText = `LOADING... ${retryCount * 2}s`;
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+                    } else {
+                        // Other error, don't retry
+                        break;
+                    }
+                } catch (e) {
+                    console.error('Fetch error:', e);
+                    if (retryCount >= maxRetries - 1) {
+                        document.getElementById('q-loading').innerHTML = 'LOADING FAILED. PLEASE REFRESH.';
+                        return;
+                    }
+                    retryCount++;
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
-            } catch (e) {
-                console.error(e);
             }
+
+            // If we exit the loop without returning, show error
+            document.getElementById('q-loading').innerHTML = 'LOADING TIMEOUT. PLEASE GO BACK AND TRY AGAIN.';
         }
 
         // Start
@@ -440,8 +552,8 @@
             const sql = editor.getValue();
             const resultDiv = document.getElementById('execution-result');
 
-            resultDiv.innerHTML = '> RUNNING...';
-            resultDiv.style.color = 'var(--signal-orange)';
+            resultDiv.innerHTML = '<div class="result-status">> RUNNING...</div>';
+            resultDiv.style.color = 'var(--success-green)';
 
             try {
                 const response = await fetch('/student/practice/api/run-sql', {
@@ -453,31 +565,48 @@
                     })
                 });
 
+                // Check if response is OK and is JSON
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Expected JSON, got ${contentType}`);
+                }
+
                 const data = await response.json();
 
                 if (data.success) {
-                    resultDiv.innerHTML = `> SUCCESS (${data.executionTimeMs || 0}ms)\nRows: ${data.rowCount || 0}\n\n${formatResultTable(data.data)}`;
+                    let html = `<div class="result-status">> SUCCESS (${data.executionTimeMs || 0}ms) | Rows: ${data.rowCount || 0}</div>`;
+                    html += formatResultTable(data.data);
+                    resultDiv.innerHTML = html;
                     resultDiv.style.color = 'var(--success-green)';
                 } else {
-                    resultDiv.innerHTML = `> ERROR\n${data.error || 'Unknown error'}`;
+                    resultDiv.innerHTML = `<div class="result-error">> ERROR\n${data.error || 'Unknown error'}</div>`;
                     resultDiv.style.color = 'var(--alert-red)';
                 }
             } catch (err) {
-                resultDiv.innerHTML = `> REQUEST FAILED\n${err.message}`;
+                resultDiv.innerHTML = `<div class="result-error">> REQUEST FAILED\n${err.message}</div>`;
                 resultDiv.style.color = 'var(--alert-red)';
             }
         }
 
-        // Submit answer (saves and evaluates)
-        async function submitAnswer() {
+        // Save answer (without scoring)
+        async function saveAnswer() {
             const sql = editor.getValue();
             const resultDiv = document.getElementById('execution-result');
 
-            resultDiv.innerHTML = '> SUBMITTING...';
+            if (!sql || sql.trim() === '') {
+                resultDiv.innerHTML = '<div class="result-error">> ERROR: SQL cannot be empty</div>';
+                resultDiv.style.color = 'var(--alert-red)';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result-status">> SAVING...</div>';
             resultDiv.style.color = 'var(--signal-orange)';
 
             try {
-                const response = await fetch('/student/practice/api/answer', {
+                const response = await fetch('/student/practice/api/save-answer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -486,50 +615,124 @@
                     })
                 });
 
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Expected JSON, got ${contentType}`);
+                }
+
                 const data = await response.json();
 
                 if (data.success) {
-                    const score = data.score || 0;
-                    resultDiv.innerHTML = `> SUBMITTED\nScore: ${score}/10\n${formatResultTable(data.data)}`;
-                    resultDiv.style.color = score >= 8 ? 'var(--success-green)' : 'var(--alert-red)';
+                    resultDiv.innerHTML = '<div class="result-status">> SAVED</div>';
+                    resultDiv.style.color = 'var(--success-green)';
 
-                    // Show next button after submit
-                    document.getElementById('submit-btn').style.display = 'none';
-                    document.getElementById('next-btn').style.display = 'inline-block';
-                    document.getElementById('btn-status').innerText = `Question ${questionIndex + 1}/10 completed`;
+                    // 判断是否是最后一道题
+                    const isLastQuestion = questionIndex >= 9; // 0-9共10题
+
+                    if (isLastQuestion) {
+                        // 最后一题，显示 FINISH ROUND
+                        document.getElementById('save-btn').style.display = 'none';
+                        document.getElementById('next-btn').style.display = 'none';
+                        document.getElementById('finish-btn').style.display = 'inline-block';
+                        document.getElementById('btn-status').innerText = `All questions answered. Click FINISH to submit.`;
+                    } else {
+                        // 不是最后一题，显示 NEXT
+                        document.getElementById('save-btn').style.display = 'none';
+                        document.getElementById('next-btn').style.display = 'inline-block';
+                        document.getElementById('btn-status').innerText = `Question ${questionIndex + 1}/10 saved`;
+                    }
                 } else {
-                    resultDiv.innerHTML = `> SUBMISSION FAILED\n${data.error || 'Unknown error'}`;
+                    resultDiv.innerHTML = `<div class="result-error">> SAVE FAILED\n${data.error || 'Unknown error'}</div>`;
                     resultDiv.style.color = 'var(--alert-red)';
                 }
             } catch (err) {
-                resultDiv.innerHTML = `> REQUEST FAILED\n${err.message}`;
+                resultDiv.innerHTML = `<div class="result-error">> REQUEST FAILED\n${err.message}</div>`;
                 resultDiv.style.color = 'var(--alert-red)';
             }
         }
 
-        // Format result data as table
+        // Finish round and submit all answers for scoring
+        async function finishRound() {
+            const resultDiv = document.getElementById('execution-result');
+            resultDiv.innerHTML = '<div class="result-status">> SUBMITTING ROUND FOR SCORING...</div>';
+            resultDiv.style.color = 'var(--signal-orange)';
+
+            try {
+                const response = await fetch('/student/practice/api/finish-round', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roundId: roundId })
+                });
+
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Expected JSON, got ${contentType}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 跳转到反馈页面
+                    window.location.href = `/student/practice/feedback/${roundId}`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result-error">> SUBMISSION FAILED\n${data.error || 'Unknown error'}</div>`;
+                    resultDiv.style.color = 'var(--alert-red)';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="result-error">> REQUEST FAILED\n${err.message}</div>`;
+                resultDiv.style.color = 'var(--alert-red)';
+            }
+        }
+
+        // Format result data as HTML table
         function formatResultTable(data) {
             if (!data || !Array.isArray(data) || data.length === 0) {
-                return '(No results)';
+                return '<div class="no-results">(No results)</div>';
             }
 
             const headers = Object.keys(data[0]);
-            let table = '| ' + headers.join(' | ') + ' |\n';
-            table += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+            let html = '<div class="result-table-wrapper"><table class="result-table"><thead><tr>';
 
+            // Header row
+            headers.forEach(h => {
+                html += `<th>${escapeHtml(h)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            // Data rows
             data.forEach(row => {
-                table += '| ' + headers.map(h => row[h]).join(' | ') + ' |\n';
+                html += '<tr>';
+                headers.forEach(h => {
+                    const value = row[h] === null ? '<span class="null-value">NULL</span>' : escapeHtml(String(row[h]));
+                    html += `<td>${value}</td>`;
+                });
+                html += '</tr>';
             });
 
-            return table;
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Next question
         function nextQuestion() {
             fetchQuestionReal(questionIndex + 1);
-            document.getElementById('submit-btn').style.display = 'inline-block';
+            document.getElementById('save-btn').style.display = 'inline-block';
             document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('execution-result').innerHTML = '> WAITING FOR INPUT...';
+            document.getElementById('finish-btn').style.display = 'none';
+            document.getElementById('execution-result').innerHTML = '<div class="result-status">> WAITING FOR INPUT...</div>';
             document.getElementById('execution-result').style.color = '#666';
         }
 

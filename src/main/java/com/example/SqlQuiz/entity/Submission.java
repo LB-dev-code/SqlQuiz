@@ -68,10 +68,10 @@ public class Submission {
     private List<QuestionAnswer> questionAnswers;
     
     public enum SubmissionStatus {
-        IN_PROGRESS("进行中"),
-        SUBMITTED("已提交"),
-        AUTO_SUBMITTED("自动提交"),
-        GRADED("已评分");
+        IN_PROGRESS("In Progress"),
+        SUBMITTED("Submitted"),
+        AUTO_SUBMITTED("Auto Submitted"),
+        GRADED("Graded");
         
         private final String displayName;
         

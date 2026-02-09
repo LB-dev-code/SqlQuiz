@@ -350,7 +350,9 @@
 
             <div class="user-profile">
                 <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
-                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
             </div>
         </aside>
 
@@ -539,10 +541,33 @@
             });
         }
 
-        function scoreAllSubmissions() {
+        async function scoreAllSubmissions() {
+            const quizId = /*[[${quiz.id}]]*/ null;
             if (confirm('Initiate batch AI grading for all submissions? This may take time.')) {
-                // Trigger logic would go here
-                alert('Batch processing queued.');
+                try {
+                    const btn = event.target.closest('button');
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+                    const res = await fetch(`/teacher/quiz/${quizId}/score-all`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await res.json();
+
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-microchip"></i> Batch AI Scoring';
+
+                    if (result.success) {
+                        alert(`Batch scoring completed!\nScored: ${result.count}/${result.total}${result.errors > 0 ? `\nFailed: ${result.errors}` : ''}`);
+                        location.reload();
+                    } else {
+                        alert('Batch scoring failed: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (e) {
+                    alert('Network error: ' + e.message);
+                    location.reload();
+                }
             }
         }
     </script>

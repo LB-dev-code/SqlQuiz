@@ -10,6 +10,8 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
         rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.min.css">
 
     <style>
         :root {
@@ -298,6 +300,253 @@
             cursor: pointer;
         }
 
+        /* Flatpickr Custom Styles - Berlin Concrete Glass */
+        .flatpickr-calendar {
+            background: rgba(20, 20, 20, 0.85) !important;
+            backdrop-filter: blur(24px) !important;
+            -webkit-backdrop-filter: blur(24px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 16px !important;
+            font-family: var(--font-tech) !important;
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+            padding: 1rem !important;
+            width: 360px !important;
+            /* Increased width to prevent clipping */
+        }
+
+        .flatpickr-calendar.hasTime .flatpickr-time {
+            height: auto !important;
+            line-height: 1 !important;
+            max-height: none !important;
+            padding-top: 1rem !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            margin-top: 0.5rem !important;
+        }
+
+        .flatpickr-calendar::before,
+        .flatpickr-calendar::after {
+            display: none !important;
+        }
+
+        .flatpickr-months {
+            padding-bottom: 0.5rem !important;
+            align-items: center !important;
+            background: transparent !important;
+            /* Ensure no background block */
+        }
+
+        .flatpickr-month {
+            height: 40px !important;
+            background: transparent !important;
+            overflow: visible !important;
+        }
+
+        .flatpickr-current-month {
+            padding-top: 0 !important;
+            height: auto !important;
+            font-size: 1.1rem !important;
+            background: transparent !important;
+            left: 0 !important;
+            width: 100% !important;
+        }
+
+        .flatpickr-current-month span.cur-month {
+            font-family: var(--font-display) !important;
+            font-weight: 700 !important;
+            color: #fff !important;
+            letter-spacing: -0.02em !important;
+            margin-left: 0 !important;
+        }
+
+        .flatpickr-current-month .numInputWrapper span.arrowUp,
+        .flatpickr-current-month .numInputWrapper span.arrowDown {
+            display: none !important;
+        }
+
+        .flatpickr-current-month input.cur-year {
+            font-family: var(--font-tech) !important;
+            font-weight: 400 !important;
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
+
+        .flatpickr-prev-month,
+        .flatpickr-next-month {
+            top: 5px !important;
+            padding: 10px !important;
+            fill: #fff !important;
+            opacity: 0.6 !important;
+            transition: all 0.2s ease !important;
+            border-radius: 8px !important;
+        }
+
+        .flatpickr-prev-month:hover,
+        .flatpickr-next-month:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            opacity: 1 !important;
+        }
+
+        .flatpickr-weekdays {
+            margin-bottom: 0.5rem !important;
+            height: auto !important;
+            background: transparent !important;
+        }
+
+        span.flatpickr-weekday {
+            color: var(--blueprint-blue) !important;
+            font-weight: 600 !important;
+            font-size: 0.8rem !important;
+            letter-spacing: 0.1em !important;
+            text-transform: uppercase !important;
+            background: transparent !important;
+        }
+
+        .flatpickr-days {
+            width: 100% !important;
+            /* Ensure days container takes full width */
+        }
+
+        .dayContainer {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            justify-content: space-around !important;
+            /* Better distribution */
+        }
+
+        .flatpickr-day {
+            color: rgba(255, 255, 255, 0.8) !important;
+            border-radius: 8px !important;
+            /* Slightly larger radius */
+            border: 1px solid transparent !important;
+            transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1) !important;
+            background: transparent !important;
+            height: 42px !important;
+            /* Increased height */
+            line-height: 42px !important;
+            flex-basis: 14.28% !important;
+            /* Ensure exact 1/7th width */
+            max-width: 42px !important;
+            /* Prevent excessive stretching */
+            width: 42px !important;
+            margin: 2px 0 !important;
+            /* Vertical margin only */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .flatpickr-day:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+            transform: scale(1.1) !important;
+            z-index: 10 !important;
+        }
+
+        .flatpickr-day.highlight-range {
+            background: rgba(255, 60, 0, 0.1) !important;
+            border-color: rgba(255, 60, 0, 0.2) !important;
+        }
+
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange,
+        .flatpickr-day.selected.inRange,
+        .flatpickr-day.startRange.inRange,
+        .flatpickr-day.endRange.inRange,
+        .flatpickr-day.selected.prevMonthDay,
+        .flatpickr-day.startRange.prevMonthDay,
+        .flatpickr-day.endRange.prevMonthDay,
+        .flatpickr-day.selected.nextMonthDay,
+        .flatpickr-day.startRange.nextMonthDay,
+        .flatpickr-day.endRange.nextMonthDay {
+            background: var(--signal-orange) !important;
+            color: #000 !important;
+            border-color: var(--signal-orange) !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 15px rgba(255, 60, 0, 0.5) !important;
+        }
+
+        .flatpickr-day.today {
+            border-color: var(--blueprint-blue) !important;
+            background: rgba(0, 68, 255, 0.1) !important;
+            color: #fff !important;
+        }
+
+        .flatpickr-day.today:hover {
+            background: rgba(0, 68, 255, 0.2) !important;
+            color: #fff !important;
+        }
+
+        .flatpickr-day.nextMonthDay,
+        .flatpickr-day.prevMonthDay {
+            color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        /* Fix overlapping issues */
+        .flatpickr-innerContainer {
+            overflow: visible !important;
+        }
+
+        .flatpickr-time {
+            display: flex !important;
+            align-items: center !important;
+            padding-bottom: 0.5rem !important;
+        }
+
+        .flatpickr-time input {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 4px !important;
+            color: #fff !important;
+            font-family: var(--font-tech) !important;
+            font-weight: 600 !important;
+            transition: all 0.2s !important;
+            height: auto !important;
+            /* Allow auto height */
+            padding: 0.5rem !important;
+        }
+
+        .flatpickr-time input:focus {
+            border-color: var(--signal-orange) !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .flatpickr-time .flatpickr-time-separator {
+            color: rgba(255, 255, 255, 0.4) !important;
+        }
+
+        .flatpickr-time .flatpickr-am-pm {
+            color: rgba(255, 255, 255, 0.6) !important;
+            cursor: pointer !important;
+        }
+
+        .flatpickr-time .flatpickr-am-pm:hover,
+        .flatpickr-time .flatpickr-am-pm:focus {
+            color: #fff !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-radius: 4px !important;
+        }
+
+        .numInputWrapper span {
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .numInputWrapper span:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .numInputWrapper span.arrowUp::after {
+            border-bottom-color: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        .numInputWrapper span.arrowDown::after {
+            border-top-color: rgba(255, 255, 255, 0.6) !important;
+        }
+
         @media (max-width: 1024px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -337,7 +586,9 @@
 
             <div class="user-profile">
                 <span class="user-name" th:text="${teacher.fullName}">Instructor</span>
-                <a href="/logout" class="logout-link">Term. Session [Logout]</a>
+                <a href="/logout"
+                    style="color: #666; text-decoration: none; font-size: 0.8rem; margin-top: 0.5rem; display: block;">›
+                    LOGOUT</a>
             </div>
         </aside>
 
@@ -391,18 +642,21 @@
                             </div>
                             <div class="form-group">
                                 <label>Max Attempts</label>
-                                <input type="number" class="form-control" th:field="*{maxAttempts}" placeholder="3" value="3">
+                                <input type="number" class="form-control" th:field="*{maxAttempts}" placeholder="3"
+                                    value="3">
                             </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                             <div class="form-group">
                                 <label>Activation Date</label>
-                                <input type="datetime-local" class="form-control" th:field="*{startTime}">
+                                <input type="text" class="form-control datetime-picker" th:field="*{startTime}"
+                                    placeholder="Select date and time" readonly>
                             </div>
                             <div class="form-group">
                                 <label>Termination Date</label>
-                                <input type="datetime-local" class="form-control" th:field="*{endTime}">
+                                <input type="text" class="form-control datetime-picker" th:field="*{endTime}"
+                                    placeholder="Select date and time" readonly>
                             </div>
                         </div>
 
@@ -421,6 +675,54 @@
             </div>
         </main>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Flatpickr for all datetime picker inputs
+            flatpickr('.datetime-picker', {
+                enableTime: true,
+                dateFormat: 'Y-m-d H:i',
+                altInput: true,
+                altFormat: 'F j, Y - h:i K',
+                theme: 'dark',
+                locale: {
+                    firstDayOfWeek: 0, // Sunday
+                    weekdays: {
+                        shorthand: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                        longhand: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                    },
+                    months: {
+                        shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                    },
+                    daysInMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+                    ordinal: function (nth) {
+                        const s = nth % 100;
+                        if (s > 3 && s < 21) return 'th';
+                        switch (s % 10) {
+                            case 1: return 'st';
+                            case 2: return 'nd';
+                            case 3: return 'rd';
+                            default: return 'th';
+                        }
+                    },
+                    rangeSeparator: ' to ',
+                    weekAbbreviation: 'Wk',
+                    scrollTitle: 'Scroll to increment',
+                    toggleTitle: 'Click to toggle',
+                    amPM: ['AM', 'PM'],
+                    yearAriaLabel: 'Year',
+                    hourAriaLabel: 'Hour',
+                    minuteAriaLabel: 'Minute',
+                    time_24hr: true
+                },
+                minDate: 'today',
+                hourIncrement: 1,
+                minuteIncrement: 15
+            });
+        });
+    </script>
 </body>
 
 </html>
