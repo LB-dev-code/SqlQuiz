@@ -181,6 +181,13 @@ public class SqlPracticeController {
             data.put("tables", tables);
             System.out.println("[getQuestionDetail] Total table groups returned: " + tables.size());
 
+            // Generate real databaseContext from test_db
+            String realDatabaseContext = null;
+            if (!metadataList.isEmpty()) {
+                realDatabaseContext = sandboxService.generateMarkdownFromTestDB(metadataList.get(0).getTablePrefix());
+            }
+            data.put("realDatabaseContext", realDatabaseContext != null ? realDatabaseContext : question.getDatabaseContext());
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "data", data

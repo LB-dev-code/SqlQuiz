@@ -28,6 +28,7 @@ import com.example.SqlQuiz.entity.PracticeSession;
 import com.example.SqlQuiz.entity.Question;
 import com.example.SqlQuiz.entity.User;
 import com.example.SqlQuiz.service.PracticeService;
+import com.example.SqlQuiz.service.SandboxDatabaseService;
 import com.example.SqlQuiz.service.UserService;
 
 /**
@@ -409,6 +410,9 @@ public class PracticeController {
 
             // Dynamically get real database data to generate databaseContext (ensures frontend display matches actual data)
             String realDatabaseContext = generateRealDatabaseContext(q);
+            System.out.println("[Question Query] realDatabaseContext source: " + 
+                (realDatabaseContext != null && !realDatabaseContext.equals(q.getDatabaseContext()) ? "TEST_DB (real)" : "AI_GENERATED (fallback)"));
+            System.out.println("[Question Query] databaseContext length: " + (realDatabaseContext != null ? realDatabaseContext.length() : 0));
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -730,11 +734,12 @@ public class PracticeController {
             String tablePrefix = answer.getTablePrefix();
             String setupSql = answer.getSetupSql();
 
-            if (setupSql != null && !setupSql.trim().isEmpty()) {
-                // Use setupSql saved with the question to initialize sandbox, ensuring data consistency
-                sandboxService.executeSetupSql(sandbox, setupSql);
+            if (tablePrefix != null && !tablePrefix.isEmpty() && setupSql != null && !setupSql.trim().isEmpty()) {
+                // Clone only this question's specific tables from test_db (not all tables with the prefix)
+                // This ensures sandbox data is identical to what's displayed on the frontend
+                sandboxService.cloneSpecificTablesFromTestDB(sandbox, tablePrefix, setupSql);
             } else if (tablePrefix != null && !tablePrefix.isEmpty()) {
-                // Compatible with old data: if no setupSql, try cloning from testdb
+                // Compatible with old data: if no setupSql, clone all tables with prefix
                 sandboxService.cloneTablesFromTestDB(sandbox, tablePrefix);
             }
 
@@ -786,137 +791,27 @@ public class PracticeController {
     }
 
     /**
-     * Generate real database table display from setupSQL (Markdown format)
-     * Flow: Create temporary sandbox -> Execute setupSQL -> Query data -> Generate Markdown -> Cleanup sandbox
-     * This ensures frontend displayed table data is completely consistent with student's actual SQL execution data
+     * Generate real database table display from mysql_test_db (Markdown format)
+     * Directly queries test database using tablePrefix, no sandbox needed.
+     * This ensures frontend displayed table data is completely consistent with student's actual SQL execution data.
      */
     private String generateRealDatabaseContext(PracticeAnswer answer) {
-        String setupSql = answer.getSetupSql();
         String tablePrefix = answer.getTablePrefix();
+        String setupSql = answer.getSetupSql();
 
-        System.out.println("[generateRealDatabaseContext] ======== Starting real data generation ========");
-        System.out.println("[generateRealDatabaseContext] answerId: " + answer.getId());
-        System.out.println("[generateRealDatabaseContext] tablePrefix: " + tablePrefix);
-        System.out.println("[generateRealDatabaseContext] setupSql is empty: " + (setupSql == null || setupSql.trim().isEmpty()));
-
-        // If no setupSQL, return original databaseContext
-        if (setupSql == null || setupSql.trim().isEmpty()) {
-            System.out.println("[generateRealDatabaseContext] ⚠️ setupSQL is empty, returning original databaseContext");
+        // If no tablePrefix, return original databaseContext
+        if (tablePrefix == null || tablePrefix.trim().isEmpty()) {
             return answer.getDatabaseContext();
         }
 
-        System.out.println("[generateRealDatabaseContext] setupSql first 200 chars: " + setupSql.substring(0, Math.min(200, setupSql.length())));
+        // Query real data from mysql_test_db, filtered by this question's specific tables
+        SandboxDatabaseService sandboxService = practiceService.getSandboxService();
+        String realMarkdown = (setupSql != null && !setupSql.trim().isEmpty())
+                ? sandboxService.generateMarkdownFromTestDB(tablePrefix, setupSql)
+                : sandboxService.generateMarkdownFromTestDB(tablePrefix);
 
-        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
-        try {
-            // 1. Create temporary sandbox
-            com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
-                    practiceService.getSandboxService();
-            sandbox = sandboxService.createAISandbox();
-            System.out.println("[generateRealDatabaseContext] Sandbox created successfully: " + sandbox.getDatabaseName());
-
-            // 2. Execute setupSQL to create tables and data
-            // 预处理：将 INT 升级为 BIGINT，避免AI生成的大数据（如GDP、人口等）溢出
-            String processedSql = setupSql
-                .replaceAll("(?i)\\bINT\\b(?!\\w)", "BIGINT")
-                .replaceAll("(?i)\\bINTEGER\\b", "BIGINT");
-            sandboxService.executeSetupSql(sandbox, processedSql);
-            System.out.println("[generateRealDatabaseContext] setupSQL executed successfully");
-
-            // 3. Query all table data and generate Markdown
-            StringBuilder markdown = new StringBuilder();
-            java.sql.Connection conn = sandbox.getConnection();
-
-            // Get all tables in sandbox
-            java.sql.DatabaseMetaData metaData = conn.getMetaData();
-            java.sql.ResultSet tables = metaData.getTables(sandbox.getDatabaseName(), null, "%", new String[]{"TABLE"});
-
-            int tableCount = 0;
-            while (tables.next()) {
-                String tableName = tables.getString("TABLE_NAME");
-                tableCount++;
-                System.out.println("[generateRealDatabaseContext] Found table: " + tableName);
-
-                // Generate display table name without prefix (quiz_q_123_students -> students)
-                String displayTableName = tableName;
-                if (tablePrefix != null && tableName.startsWith(tablePrefix + "_")) {
-                    displayTableName = tableName.substring(tablePrefix.length() + 1);
-                }
-                System.out.println("[generateRealDatabaseContext] Display table name: " + displayTableName);
-
-                markdown.append(displayTableName).append(" table:\n\n");
-
-                // Query table data
-                try (java.sql.Statement stmt = conn.createStatement();
-                     java.sql.ResultSet rs = stmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
-
-                    java.sql.ResultSetMetaData rsmd = rs.getMetaData();
-                    int columnCount = rsmd.getColumnCount();
-                    System.out.println("[generateRealDatabaseContext] Table " + displayTableName + " column count: " + columnCount);
-
-                    // Generate table header
-                    markdown.append("|");
-                    for (int i = 1; i <= columnCount; i++) {
-                        String colName = rsmd.getColumnName(i);
-                        markdown.append(" ").append(colName).append(" |");
-                        System.out.println("[generateRealDatabaseContext]   Column name: " + colName);
-                    }
-                    markdown.append("\n|");
-                    for (int i = 1; i <= columnCount; i++) {
-                        markdown.append("----|");
-                    }
-                    markdown.append("\n");
-
-                    // Generate data rows
-                    int rowCount = 0;
-                    while (rs.next()) {
-                        markdown.append("|");
-                        for (int i = 1; i <= columnCount; i++) {
-                            Object value = rs.getObject(i);
-                            markdown.append(" ").append(value != null ? value.toString() : "NULL").append(" |");
-                        }
-                        markdown.append("\n");
-                        rowCount++;
-                    }
-                    System.out.println("[generateRealDatabaseContext] Table " + displayTableName + " data rows: " + rowCount);
-                }
-
-                markdown.append("\n");
-            }
-
-            tables.close();
-            System.out.println("[generateRealDatabaseContext] Total tables: " + tableCount);
-
-            String result = markdown.toString().trim();
-            System.out.println("[generateRealDatabaseContext] ✅ Real data generation successful, length: " + result.length());
-            System.out.println("[generateRealDatabaseContext] Generated content first 500 chars: " + result.substring(0, Math.min(500, result.length())));
-
-            if (result.isEmpty()) {
-                System.out.println("[generateRealDatabaseContext] ⚠️ Generation result is empty, returning original databaseContext");
-                return answer.getDatabaseContext();
-            }
-
-            return result;
-
-        } catch (Exception e) {
-            System.err.println("[generateRealDatabaseContext] ❌ Real data generation failed: " + e.getMessage());
-            e.printStackTrace();
-            // Return original databaseContext on failure
-            return answer.getDatabaseContext();
-        } finally {
-            // 4. Cleanup sandbox
-            if (sandbox != null) {
-                try {
-                    com.example.SqlQuiz.service.SandboxDatabaseService sandboxService =
-                            practiceService.getSandboxService();
-                    sandboxService.closeConnection(sandbox);
-                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
-                    System.out.println("[generateRealDatabaseContext] Sandbox cleanup completed");
-                } catch (Exception e) {
-                    // Ignore cleanup errors
-                }
-            }
-        }
+        // Fallback to AI-generated databaseContext if no real data found
+        return realMarkdown != null ? realMarkdown : answer.getDatabaseContext();
     }
 
 }

@@ -570,13 +570,10 @@
             </div>
 
             <div class="action-bar">
-                <a th:href="@{/teacher/quiz/{id}/question/create(id=${quiz.id})}" class="btn btn-primary">
-                    + Add Question Node
-                </a>
-                <a th:href="@{/teacher/question/ai-generate(quizId=${quiz.id})}" class="btn btn-tech">
+                <a th:href="@{/teacher/question/ai-generate(quizId=${quiz.id})}" class="btn btn-primary">
                     <i class="fas fa-robot"></i> AI Generate
                 </a>
-                <a th:href="@{/teacher/question/ai-normalize(quizId=${quiz.id})}" class="btn btn-tech">
+                <a th:href="@{/teacher/question/ai-normalize(quizId=${quiz.id})}" class="btn btn-primary">
                     <i class="fas fa-magic"></i> AI Normalize
                 </a>
                 <div style="flex:1;"></div>

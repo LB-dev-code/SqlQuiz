@@ -821,7 +821,9 @@ public class GLMService {
             Map<Question.QuestionType, Integer> distribution,
             List<String> blacklist) throws JsonProcessingException {
 
-        String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
+        // 不再为整个批次生成共享前缀
+        // 每道题的 setupSql 使用简单表名，executeSetupSql 会为每道题自动生成唯一前缀
+        // 这样避免了同一批次中多道题使用相同表名时的数据覆盖问题
 
         // Build question type distribution description
         StringBuilder distributionDesc = new StringBuilder();
@@ -871,11 +873,11 @@ public class GLMService {
                 "  ...\n" +
                 "]\n\n" +
                 "**Table Naming:**\n" +
-                "- setupSql: Use prefix: `" + tablePrefix + "_`\n" +
-                "- setupSql format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
+                "- setupSql: Use simple, descriptive table names WITHOUT any prefix (e.g., CREATE TABLE employees (...), INSERT INTO employees (...))\n" +
+                "- **CRITICAL**: Each question MUST use UNIQUE table names that are different from all other questions in this batch\n" +
+                "- Do NOT reuse the same table name across different questions (e.g., if question 1 uses 'world', question 2 must NOT use 'world')\n" +
                 "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
-                "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
-                "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "- expectedSql: Use the same simple table names as in setupSql (e.g., SELECT * FROM employees)\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
                 "- **CRITICAL - Distractor Data**: Insert 5-8 sample records per table with:\n" +
                 "  * Records matching the query criteria (correct answers)\n" +
@@ -917,7 +919,7 @@ public class GLMService {
 
         try {
             System.out.println("[generatePracticeQuestionsBatch] ========== Starting AI question generation ==========");
-            System.out.println("[generatePracticeQuestionsBatch] tablePrefix: " + tablePrefix);
+            System.out.println("[generatePracticeQuestionsBatch] No shared prefix (each question gets unique prefix via executeSetupSql)");
             System.out.println("[generatePracticeQuestionsBatch] Question type distribution: " + distribution);
             System.out.println("[generatePracticeQuestionsBatch] Total questions: " + totalQuestions);
             

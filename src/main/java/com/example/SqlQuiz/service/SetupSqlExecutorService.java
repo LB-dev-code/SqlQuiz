@@ -78,15 +78,16 @@ public class SetupSqlExecutorService {
                 .collect(java.util.stream.Collectors.toList());
 
             System.out.println("需要添加前缀的表: " + tablesToPrefix);
-            processedSql = addTablePrefix(setupSql, tablesToPrefix, tablePrefix);
+            // 使用cleanedSql（已做INT→BIGINT和Markdown转义清理），而非原始setupSql
+            processedSql = addTablePrefix(cleanedSql, tablesToPrefix, tablePrefix);
         } else if (!allTableNames.isEmpty()) {
             // 所有表都已有前缀，直接使用完整表名作为前缀（去掉最后的表名部分）
             String fullTableName = allTableNames.get(0);
             tablePrefix = extractPrefixFromTableName(fullTableName);
             System.out.println("检测到已有前缀的表名: " + fullTableName);
             System.out.println("提取的前缀: " + tablePrefix);
-            // SQL不需要修改，直接使用
-            processedSql = setupSql;
+            // 使用cleanedSql（已做INT→BIGINT和Markdown转义清理），而非原始setupSql
+            processedSql = cleanedSql;
         }
 
         System.out.println("处理后的SQL: " + processedSql.substring(0, Math.min(200, processedSql.length())) + "...");
