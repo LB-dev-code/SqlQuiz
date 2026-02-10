@@ -682,6 +682,7 @@ SELECT * FROM ..."></textarea>
             currentQuestionId = qId;
             if (!qId) {
                 document.getElementById('schemaSection').style.display = 'none';
+                document.getElementById('descriptionSection').style.display = 'none';
                 return;
             }
 
@@ -689,29 +690,72 @@ SELECT * FROM ..."></textarea>
             const data = await res.json();
             if (data.success) {
                 const q = data.data;
-                // Show Description
+                // Show Description (content as title + description as detail)
                 document.getElementById('descriptionSection').style.display = 'block';
-                document.getElementById('questionDescription').innerHTML = marked.parse(q.description || q.content);
+                let descHtml = '';
+                if (q.content) {
+                    descHtml += '<div style="font-size:1rem; color:#fff; margin-bottom:0.5rem; font-weight:600;">' + q.content + '</div>';
+                }
+                if (q.description && q.description.trim()) {
+                    descHtml += marked.parse(q.description);
+                }
+                document.getElementById('questionDescription').innerHTML = descHtml || '<span style="color:#666;">No description</span>';
 
                 // Show Schema
                 const list = document.getElementById('schemaList');
                 list.innerHTML = '';
+
+                // Determine the best schema markdown to render
+                const schemaMarkdown = q.databaseContext || null;
+
+                // Render clickable table names (for SQL insertion) if physical tables exist
                 if (q.tables && q.tables.length > 0) {
                     document.getElementById('schemaSection').style.display = 'block';
-                    q.tables.forEach(tInfo => {
-                        tInfo.data.forEach(t => {
-                            const div = document.createElement('div');
-                            div.className = 'table-item';
-                            // Clean table name display
-                            const displayParams = t.tableName.split('_');
-                            const shortName = displayParams[displayParams.length - 1]; // Heuristic
 
-                            div.innerHTML = `<i class="fas fa-table"></i> ${shortName} <span style="opacity:0.5; font-size:0.7rem;">(${t.tableName})</span>`;
-                            div.onclick = () => insertTableName(t.tableName);
-                            list.appendChild(div);
-                        });
+                    q.tables.forEach(tInfo => {
+                        if (tInfo.data && Array.isArray(tInfo.data)) {
+                            tInfo.data.forEach(t => {
+                                if (t && t.tableName) {
+                                    const div = document.createElement('div');
+                                    div.className = 'table-item';
+                                    const parts = t.tableName.split('_');
+                                    let shortName = parts.length > 4
+                                        ? (parts.slice(5).join('_') || parts[parts.length - 1])
+                                        : parts[parts.length - 1];
+                                    div.innerHTML = `<i class="fas fa-table"></i> ${shortName} <span style="opacity:0.5; font-size:0.7rem;">(${t.tableName})</span>`;
+                                    div.onclick = () => insertTableName(t.tableName);
+                                    div.title = `Click to insert table name`;
+                                    list.appendChild(div);
+                                }
+                            });
+                        }
                     });
                 }
+
+                // Always show databaseContext as visual table data (same as student page)
+                if (schemaMarkdown) {
+                    document.getElementById('schemaSection').style.display = 'block';
+                    const dataDiv = document.createElement('div');
+                    dataDiv.style.cssText = 'font-size:0.85rem; color:#aaa; line-height:1.6; margin-top:0.75rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:0.75rem;';
+                    dataDiv.innerHTML = marked.parse(schemaMarkdown);
+                    // Style the markdown tables
+                    dataDiv.querySelectorAll('table').forEach(tbl => {
+                        tbl.style.cssText = 'width:100%; border-collapse:collapse; font-size:0.8rem; margin:0.5rem 0;';
+                        tbl.querySelectorAll('th').forEach(th => {
+                            th.style.cssText = 'text-align:left; padding:0.3rem 0.5rem; background:rgba(255,255,255,0.08); color:#0044ff; border-bottom:1px solid rgba(255,255,255,0.15);';
+                        });
+                        tbl.querySelectorAll('td').forEach(td => {
+                            td.style.cssText = 'padding:0.3rem 0.5rem; border-bottom:1px solid rgba(255,255,255,0.05); color:#ccc;';
+                        });
+                    });
+                    list.appendChild(dataDiv);
+                } else if (!q.tables || q.tables.length === 0) {
+                    document.getElementById('schemaSection').style.display = 'block';
+                    list.innerHTML = '<div style="color:#666; font-size:0.8rem; padding:1rem;">No schema data available</div>';
+                }
+            } else {
+                console.error('Failed to load question:', data.error);
+                document.getElementById('schemaSection').style.display = 'none';
             }
         }
 
