@@ -102,6 +102,70 @@ public class SandboxDatabaseService {
     }
 
     /**
+     * 从 test_db 克隆指定题目的表到沙库（只克隆 setupSql 中涉及的表）
+     * 确保沙库数据与前端展示的 test_db 数据完全一致
+     */
+    public void cloneSpecificTablesFromTestDB(SandboxContext context, String tablePrefix, String setupSql) throws SQLException {
+        // 从 setupSql 中提取具体表名（自动补前缀）
+        List<String> specificTables = extractTableNamesFromSetupSql(setupSql, tablePrefix);
+        log.info("[cloneSpecificTables] Tables from setupSql: {}", specificTables);
+
+        if (specificTables.isEmpty()) {
+            // 无法解析时回退到克隆所有前缀表
+            log.warn("[cloneSpecificTables] Could not extract table names, falling back to prefix clone");
+            cloneTablesFromTestDB(context, tablePrefix);
+            return;
+        }
+
+        log.info("========== 从testdb克隆指定表到沙库 ==========");
+        log.info("沙库: {}", context.getDatabaseName());
+        log.info("需要克隆的表: {}", specificTables);
+
+        try (Connection testConn = testDataSource.getConnection();
+             Statement sandboxStmt = context.getConnection().createStatement()) {
+
+            for (String tableName : specificTables) {
+                log.info("克隆表: {}", tableName);
+
+                try {
+                    // 从testdb获取表结构
+                    String createTableSql = getCreateTableSql(testConn, tableName);
+                    if (createTableSql == null || createTableSql.isEmpty()) {
+                        log.warn("  - 表不存在或无法获取结构，跳过: {}", tableName);
+                        continue;
+                    }
+
+                    // 在沙库中创建表
+                    sandboxStmt.execute(createTableSql);
+                    log.info("  - 表结构创建成功");
+
+                    // 从testdb复制数据到沙库
+                    String insertDataSql = generateInsertFromTestDB(testConn, context, tableName);
+                    if (insertDataSql != null && !insertDataSql.isEmpty()) {
+                        int copiedRows = sandboxStmt.executeUpdate(insertDataSql);
+                        log.info("  - 数据复制成功，复制 {} 行", copiedRows);
+                    } else {
+                        log.info("  - 表无数据，跳过数据复制");
+                    }
+                } catch (SQLException e) {
+                    log.error("  - 克隆表 {} 失败: {}", tableName, e.getMessage());
+                    throw e;
+                }
+            }
+        }
+
+        // 验证沙库中的表
+        log.info("========== 验证沙库克隆表 ==========");
+        try (Statement checkStmt = context.getConnection().createStatement();
+             ResultSet rs = checkStmt.executeQuery("SHOW TABLES")) {
+            while (rs.next()) {
+                log.info("沙库中的表: {}", rs.getString(1));
+            }
+        }
+        log.info("========== 克隆完成 ==========");
+    }
+
+    /**
      * 从testdb克隆表结构和数据到沙库
      * 这是新的推荐方式，确保沙库与testdb完全一致
      * 使用两步法避免权限问题：
@@ -619,6 +683,236 @@ public class SandboxDatabaseService {
         }
 
         return result;
+    }
+
+    /**
+     * 从 mysql_test_db 查询真实表数据，生成 Markdown 格式
+     * 用于前端展示，确保与学生实际执行SQL时看到的数据完全一致
+     * @param tablePrefix 表前缀（如 quiz_q_xxx_timestamp）
+     * @return Markdown 格式的表格数据，查不到返回 null
+     */
+    public String generateMarkdownFromTestDB(String tablePrefix) {
+        if (tablePrefix == null || tablePrefix.trim().isEmpty()) {
+            log.warn("[generateMarkdownFromTestDB] tablePrefix is null or empty");
+            return null;
+        }
+
+        log.info("[generateMarkdownFromTestDB] Querying test_db for prefix: {}", tablePrefix);
+
+        try (Connection conn = testDataSource.getConnection()) {
+            // 转义 LIKE 通配符（_ 和 %），确保精确匹配前缀
+            // MySQL 默认使用 \ 作为 LIKE 转义字符
+            String escapedPrefix = tablePrefix.replace("%", "\\%").replace("_", "\\_");
+            String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                    "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME LIKE ?";
+            List<String> tableNames = new ArrayList<>();
+
+            try (PreparedStatement ps = conn.prepareStatement(query)) {
+                String pattern = escapedPrefix + "\\_%" ;
+                ps.setString(1, pattern);
+                log.info("[generateMarkdownFromTestDB] LIKE pattern: {}", pattern);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        tableNames.add(rs.getString("TABLE_NAME"));
+                    }
+                }
+            }
+
+            log.info("[generateMarkdownFromTestDB] Tables found: {} for prefix: {}", tableNames.size(), tablePrefix);
+            if (!tableNames.isEmpty()) {
+                tableNames.forEach(t -> log.info("[generateMarkdownFromTestDB]   - {}", t));
+            }
+
+            if (tableNames.isEmpty()) {
+                return null;
+            }
+
+            StringBuilder markdown = new StringBuilder();
+            for (String tableName : tableNames) {
+                // 去前缀生成显示名（quiz_q_xxx_timestamp_employees -> employees）
+                String displayName = tableName;
+                if (tableName.startsWith(tablePrefix + "_")) {
+                    displayName = tableName.substring(tablePrefix.length() + 1);
+                }
+
+                markdown.append(displayName).append(" table:\n\n");
+
+                // 查询表数据
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
+
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+
+                    // 表头
+                    markdown.append("|");
+                    for (int i = 1; i <= colCount; i++) {
+                        markdown.append(" ").append(meta.getColumnName(i)).append(" |");
+                    }
+                    markdown.append("\n|");
+                    for (int i = 1; i <= colCount; i++) {
+                        markdown.append("----|");
+                    }
+                    markdown.append("\n");
+
+                    // 数据行
+                    while (rs.next()) {
+                        markdown.append("|");
+                        for (int i = 1; i <= colCount; i++) {
+                            Object val = rs.getObject(i);
+                            markdown.append(" ").append(val != null ? val.toString() : "NULL").append(" |");
+                        }
+                        markdown.append("\n");
+                    }
+                }
+                markdown.append("\n");
+            }
+
+            String result = markdown.toString().trim();
+            log.info("[generateMarkdownFromTestDB] Generated markdown length: {}, prefix: {}", result.length(), tablePrefix);
+            return result.isEmpty() ? null : result;
+
+        } catch (Exception e) {
+            log.error("[generateMarkdownFromTestDB] Failed for prefix {}: {}", tablePrefix, e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 从 mysql_test_db 查询指定表的真实数据，生成 Markdown 格式
+     * 通过解析 setupSql 提取该题目创建的具体表名，只展示这些表
+     * @param tablePrefix 表前缀
+     * @param setupSql 该题目的建表SQL（用于提取具体表名）
+     * @return Markdown 格式的表格数据
+     */
+    public String generateMarkdownFromTestDB(String tablePrefix, String setupSql) {
+        if (tablePrefix == null || tablePrefix.trim().isEmpty()) {
+            log.warn("[generateMarkdownFromTestDB] tablePrefix is null or empty");
+            return null;
+        }
+
+        // 从 setupSql 中提取 CREATE TABLE 的具体表名（自动补前缀）
+        List<String> specificTables = extractTableNamesFromSetupSql(setupSql, tablePrefix);
+        log.info("[generateMarkdownFromTestDB] Specific tables from setupSql: {}", specificTables);
+
+        if (specificTables.isEmpty()) {
+            // 无法解析时回退到按前缀查询
+            return generateMarkdownFromTestDB(tablePrefix);
+        }
+
+        try (Connection conn = testDataSource.getConnection()) {
+            StringBuilder markdown = new StringBuilder();
+
+            for (String tableName : specificTables) {
+                // 验证表存在
+                String checkQuery = "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                        "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME = ?";
+                boolean exists = false;
+                try (PreparedStatement ps = conn.prepareStatement(checkQuery)) {
+                    ps.setString(1, tableName);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        exists = rs.next();
+                    }
+                }
+
+                if (!exists) {
+                    log.warn("[generateMarkdownFromTestDB] Table not found in test_db: {}", tableName);
+                    continue;
+                }
+
+                // 去前缀生成显示名
+                String displayName = tableName;
+                if (tableName.startsWith(tablePrefix + "_")) {
+                    displayName = tableName.substring(tablePrefix.length() + 1);
+                }
+
+                markdown.append(displayName).append(" table:\n\n");
+
+                // 查询表数据
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT * FROM `" + tableName + "`")) {
+
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+
+                    markdown.append("|");
+                    for (int i = 1; i <= colCount; i++) {
+                        markdown.append(" ").append(meta.getColumnName(i)).append(" |");
+                    }
+                    markdown.append("\n|");
+                    for (int i = 1; i <= colCount; i++) {
+                        markdown.append("----|");
+                    }
+                    markdown.append("\n");
+
+                    while (rs.next()) {
+                        markdown.append("|");
+                        for (int i = 1; i <= colCount; i++) {
+                            Object val = rs.getObject(i);
+                            markdown.append(" ").append(val != null ? val.toString() : "NULL").append(" |");
+                        }
+                        markdown.append("\n");
+                    }
+                }
+                markdown.append("\n");
+            }
+
+            String result = markdown.toString().trim();
+            log.info("[generateMarkdownFromTestDB] Generated markdown for {} table(s), length: {}",
+                    specificTables.size(), result.length());
+            return result.isEmpty() ? null : result;
+
+        } catch (Exception e) {
+            log.error("[generateMarkdownFromTestDB] Failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 从 setupSql 中提取 CREATE TABLE 语句的完整表名
+     * 如果提取的表名没有 tablePrefix 前缀，自动补上
+     * 兼容两种情况：
+     * - 新数据：setupSql 使用简单表名（如 world） → 自动补前缀为 quiz_q_123_world
+     * - 旧数据：setupSql 已包含前缀（如 quiz_q_123_world） → 直接使用
+     */
+    private List<String> extractTableNamesFromSetupSql(String setupSql, String tablePrefix) {
+        List<String> rawNames = extractTableNamesFromSetupSql(setupSql);
+        if (tablePrefix == null || tablePrefix.trim().isEmpty()) {
+            return rawNames;
+        }
+
+        List<String> resolvedNames = new ArrayList<>();
+        for (String name : rawNames) {
+            if (name.startsWith(tablePrefix + "_") || name.startsWith(tablePrefix)) {
+                // 已有前缀，直接使用
+                resolvedNames.add(name);
+            } else {
+                // 无前缀，自动补上
+                resolvedNames.add(tablePrefix + "_" + name);
+            }
+        }
+        log.info("[extractTableNamesFromSetupSql] Raw: {} -> Resolved: {}", rawNames, resolvedNames);
+        return resolvedNames;
+    }
+
+    /**
+     * 从 setupSql 中提取 CREATE TABLE 语句的原始表名（不做前缀处理）
+     */
+    private List<String> extractTableNamesFromSetupSql(String setupSql) {
+        List<String> names = new ArrayList<>();
+        if (setupSql == null || setupSql.trim().isEmpty()) return names;
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(?i)CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[`'\"]?([\\w]+)[`'\"]?");
+        java.util.regex.Matcher matcher = pattern.matcher(setupSql);
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            if (!names.contains(name)) {
+                names.add(name);
+            }
+        }
+        return names;
     }
 
     /**

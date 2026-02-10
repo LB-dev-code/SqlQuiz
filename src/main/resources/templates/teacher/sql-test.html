@@ -706,7 +706,7 @@ SELECT * FROM ..."></textarea>
                 list.innerHTML = '';
 
                 // Determine the best schema markdown to render
-                const schemaMarkdown = q.databaseContext || null;
+                const schemaMarkdown = q.realDatabaseContext || q.databaseContext || null;
 
                 // Render clickable table names (for SQL insertion) if physical tables exist
                 if (q.tables && q.tables.length > 0) {

@@ -201,9 +201,13 @@
         }
 
         .q-card {
+            display: none;
             border: 1px solid var(--border-steel);
             background: var(--surface-raw);
             margin-bottom: 2rem;
+        }
+        .q-card.active {
+            display: block;
         }
 
         .q-header {
@@ -406,7 +410,8 @@
             <div class="question-zone" id="questionsContainer">
 
                 <div class="q-card" th:each="question,questionStat : ${questions}" th:data-question-id="${question.id}"
-                    th:id="'question-card-' + ${question.id}">
+                    th:id="'question-card-' + ${question.id}"
+                    th:classappend="${questionStat.first ? 'active' : ''}">
 
                     <div class="q-header">
                         <div>
@@ -436,12 +441,14 @@
                             Description...
                         </div>
 
-                        <!-- SCHEMA -->
-                        <div class="schema-box" th:if="${question.databaseContext}">
-                            <div th:utext="${question.databaseContext}"
-                                style="white-space: pre-wrap; font-family: var(--font-tech); color: #aaa;">
+                        <!-- SCHEMA: prefer real data from test_db, fallback to AI-generated databaseContext -->
+                        <th:block th:with="schemaData=${realDatabaseContextMap.containsKey(question.id) ? realDatabaseContextMap.get(question.id) : question.databaseContext}">
+                            <div class="schema-box" th:if="${schemaData != null}">
+                                <div th:utext="${schemaData}"
+                                    style="white-space: pre-wrap; font-family: var(--font-tech); color: #aaa;">
+                                </div>
                             </div>
-                        </div>
+                        </th:block>
 
                         <!-- EDITOR -->
                         <div class="editor-box">
@@ -452,7 +459,10 @@
 
                     <div class="action-bar">
                         <button class="btn" th:onclick="|clearSQL(${question.id})|">Clear Input</button>
-                        <!-- In a real app, maybe a 'Run/Test' button here if supported -->
+                        <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+                            <button class="btn" th:unless="${questionStat.first}" th:onclick="|navigateQuestion(-1)|">&laquo; Prev</button>
+                            <button class="btn btn-primary" th:unless="${questionStat.last}" th:onclick="|navigateQuestion(1)|">Next &raquo;</button>
+                        </div>
                     </div>
                 </div>
 
@@ -500,20 +510,47 @@
             setInterval(updateTimer, 1000);
         }
 
-        // --- Editor Init ---
-        document.querySelectorAll('.sql-editor').forEach(textarea => {
-            CodeMirror.fromTextArea(textarea, {
-                mode: 'text/x-mysql',
-                theme: 'neo',
-                lineNumbers: true,
-                viewportMargin: Infinity
-            });
-        });
+        // --- Navigation: show one question at a time ---
+        let currentQuestionIndex = 0;
+        const allCards = document.querySelectorAll('.q-card');
+        const allNavNodes = document.querySelectorAll('.nav-node');
 
-        // --- Navigation ---
+        function showQuestion(index) {
+            if (index < 0 || index >= allCards.length) return;
+            // Hide all cards, show target
+            allCards.forEach(c => c.classList.remove('active'));
+            allCards[index].classList.add('active');
+            // Update nav nodes
+            allNavNodes.forEach((n, i) => {
+                n.classList.toggle('active', i === index);
+            });
+            currentQuestionIndex = index;
+            // Refresh CodeMirror (hidden editors lose layout)
+            const card = allCards[index];
+            const cmEl = card.querySelector('.CodeMirror');
+            if (cmEl && cmEl.CodeMirror) {
+                setTimeout(() => cmEl.CodeMirror.refresh(), 10);
+            }
+            // Update progress
+            updateProgress();
+        }
+
         function scrollToQuestion(id) {
-            const el = document.getElementById('question-card-' + id);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const idx = Array.from(allCards).findIndex(c => c.id === 'question-card-' + id);
+            if (idx >= 0) showQuestion(idx);
+        }
+
+        function navigateQuestion(delta) {
+            showQuestion(currentQuestionIndex + delta);
+        }
+
+        function updateProgress() {
+            let answered = 0;
+            editorMap.forEach((cm) => {
+                if (cm.getValue().trim()) answered++;
+            });
+            const pct = allCards.length > 0 ? (answered / allCards.length * 100) : 0;
+            document.getElementById('overallProgress').style.width = pct + '%';
         }
 
         function clearSQL(id) {
@@ -549,6 +586,14 @@
                 }, 1000);
             });
         });
+
+        // Refresh first question's editor (may be mis-sized if initialized while hidden)
+        setTimeout(() => {
+            if (allCards.length > 0) {
+                const firstCm = allCards[0].querySelector('.CodeMirror');
+                if (firstCm && firstCm.CodeMirror) firstCm.CodeMirror.refresh();
+            }
+        }, 50);
 
         // Save single answer
         function saveAnswer(questionId, sql) {

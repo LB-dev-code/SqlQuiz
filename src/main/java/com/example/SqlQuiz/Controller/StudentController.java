@@ -2,6 +2,8 @@ package com.example.SqlQuiz.Controller;
 
 import com.example.SqlQuiz.entity.*;
 import com.example.SqlQuiz.service.QuizService;
+import com.example.SqlQuiz.service.QuizTableMetadataService;
+import com.example.SqlQuiz.service.SandboxDatabaseService;
 import com.example.SqlQuiz.service.SqlValidationService;
 import com.example.SqlQuiz.repository.QuestionAnswerRepository;
 import com.example.SqlQuiz.repository.SubmissionRepository;
@@ -33,6 +35,12 @@ public class StudentController {
 
     @Autowired
     private SubmissionRepository submissionRepository;
+
+    @Autowired
+    private QuizTableMetadataService quizTableMetadataService;
+
+    @Autowired
+    private SandboxDatabaseService sandboxDatabaseService;
 
     // Student dashboard
     @GetMapping("/dashboard")
@@ -190,12 +198,26 @@ public class StudentController {
         // Get student's question answer records
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
 
+        // Generate real databaseContext from test_db for each question
+        Map<Long, String> realDatabaseContextMap = new HashMap<>();
+        for (Question q : questions) {
+            List<QuizTableMetadata> metadataList = quizTableMetadataService.getByQuestionId(q.getId());
+            if (!metadataList.isEmpty()) {
+                String tablePrefix = metadataList.get(0).getTablePrefix();
+                String realMarkdown = sandboxDatabaseService.generateMarkdownFromTestDB(tablePrefix);
+                if (realMarkdown != null) {
+                    realDatabaseContextMap.put(q.getId(), realMarkdown);
+                }
+            }
+        }
+
         // Ensure all necessary properties are not null
         model.addAttribute("submission", submission);
         model.addAttribute("quiz", quiz != null ? quiz : new Quiz());
         model.addAttribute("questions", questions != null ? questions : new ArrayList<>());
         model.addAttribute("questionAnswers", questionAnswers != null ? questionAnswers : new ArrayList<>());
         model.addAttribute("student", student);
+        model.addAttribute("realDatabaseContextMap", realDatabaseContextMap);
 
         // Calculate remaining time (if there's a time limit)
         if (quiz.hasTimeLimit()) {
