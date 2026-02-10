@@ -279,25 +279,36 @@ public class GLMService {
 
 
     public String score_answer(Double score, String description, String expected_answer, String student_answer) throws JsonProcessingException {
+        // *** CRITICAL: Preprocess SQL BEFORE sending to AI to prevent students from misleading with extra text ***
+        String preprocessedExpected = preprocessSql(expected_answer);
+        String preprocessedStudent = preprocessSql(student_answer);
+
+        System.out.println("[AI Score] ========== SQL Preprocessing ==========");
+        System.out.println("[AI Score] Original expected answer: " + expected_answer);
+        System.out.println("[AI Score] Preprocessed expected answer: " + preprocessedExpected);
+        System.out.println("[AI Score] Original student answer: " + student_answer);
+        System.out.println("[AI Score] Preprocessed student answer: " + preprocessedStudent);
+        System.out.println("[AI Score] ========================================");
+
         score_prompt = String.format(
                 "You are a SQL assignment grading system. You must strictly follow the grading process from the 'SQL Assignment AI Grading System Behavior Specification Document'.\n\n" +
                         "**Core Requirement: Grading must be deterministic; identical inputs must produce identical outputs.**\n\n" +
+                        "**IMPORTANT: SQL Preprocessing Already Completed**\n" +
+                        "The student's answer and expected answer have ALREADY been preprocessed to remove:\n" +
+                        "- All SQL comments (-- comments, /* block comments */, # inline comments)\n" +
+                        "- All non-SQL content (explanations, notes, natural language text)\n" +
+                        "You will receive ONLY pure SQL statements. Grade based on the SQL content you receive.\n\n" +
                         "**Input Information:**\n" +
                         "- Full score: %.1f points\n" +
                         "- Question description: %s\n" +
-                        "- Expected answer: %s\n" +
-                        "- Student answer: %s\n\n" +
+                        "- Expected answer (preprocessed): %s\n" +
+                        "- Student answer (preprocessed): %s\n\n" +
                         "**Grading Process (Strictly Follow):**\n" +
-                        "1. **CRITICAL - SQL Preprocessing**: Before any comparison, you MUST:\n" +
-                        "   - Remove ALL SQL comments (-- comments, /* block comments */, # inline comments)\n" +
-                        "   - Remove ALL non-SQL content (explanations, notes, natural language text)\n" +
-                        "   - Extract ONLY the pure SQL statements for grading\n" +
-                        "   - This step is mandatory - do not skip it\n" +
-                        "2. Input preprocessing: Convert to lowercase, trim whitespace, normalize spaces\n" +
-                        "3. Exact match: After normalization, if identical = full score\n" +
-                        "4. Semantic equivalence: Same logic but different syntax = full score\n" +
-                        "5. Partial credit: Calculate token edit distance, use formula Score = M * (1 - D_min/T)\n" +
-                        "6. Empty answer or non-SQL = 0 points\n\n" +
+                        "1. Input preprocessing: Convert to lowercase, trim whitespace, normalize spaces\n" +
+                        "2. Exact match: After normalization, if identical = full score\n" +
+                        "3. Semantic equivalence: Same logic but different syntax = full score\n" +
+                        "4. Partial credit: Calculate token edit distance, use formula Score = M * (1 - D_min/T)\n" +
+                        "5. Empty answer or non-SQL = 0 points\n\n" +
                         "**Output Format (Return JSON only):**\n" +
                         "{\n" +
                         "  \"score\": number(to one decimal place),\n" +
@@ -305,16 +316,19 @@ public class GLMService {
                         "  \"isCorrect\": boolean,\n" +
                         "  \"matchType\": \"EXACT|SEMANTIC|PARTIAL|ZERO\",\n" +
                         "  \"editDistance\": number(token edit distance),\n" +
-                        "  \"feedback\": \"Brief grading explanation in English\"\n" +
+                        "  \"feedback\": \"Brief grading explanation in English\",\n" +
+                        "  \"scoringRule\": \"Detailed explanation of which scoring rule was applied and why this score was given\",\n" +
+                        "  \"editDistanceDetails\": \"Detailed breakdown of the edit distance calculation - what specific tokens needed to be changed to transform student's answer into the correct answer\"\n" +
                         "}",
-                score, description, expected_answer, student_answer, score
+                score, description, preprocessedExpected, preprocessedStudent, score
         );
 
         List<Map<String, String>> messages = List.of(
                 Map.of("role", "system", "content",
                         "You are a SQL grading expert. You must strictly follow all requirements from the 'SQL Assignment AI Grading System Behavior Specification Document' in the knowledge base. " +
                         "Your grading must be based entirely on calculated edit distance and preset formulas, without introducing personal reasoning or feelings. " +
-                        "Identical inputs must produce identical outputs. All feedback must be in English."),
+                        "Identical inputs must produce identical outputs. All feedback must be in English. " +
+                        "**IMPORTANT:** The SQL answers have been preprocessed to remove all comments and non-SQL content. Grade only the pure SQL statements you receive."),
                 Map.of("role", "user", "content", score_prompt)
         );
 
@@ -386,6 +400,21 @@ public class GLMService {
                     if (content != null) {
                         String contentText = content.asText();
                         System.out.println("[AI Score] Extracted score result: " + contentText);
+
+                        // 解析JSON并打印调试信息到控制台
+                        try {
+                            JsonNode resultJson = objectMapper.readTree(contentText);
+                            System.out.println("==================== AI 评分调试信息 ====================");
+                            System.out.println("[AI评分规则] " + (resultJson.has("scoringRule") ? resultJson.get("scoringRule").asText() : "N/A"));
+                            System.out.println("[编辑距离详情] " + (resultJson.has("editDistanceDetails") ? resultJson.get("editDistanceDetails").asText() : "N/A"));
+                            System.out.println("[匹配类型] " + (resultJson.has("matchType") ? resultJson.get("matchType").asText() : "N/A"));
+                            System.out.println("[编辑距离] " + (resultJson.has("editDistance") ? resultJson.get("editDistance").asText() : "N/A"));
+                            System.out.println("[得分] " + (resultJson.has("score") ? resultJson.get("score").asText() : "N/A") + "/" + score);
+                            System.out.println("======================================================");
+                        } catch (Exception parseEx) {
+                            System.err.println("[AI Score] 解析调试信息失败: " + parseEx.getMessage());
+                        }
+
                         return contentText;
                     }
                 }
@@ -1237,5 +1266,50 @@ public class GLMService {
             System.err.println("[Practice AI Score] API call failed: " + e.getMessage());
             throw new RuntimeException("[Practice AI Score] API call failed: " + e.getMessage());
         }
+    }
+
+    /**
+     * SQL preprocessing method - Remove comments and non-SQL content to prevent students
+     * from misleading AI grading with additional text
+     *
+     * Processing steps:
+     * 1. Remove single-line comments (-- comment)
+     * 2. Remove multi-line comments (slash star comment star slash)
+     * 3. Remove inline comments (# comment)
+     * 4. Trim whitespace
+     * 5. If no SQL remains after processing, return original input
+     *
+     * @param sql Original SQL (may contain comments and non-SQL content)
+     * @return Preprocessed pure SQL statement
+     */
+    private String preprocessSql(String sql) {
+        if (sql == null || sql.trim().isEmpty()) {
+            return sql;
+        }
+
+        String processed = sql;
+
+        // 1. Remove multi-line comments /* ... */
+        processed = processed.replaceAll("/\\*.*?\\*/", "");
+
+        // 2. Remove single-line comments -- ... (to end of line)
+        processed = processed.replaceAll("--.*?\\n", "\n");
+
+        // 3. Remove inline comments # ... (to end of line)
+        processed = processed.replaceAll("#.*?\\n", "\n");
+
+        // 4. Remove excessive blank lines
+        processed = processed.replaceAll("\\n\\s*\\n", "\n");
+
+        // 5. Trim leading/trailing whitespace
+        processed = processed.trim();
+
+        // 6. If result is empty or too short, may have over-filtered, return original
+        if (processed.isEmpty() || processed.length() < 3) {
+            System.out.println("[SQL Preprocessing] Content too short after preprocessing, returning original SQL");
+            return sql.trim();
+        }
+
+        return processed;
     }
 }

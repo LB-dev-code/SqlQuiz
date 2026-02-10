@@ -133,7 +133,9 @@ public class SqlPracticeController {
             data.put("id", question.getId());
             data.put("content", question.getContent());
             data.put("description", question.getDescription());
+            data.put("databaseContext", question.getDatabaseContext());
             data.put("expectedSql", question.getExpectedSql());
+            data.put("setupSql", question.getSetupSql());
             data.put("questionType", question.getQuestionType() != null ? question.getQuestionType().getDisplayName() : "Uncategorized");
             data.put("difficultyLevel", question.getDifficultyLevel() != null ? question.getDifficultyLevel().getDisplayName() : "Not set");
             data.put("score", question.getScore());
@@ -142,9 +144,15 @@ public class SqlPracticeController {
             List<QuizTableMetadata> metadataList = tableMetadataService.getByQuestionId(questionId);
             List<Map<String, Object>> tables = new ArrayList<>();
 
+            System.out.println("[getQuestionDetail] Question ID: " + questionId);
+            System.out.println("[getQuestionDetail] Metadata records found: " + metadataList.size());
+
             for (QuizTableMetadata metadata : metadataList) {
                 String tablePrefix = metadata.getTablePrefix();
+                System.out.println("[getQuestionDetail] Processing metadata with prefix: " + tablePrefix);
+
                 List<Map<String, Object>> tableData = getTableDataByPrefix(tablePrefix);
+                System.out.println("[getQuestionDetail] Tables found for prefix " + tablePrefix + ": " + tableData.size());
 
                 Map<String, Object> tableInfo = new HashMap<>();
                 tableInfo.put("prefix", tablePrefix);
@@ -152,13 +160,34 @@ public class SqlPracticeController {
                 tables.add(tableInfo);
             }
 
+            // If no metadata found, try to extract prefix from setupSql
+            if (metadataList.isEmpty() && question.getSetupSql() != null && !question.getSetupSql().trim().isEmpty()) {
+                System.out.println("[getQuestionDetail] No metadata found, trying to extract from setupSql");
+                String tablePrefix = extractTablePrefixFromSetupSql(question.getSetupSql());
+                if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                    System.out.println("[getQuestionDetail] Extracted prefix from setupSql: " + tablePrefix);
+                    List<Map<String, Object>> tableData = getTableDataByPrefix(tablePrefix);
+                    System.out.println("[getQuestionDetail] Tables found: " + tableData.size());
+
+                    if (!tableData.isEmpty()) {
+                        Map<String, Object> tableInfo = new HashMap<>();
+                        tableInfo.put("prefix", tablePrefix);
+                        tableInfo.put("data", tableData);
+                        tables.add(tableInfo);
+                    }
+                }
+            }
+
             data.put("tables", tables);
+            System.out.println("[getQuestionDetail] Total table groups returned: " + tables.size());
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "data", data
             ));
         } catch (Exception e) {
+            System.err.println("[getQuestionDetail] Error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.ok(Map.of(
                 "success", false,
                 "error", e.getMessage()
