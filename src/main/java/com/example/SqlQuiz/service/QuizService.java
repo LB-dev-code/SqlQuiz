@@ -454,7 +454,7 @@ public class QuizService {
      */
     @Transactional
     public void calculateAndSaveTotalScore(Submission submission) {
-        // Re-fetch question answer records to ensure latest scores
+        //
         List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
         submission.setQuestionAnswers(questionAnswers);
 
@@ -484,6 +484,7 @@ public class QuizService {
 
     // Get all submission records for teacher
     public List<Submission> getAllSubmissionsByTeacher(User teacher) {
+        //多级查询
         return submissionRepository.findByQuiz_Teacher(teacher);
     }
 }

@@ -117,61 +117,53 @@ public class TeacherController {
             User teacher = (User) auth.getPrincipal();
             model.addAttribute("teacher", teacher);
             model.addAttribute("quiz", new Quiz());
-
-            // Get KPI data
-            List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
-            int totalQuestions = 0;
-            for (Quiz quiz : quizzes) {
-                totalQuestions += quiz.getQuestions().size();
-            }
-            List<Submission> submissions = quizService.getAllSubmissionsByTeacher(teacher);
-            int totalSubmissions = submissions.size();
-
-            // Calculate average completion rate
-            double avgCompletionRate = 0.0;
-            if (!submissions.isEmpty()) {
-                long completedCount = submissions.stream()
-                    .mapToLong(s -> s.getPercentage() != null && s.getPercentage() >= 100.0 ? 1 : 0)
-                    .sum();
-                avgCompletionRate = (double) completedCount / submissions.size();
-            }
-
-            model.addAttribute("quizzes", quizzes);
-            model.addAttribute("totalSubmissions", totalSubmissions);
-            model.addAttribute("avgCompletionRate", avgCompletionRate);
-
-            System.out.println("Accessing quiz creation page - Teacher: " + teacher.getFullName());
             return "teacher/quiz-create";
         }
 
 
-    // Process quiz creation
-//    @PostMapping("/quiz/create")
-//    public String createQuiz(@RequestParam String title,
-//                             @RequestParam String description,
-//                             @RequestParam Integer timeLimit,
-//                             @RequestParam Integer maxAttempts,
-//                             Authentication auth,
-//                             RedirectAttributes redirectAttributes) {
-//        try {
-//            User teacher = (User) auth.getPrincipal();
-//            Quiz quiz = quizService.createQuiz(title, description, timeLimit, maxAttempts, teacher);
-//            redirectAttributes.addFlashAttribute("message", "Quiz created successfully!");
-//            return "redirect:/teacher/quiz/" + quiz.getId() + "/questions";
-//        } catch (Exception e) {
-//            redirectAttributes.addFlashAttribute("error", "Failed to create quiz: " + e.getMessage());
-//            return "redirect:/teacher/quiz/create";
-//        }
-//    }
     @PostMapping("/quiz/create")
-    public String createQuiz(@RequestParam String title,
-                             @RequestParam String description,
-                             @RequestParam Integer timeLimit,
-                             @RequestParam Integer maxAttempts,
+    public String createQuiz(@RequestParam(required = false) String title,
+                             @RequestParam(required = false) String description,
+                             @RequestParam(required = false) Integer timeLimit,
+                             @RequestParam(required = false) Integer maxAttempts,
                              @RequestParam(required = false) String startTime,
                              @RequestParam(required = false) String endTime,
+                             @RequestParam(required = false) Boolean isActive,
                              Authentication auth,
                              RedirectAttributes redirectAttributes) {
+        // Validate required fields
+        List<String> errors = new ArrayList<>();
+
+        if (title == null || title.trim().isEmpty()) {
+            errors.add("Module Designation (Title) is required");
+        }
+        if (timeLimit == null) {
+            errors.add("Time Limit (Minutes) is required");
+        }
+        if (maxAttempts == null) {
+            errors.add("Max Attempts is required");
+        }
+        if (startTime == null || startTime.trim().isEmpty()) {
+            errors.add("Activation Date is required");
+        }
+        if (endTime == null || endTime.trim().isEmpty()) {
+            errors.add("Termination Date is required");
+        }
+
+        if (!errors.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errors", errors);
+            redirectAttributes.addFlashAttribute("inputData", Map.of(
+                "title", title != null ? title : "",
+                "description", description != null ? description : "",
+                "timeLimit", timeLimit != null ? timeLimit.toString() : "",
+                "maxAttempts", maxAttempts != null ? maxAttempts.toString() : "",
+                "startTime", startTime != null ? startTime : "",
+                "endTime", endTime != null ? endTime : "",
+                "isActive", isActive != null ? isActive : false
+            ));
+            return "redirect:/teacher/quiz/create";
+        }
+
         try {
             User teacher = (User) auth.getPrincipal();
 
@@ -207,7 +199,8 @@ public class TeacherController {
             return "redirect:/teacher/quiz/" + quiz.getId() + "/questions";
         } catch (Exception e) {
             e.printStackTrace();
-            redirectAttributes.addFlashAttribute("error", "Failed to create quiz: " + e.getMessage());
+            errors.add("Failed to create quiz: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errors", errors);
             System.out.println("POST request completed");
             return "redirect:/teacher/quiz/create";
         }
