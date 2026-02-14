@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -360,6 +361,196 @@ public class SetupSqlExecutorService {
             }
         } catch (SQLException e) {
             System.err.println("删除前缀为 " + tablePrefix + " 的表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 从表格数据生成setupSql
+     * @param tables 表格数据列表，每个包含tableName, columns, rows
+     * @param tablePrefix 表格前缀
+     * @return 生成的setupSql字符串
+     */
+    @SuppressWarnings("unchecked")
+    public String generateSetupSqlFromTableData(List<Map<String, Object>> tables, String tablePrefix) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        
+        for (Map<String, Object> table : tables) {
+            String originalTableName = (String) table.get("tableName");
+            List<String> columns = (List<String>) table.get("columns");
+            List<List<Object>> rows = (List<List<Object>>) table.get("rows");
+            
+            // 移除可能存在的旧前缀，获取纯表名
+            String pureTableName = extractPureTableName(originalTableName);
+            String fullTableName = tablePrefix + "_" + pureTableName;
+            
+            // 生成CREATE TABLE语句
+            sqlBuilder.append("CREATE TABLE `").append(fullTableName).append("` (\n");
+            
+            for (int i = 0; i < columns.size(); i++) {
+                String column = columns.get(i);
+                String columnType = inferColumnType(rows, i);
+                sqlBuilder.append("  `").append(column).append("` ").append(columnType);
+                
+                // 第一列作为主键
+                if (i == 0) {
+                    sqlBuilder.append(" PRIMARY KEY AUTO_INCREMENT");
+                }
+                
+                if (i < columns.size() - 1) {
+                    sqlBuilder.append(",\n");
+                } else {
+                    sqlBuilder.append("\n");
+                }
+            }
+            
+            sqlBuilder.append(");\n\n");
+            
+            // 生成INSERT语句
+            if (rows != null && !rows.isEmpty()) {
+                for (List<Object> row : rows) {
+                    sqlBuilder.append("INSERT INTO `").append(fullTableName).append("` (");
+                    
+                    // 列名
+                    for (int i = 0; i < columns.size(); i++) {
+                        sqlBuilder.append("`").append(columns.get(i)).append("`");
+                        if (i < columns.size() - 1) {
+                            sqlBuilder.append(", ");
+                        }
+                    }
+                    
+                    sqlBuilder.append(") VALUES (");
+                    
+                    // 值
+                    for (int i = 0; i < row.size(); i++) {
+                        Object value = row.get(i);
+                        sqlBuilder.append(formatSqlValue(value));
+                        if (i < row.size() - 1) {
+                            sqlBuilder.append(", ");
+                        }
+                    }
+                    
+                    sqlBuilder.append(");\n");
+                }
+                sqlBuilder.append("\n");
+            }
+        }
+        
+        return sqlBuilder.toString();
+    }
+    
+    /**
+     * 提取纯表名（去除前缀）
+     * 输入: quiz_q_f433a642_1770701461518_customers 或 quiz_q_18__quiz_q_f433a642_1770701461518_customers
+     * 输出: customers
+     */
+    private String extractPureTableName(String tableName) {
+        System.out.println("[extractPureTableName] Input: " + tableName);
+        
+        // 如果包含quiz_q_前缀
+        if (tableName.contains("quiz_q_")) {
+            // 找到最后一个quiz_q_xxx_xxx_模式后面的部分
+            // 匹配模式: quiz_q_[a-z0-9]+_[0-9]+_
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "quiz_q_[a-z0-9]+_[0-9]+_(.+)$",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher matcher = pattern.matcher(tableName);
+            
+            if (matcher.find()) {
+                String pureTableName = matcher.group(1);
+                System.out.println("[extractPureTableName] Extracted: " + pureTableName);
+                return pureTableName;
+            }
+            
+            // 备选方案: 取最后一个下划线后的部分
+            int lastUnderscore = tableName.lastIndexOf('_');
+            if (lastUnderscore > 0 && lastUnderscore < tableName.length() - 1) {
+                String pureTableName = tableName.substring(lastUnderscore + 1);
+                System.out.println("[extractPureTableName] Fallback extracted: " + pureTableName);
+                return pureTableName;
+            }
+        }
+        
+        System.out.println("[extractPureTableName] No prefix found, returning as is: " + tableName);
+        return tableName;
+    }
+    
+    /**
+     * 推断列的SQL数据类型
+     */
+    private String inferColumnType(List<List<Object>> rows, int columnIndex) {
+        if (rows == null || rows.isEmpty()) {
+            return "VARCHAR(255)";
+        }
+        
+        boolean allIntegers = true;
+        boolean allDecimals = true;
+        int maxLength = 0;
+        
+        for (List<Object> row : rows) {
+            if (columnIndex >= row.size()) continue;
+            
+            Object value = row.get(columnIndex);
+            if (value == null) continue;
+            
+            String strValue = value.toString();
+            maxLength = Math.max(maxLength, strValue.length());
+            
+            // 检查是否为整数
+            if (allIntegers) {
+                try {
+                    Long.parseLong(strValue);
+                } catch (NumberFormatException e) {
+                    allIntegers = false;
+                }
+            }
+            
+            // 检查是否为小数
+            if (allDecimals && !allIntegers) {
+                try {
+                    Double.parseDouble(strValue);
+                } catch (NumberFormatException e) {
+                    allDecimals = false;
+                }
+            }
+        }
+        
+        if (allIntegers) {
+            return "BIGINT";
+        } else if (allDecimals) {
+            return "DECIMAL(20,2)";
+        } else {
+            // 字符串类型，根据长度决定
+            int length = Math.max(255, maxLength * 2);
+            if (length > 1000) {
+                return "TEXT";
+            }
+            return "VARCHAR(" + length + ")";
+        }
+    }
+    
+    /**
+     * 格式化SQL值（添加引号、转义等）
+     */
+    private String formatSqlValue(Object value) {
+        if (value == null) {
+            return "NULL";
+        }
+        
+        String strValue = value.toString();
+        
+        // 检查是否为数字
+        try {
+            Long.parseLong(strValue);
+            return strValue;
+        } catch (NumberFormatException e1) {
+            try {
+                Double.parseDouble(strValue);
+                return strValue;
+            } catch (NumberFormatException e2) {
+                // 字符串类型，需要添加引号和转义
+                return "'" + strValue.replace("'", "''") + "'";
+            }
         }
     }
 }

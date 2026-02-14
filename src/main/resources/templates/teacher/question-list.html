@@ -386,9 +386,12 @@
         .modal-box {
             background: #0b0b0b;
             border: 1px solid var(--border-steel);
-            width: 600px;
+            width: 700px;
             max-width: 90vw;
+            max-height: 80vh;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
         }
 
         .modal-header {
@@ -407,10 +410,12 @@
         }
 
         .modal-body {
-            padding: 2rem;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1rem;
+            overflow-y: auto;
+            flex: 1;
         }
 
         .form-group label {
@@ -418,7 +423,90 @@
             color: #666;
             font-size: 0.75rem;
             text-transform: uppercase;
+            margin-bottom: 0.3rem;
+        }
+
+        /* Table editing styles */
+        .tables-container {
+            border: 1px solid var(--border-steel);
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .table-section {
+            margin-bottom: 2rem;
+        }
+
+        .table-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .table-title {
+            color: var(--blueprint-blue);
+            font-size: 0.9rem;
+            text-transform: uppercase;
             margin-bottom: 0.5rem;
+            font-family: var(--font-display);
+        }
+
+        .editable-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .editable-table th {
+            background: rgba(255, 255, 255, 0.1);
+            text-align: left;
+            padding: 0.5rem;
+            border: 1px solid var(--border-steel);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .editable-table td {
+            border: 1px solid var(--border-steel);
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            color: #ccc;
+        }
+
+        .editable-table td[contenteditable="true"]:focus {
+            outline: none;
+            background: rgba(0, 68, 255, 0.1);
+            border-color: var(--blueprint-blue);
+        }
+
+        .btn-add-row {
+            background: transparent;
+            border: 1px dashed var(--border-steel);
+            color: #888;
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .btn-add-row:hover {
+            border-color: var(--success-green);
+            color: var(--success-green);
+        }
+
+        .btn-delete-row {
+            background: transparent;
+            border: none;
+            color: var(--alert-red);
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .btn-delete-row:hover {
+            opacity: 0.7;
         }
 
         .form-control {
@@ -438,7 +526,7 @@
         }
 
         textarea.form-control {
-            min-height: 100px;
+            min-height: 60px;
             resize: vertical;
         }
 
@@ -656,6 +744,12 @@
                         <label>Expected SQL (Solution)</label>
                         <textarea class="form-control" id="editExpectedSql" name="expectedSql"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label>Table Data (Edit table content below)</label>
+                        <div class="tables-container" id="tablesContainer">
+                            <div style="color: #666; text-align: center; padding: 2rem;">Loading tables...</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn" onclick="closeEdit()">Cancel</button>
@@ -715,6 +809,7 @@
         function editQuestion(id) {
             document.getElementById('editModal').classList.add('show');
 
+            // Fetch question basic info
             fetch('/teacher/question/' + id + '/edit')
                 .then(r => r.json())
                 .then(data => {
@@ -722,26 +817,246 @@
                     document.getElementById('editDescription').value = data.description || '';
                     document.getElementById('editExpectedSql').value = data.expectedSql || '';
                     document.getElementById('editQuestionForm').action = '/teacher/question/' + id + '/edit';
+                    document.getElementById('editQuestionForm').dataset.questionId = id;
                 })
                 .catch(e => showToast('error', 'Fetch Error'));
+
+            // Fetch table data
+            fetch('/teacher/question/' + id + '/table-data')
+                .then(r => r.json())
+                .then(data => {
+                    console.log('Table data response:', data);
+                    if (data.success && data.tables && data.tables.length > 0) {
+                        renderEditableTables(data.tables);
+                    } else if (data.success && (!data.tables || data.tables.length === 0)) {
+                        document.getElementById('tablesContainer').innerHTML = 
+                            '<div style="color: #ff9800; text-align: center; padding: 2rem;">' +
+                            '<p>No table data found for this question.</p>' +
+                            '<p style="font-size: 0.85rem; margin-top: 0.5rem;">This question may not have table metadata or setupSql.</p>' +
+                            '<p style="font-size: 0.85rem;">You can still edit the question content and SQL.</p>' +
+                            '</div>';
+                    } else {
+                        document.getElementById('tablesContainer').innerHTML = 
+                            '<div style="color: var(--alert-red); text-align: center; padding: 2rem;">' +
+                            '<p>Error: ' + (data.error || 'Unknown error') + '</p>' +
+                            '</div>';
+                    }
+                })
+                .catch(e => {
+                    console.error('Failed to load tables:', e);
+                    document.getElementById('tablesContainer').innerHTML = 
+                        '<div style="color: var(--alert-red); text-align: center; padding: 2rem;">Failed to load table data</div>';
+                });
+        }
+
+        // Render editable tables
+        function renderEditableTables(tables) {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+
+            console.log('renderEditableTables called with:', tables);
+            console.log('Number of tables:', tables ? tables.length : 0);
+
+            if (!tables || tables.length === 0) {
+                container.innerHTML = '<div style="color: #666; text-align: center; padding: 2rem;">No tables to display</div>';
+                return;
+            }
+
+            tables.forEach((table, tableIndex) => {
+                console.log('Rendering table', tableIndex, ':', table);
+                console.log('  - tableName:', table.tableName);
+                console.log('  - columns:', table.columns);
+                console.log('  - rows:', table.rows);
+                console.log('  - row count:', table.rows ? table.rows.length : 0);
+
+                const section = document.createElement('div');
+                section.className = 'table-section';
+                section.dataset.tableIndex = tableIndex;
+
+                // Table title
+                const title = document.createElement('div');
+                title.className = 'table-title';
+                title.textContent = table.tableName || 'Table ' + (tableIndex + 1);
+                section.appendChild(title);
+
+                // Create table element
+                const tableEl = document.createElement('table');
+                tableEl.className = 'editable-table';
+                tableEl.dataset.tableName = table.tableName;
+
+                // Table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                table.columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                });
+                
+                // Add delete column header
+                const thAction = document.createElement('th');
+                thAction.textContent = 'Actions';
+                thAction.style.width = '80px';
+                headerRow.appendChild(thAction);
+                
+                thead.appendChild(headerRow);
+                tableEl.appendChild(thead);
+
+                // Table body
+                const tbody = document.createElement('tbody');
+                
+                if (table.rows && table.rows.length > 0) {
+                    console.log('  - Rendering', table.rows.length, 'data rows');
+                    table.rows.forEach((row, rowIndex) => {
+                        console.log('    Row', rowIndex, ':', row);
+                        const tr = createEditableRow(table.columns, row);
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    console.log('  - No data rows, adding empty row');
+                    // Add one empty row if no data
+                    const tr = createEditableRow(table.columns, []);
+                    tbody.appendChild(tr);
+                }
+                
+                tableEl.appendChild(tbody);
+                section.appendChild(tableEl);
+
+                // Add row button
+                const btnAddRow = document.createElement('button');
+                btnAddRow.type = 'button';
+                btnAddRow.className = 'btn-add-row';
+                btnAddRow.textContent = '+ Add Row';
+                btnAddRow.onclick = function() {
+                    const newRow = createEditableRow(table.columns, []);
+                    tbody.appendChild(newRow);
+                };
+                section.appendChild(btnAddRow);
+
+                container.appendChild(section);
+            });
+        }
+
+        // Create an editable table row
+        function createEditableRow(columns, rowData) {
+            console.log('createEditableRow - columns:', columns, 'rowData:', rowData);
+            const tr = document.createElement('tr');
+            
+            columns.forEach((col, colIndex) => {
+                const td = document.createElement('td');
+                td.contentEditable = 'true';
+                const value = rowData[colIndex] !== undefined && rowData[colIndex] !== null ? rowData[colIndex] : '';
+                td.textContent = value;
+                console.log('  - Cell [' + colIndex + '] (' + col + '):', value);
+                tr.appendChild(td);
+            });
+            
+            // Add delete button
+            const tdAction = document.createElement('td');
+            tdAction.style.textAlign = 'center';
+            const btnDelete = document.createElement('button');
+            btnDelete.type = 'button';
+            btnDelete.className = 'btn-delete-row';
+            btnDelete.textContent = 'Delete';
+            btnDelete.onclick = function() {
+                if (confirm('Delete this row?')) {
+                    tr.remove();
+                }
+            };
+            tdAction.appendChild(btnDelete);
+            tr.appendChild(tdAction);
+            
+            return tr;
         }
 
         function closeEdit() {
             document.getElementById('editModal').classList.remove('show');
         }
 
-        document.getElementById('editQuestionForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            fetch(this.action, { method: 'POST', body: formData })
-                .then(r => {
-                    if (r.ok) {
-                        showToast('success', 'Node Updated');
-                        setTimeout(() => location.reload(), 800);
-                    } else {
-                        showToast('error', 'Update Failed');
+        // Collect table data from DOM
+        function collectTableData() {
+            const tables = [];
+            const tableSections = document.querySelectorAll('.table-section');
+            
+            tableSections.forEach(section => {
+                const tableEl = section.querySelector('.editable-table');
+                const tableName = tableEl.dataset.tableName;
+                const columns = [];
+                const rows = [];
+                
+                // Get columns from header
+                const headers = tableEl.querySelectorAll('thead th');
+                headers.forEach((th, index) => {
+                    // Skip the last "Actions" column
+                    if (index < headers.length - 1) {
+                        columns.push(th.textContent.trim());
                     }
                 });
+                
+                // Get rows from tbody
+                const trs = tableEl.querySelectorAll('tbody tr');
+                trs.forEach(tr => {
+                    const row = [];
+                    const tds = tr.querySelectorAll('td[contenteditable="true"]');
+                    tds.forEach(td => {
+                        const value = td.textContent.trim();
+                        row.push(value);
+                    });
+                    // Only add non-empty rows
+                    if (row.some(val => val !== '')) {
+                        rows.push(row);
+                    }
+                });
+                
+                tables.push({
+                    tableName: tableName,
+                    columns: columns,
+                    rows: rows
+                });
+            });
+            
+            return tables;
+        }
+
+        document.getElementById('editQuestionForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const questionId = this.dataset.questionId;
+            if (!questionId) {
+                showToast('error', 'Question ID not found');
+                return;
+            }
+            
+            // Collect form data
+            const payload = {
+                content: document.getElementById('editContent').value,
+                description: document.getElementById('editDescription').value,
+                expectedSql: document.getElementById('editExpectedSql').value,
+                tables: collectTableData()
+            };
+            
+            // Send to new API endpoint
+            fetch('/teacher/question/' + questionId + '/update-with-tables', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', 'Node & Tables Updated');
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    showToast('error', data.error || 'Update Failed');
+                }
+            })
+            .catch(e => {
+                console.error('Update error:', e);
+                showToast('error', 'Update Failed');
+            });
         });
 
         // Delete Logic

@@ -25,6 +25,9 @@ import java.util.HashMap;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.zip.DeflaterOutputStream;
+import java.sql.Connection;
+import java.sql.Statement;
+import java.sql.ResultSet;
 
 @Controller
 @RequestMapping("/teacher")
@@ -228,7 +231,8 @@ public class TeacherController {
     // Edit question page
     @GetMapping("/question/{questionId}/edit")
     @ResponseBody
-    public Question editQuestionPage(@PathVariable Long questionId, Authentication auth) {
+    public Map<String, Object> editQuestionPage(@PathVariable Long questionId, Authentication auth) {
+        Map<String, Object> result = new HashMap<>();
         User teacher = (User) auth.getPrincipal();
         Optional<Question> questionOpt = quizService.getQuestionById(questionId);
 
@@ -236,10 +240,211 @@ public class TeacherController {
             Question question = questionOpt.get();
             // Check permission: ensure it's the creator of the quiz this question belongs to
             if (question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
-                return question;
+                // Return only necessary fields to avoid circular reference
+                result.put("id", question.getId());
+                result.put("content", question.getContent());
+                result.put("description", question.getDescription());
+                result.put("expectedSql", question.getExpectedSql());
+                result.put("setupSql", question.getSetupSql());
+                result.put("databaseContext", question.getDatabaseContext());
+                result.put("score", question.getScore());
+                result.put("questionType", question.getQuestionType() != null ? question.getQuestionType().name() : null);
+                result.put("difficultyLevel", question.getDifficultyLevel() != null ? question.getDifficultyLevel().name() : null);
+                return result;
             }
         }
+        return result;
+    }
+
+    // Get table data for question
+    @GetMapping("/question/{questionId}/table-data")
+    @ResponseBody
+    public Map<String, Object> getQuestionTableData(@PathVariable Long questionId, Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            User teacher = (User) auth.getPrincipal();
+            Optional<Question> questionOpt = quizService.getQuestionById(questionId);
+
+            if (!questionOpt.isPresent()) {
+                response.put("success", false);
+                response.put("error", "Question does not exist");
+                return response;
+            }
+
+            Question question = questionOpt.get();
+            // Check permission
+            if (!question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
+                response.put("success", false);
+                response.put("error", "No permission");
+                return response;
+            }
+
+            // Get table metadata by questionId
+            List<com.example.SqlQuiz.entity.QuizTableMetadata> metadataList = 
+                tableMetadataService.getByQuestionId(questionId);
+            
+            List<Map<String, Object>> tables = new ArrayList<>();
+            
+            if (!metadataList.isEmpty()) {
+                // If metadata exists, get tables from testdb
+                for (com.example.SqlQuiz.entity.QuizTableMetadata metadata : metadataList) {
+                    String tablePrefix = metadata.getTablePrefix();
+                    List<Map<String, Object>> tableData = getTableDataByPrefix(tablePrefix);
+                    
+                    for (Map<String, Object> table : tableData) {
+                        tables.add(table);
+                    }
+                }
+            } else if (question.getSetupSql() != null && !question.getSetupSql().trim().isEmpty()) {
+                // If no metadata, try to extract table prefix from setupSql
+                System.out.println("[getQuestionTableData] No metadata found, trying to extract from setupSql");
+                String setupSql = question.getSetupSql();
+                String extractedPrefix = extractTablePrefixFromSql(setupSql);
+                
+                if (extractedPrefix != null) {
+                    System.out.println("[getQuestionTableData] Extracted prefix: " + extractedPrefix);
+                    List<Map<String, Object>> tableData = getTableDataByPrefix(extractedPrefix);
+                    tables.addAll(tableData);
+                    
+                    // Create metadata if tables found
+                    if (!tableData.isEmpty()) {
+                        try {
+                            tableMetadataService.createMetadata(extractedPrefix, questionId, teacher.getId());
+                            System.out.println("[getQuestionTableData] Created metadata for prefix: " + extractedPrefix);
+                        } catch (Exception e) {
+                            System.err.println("[getQuestionTableData] Failed to create metadata: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    System.out.println("[getQuestionTableData] Could not extract prefix from setupSql");
+                }
+            }
+
+            response.put("success", true);
+            response.put("tables", tables);
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return response;
+        }
+    }
+
+    // Helper method to get table data by prefix
+    private List<Map<String, Object>> getTableDataByPrefix(String tablePrefix) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try (Connection connection = setupSqlExecutorService.getTestDataSource().getConnection()) {
+            // Query all tables with this prefix
+            String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                         "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE '" + tablePrefix + "%'";
+            
+            try (Statement statement = connection.createStatement();
+                 ResultSet rs = statement.executeQuery(query)) {
+                
+                while (rs.next()) {
+                    String tableName = rs.getString("TABLE_NAME");
+                    Map<String, Object> tableData = getTableData(tableName);
+                    if (tableData != null) {
+                        result.add(tableData);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to get table data by prefix: " + e.getMessage());
+        }
+        return result;
+    }
+
+    // Helper method to extract table prefix from setupSql
+    private String extractTablePrefixFromSql(String setupSql) {
+        try {
+            // Look for CREATE TABLE `quiz_q_xxx...` pattern
+            // Pattern 1: CREATE TABLE `quiz_q_xxxx_timestamp_tablename`
+            java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile(
+                "CREATE\\s+TABLE\\s+`(quiz_q_[a-z0-9]+_[0-9]+)_",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher matcher1 = pattern1.matcher(setupSql);
+            
+            if (matcher1.find()) {
+                String prefix = matcher1.group(1);
+                System.out.println("[extractTablePrefixFromSql] Found prefix (pattern1): " + prefix);
+                return prefix;
+            }
+            
+            // Pattern 2: CREATE TABLE quiz_q_xxx (without backticks)
+            java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile(
+                "CREATE\\s+TABLE\\s+(quiz_q_[a-z0-9]+_[0-9]+)_",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+            );
+            java.util.regex.Matcher matcher2 = pattern2.matcher(setupSql);
+            
+            if (matcher2.find()) {
+                String prefix = matcher2.group(1);
+                System.out.println("[extractTablePrefixFromSql] Found prefix (pattern2): " + prefix);
+                return prefix;
+            }
+            
+            System.out.println("[extractTablePrefixFromSql] No prefix pattern matched in SQL: " + 
+                setupSql.substring(0, Math.min(100, setupSql.length())));
+            
+        } catch (Exception e) {
+            System.err.println("Failed to extract prefix from setupSql: " + e.getMessage());
+            e.printStackTrace();
+        }
         return null;
+    }
+
+    // Helper method to get single table data
+    private Map<String, Object> getTableData(String tableName) {
+        Map<String, Object> tableInfo = new HashMap<>();
+        try (Connection connection = setupSqlExecutorService.getTestDataSource().getConnection()) {
+            String query = "SELECT * FROM " + tableName;
+            System.out.println("[getTableData] Querying table: " + tableName);
+            
+            try (Statement statement = connection.createStatement();
+                 ResultSet rs = statement.executeQuery(query)) {
+                
+                java.sql.ResultSetMetaData metaData = rs.getMetaData();
+                int columnCount = metaData.getColumnCount();
+                System.out.println("[getTableData] Column count: " + columnCount);
+                
+                // Get column names
+                List<String> columns = new ArrayList<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    String colName = metaData.getColumnName(i);
+                    columns.add(colName);
+                    System.out.println("[getTableData] Column " + i + ": " + colName);
+                }
+                tableInfo.put("tableName", tableName);
+                tableInfo.put("columns", columns);
+                
+                // Get data rows
+                List<List<Object>> rows = new ArrayList<>();
+                int rowCount = 0;
+                while (rs.next()) {
+                    List<Object> row = new ArrayList<>();
+                    for (int i = 1; i <= columnCount; i++) {
+                        Object value = rs.getObject(i);
+                        row.add(value);
+                    }
+                    rows.add(row);
+                    rowCount++;
+                }
+                System.out.println("[getTableData] Row count: " + rowCount);
+                tableInfo.put("rows", rows);
+                
+                System.out.println("[getTableData] Successfully loaded table data: " + tableName + 
+                    " with " + columnCount + " columns and " + rowCount + " rows");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to get data for table " + tableName + ": " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+        return tableInfo;
     }
 
     // Process edit question
@@ -281,6 +486,111 @@ public class TeacherController {
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Failed to update question: " + e.getMessage());
             return "redirect:/teacher/quizzes";
+        }
+    }
+
+    // Update question with table data
+    @PostMapping("/question/{questionId}/update-with-tables")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> updateQuestionWithTables(
+            @PathVariable Long questionId,
+            @RequestBody Map<String, Object> payload,
+            Authentication auth) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            User teacher = (User) auth.getPrincipal();
+            Optional<Question> questionOpt = quizService.getQuestionById(questionId);
+
+            if (!questionOpt.isPresent()) {
+                response.put("success", false);
+                response.put("error", "Question does not exist");
+                return response;
+            }
+
+            Question question = questionOpt.get();
+
+            // Check permission
+            if (!question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
+                response.put("success", false);
+                response.put("error", "No permission");
+                return response;
+            }
+
+            // Get basic question info from payload
+            String content = (String) payload.get("content");
+            String description = (String) payload.get("description");
+            String expectedSql = (String) payload.get("expectedSql");
+            
+            // Get tables with proper type casting
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> tables = (List<Map<String, Object>>) payload.get("tables");
+
+            // Get or generate table prefix
+            List<com.example.SqlQuiz.entity.QuizTableMetadata> metadataList = 
+                tableMetadataService.getByQuestionId(questionId);
+            String tablePrefix;
+            
+            if (!metadataList.isEmpty()) {
+                // Use existing prefix
+                tablePrefix = metadataList.get(0).getTablePrefix();
+                // Drop old tables
+                setupSqlExecutorService.dropTablesByQuestionId(questionId);
+            } else {
+                // Generate new prefix
+                tablePrefix = tableMetadataService.generateUniqueTablePrefix();
+            }
+
+            // Generate setupSql from table data
+            String setupSql = "";
+            if (tables != null && !tables.isEmpty()) {
+                setupSql = setupSqlExecutorService.generateSetupSqlFromTableData(tables, tablePrefix);
+                
+                // Execute setupSql to create new tables
+                try {
+                    setupSqlExecutorService.executeSetupSql(setupSql);
+                } catch (Exception e) {
+                    response.put("success", false);
+                    response.put("error", "Failed to create tables: " + e.getMessage());
+                    return response;
+                }
+                
+                // Create or update metadata
+                if (metadataList.isEmpty()) {
+                    tableMetadataService.createMetadata(tablePrefix, questionId, teacher.getId());
+                }
+            }
+
+            // Update question entity
+            question.setContent(content);
+            question.setDescription(description);
+            question.setExpectedSql(expectedSql);
+            if (!setupSql.isEmpty()) {
+                question.setSetupSql(setupSql);
+            }
+            
+            quizService.updateQuestion(
+                questionId, 
+                content, 
+                question.getQuestionType(),
+                description, 
+                question.getDatabaseContext(), 
+                expectedSql,
+                question.getTestData(), 
+                question.getExpectedResult(),
+                question.getScore(), 
+                question.getDifficultyLevel()
+            );
+
+            response.put("success", true);
+            response.put("message", "Question and tables updated successfully");
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", "Failed to update: " + e.getMessage());
+            return response;
         }
     }
 
@@ -371,64 +681,6 @@ public class TeacherController {
         return "teacher/question-list";
     }
 
-    // Generic question creation page
-    @GetMapping("/question-create")
-    public String questionCreate(Model model, Authentication auth) {
-        User teacher = (User) auth.getPrincipal();
-        List<Quiz> quizzes = quizService.findQuizzesByTeacher(teacher);
-        model.addAttribute("quizzes", quizzes);
-        model.addAttribute("questionTypes", Question.QuestionType.values());
-        model.addAttribute("difficultyLevels", Question.DifficultyLevel.values());
-        model.addAttribute("teacher", teacher);
-
-        return "teacher/question-create";
-    }
-
-    // Process generic question creation
-    @PostMapping("/question-create")
-    public String questionCreate(@RequestParam String content,
-                                  @RequestParam(required = false) String questionType,
-                                  @RequestParam(required = false) String description,
-                                  @RequestParam(required = false) String expectedSql,
-                                  @RequestParam Double score,
-                                  @RequestParam(required = false) String difficultyLevel,
-                                  @RequestParam Long quizId,
-                                  Authentication auth,
-                                  RedirectAttributes redirectAttributes) {
-        try {
-            User teacher = (User) auth.getPrincipal();
-            Quiz quiz = quizService.findById(quizId).orElse(null);
-
-            if (quiz == null || !quiz.getTeacher().getId().equals(teacher.getId())) {
-                redirectAttributes.addFlashAttribute("error", "No permission to operate this quiz");
-                return "redirect:/teacher/question-create";
-            }
-
-            // Handle optional enum types
-            Question.QuestionType qType = null;
-            if (questionType != null && !questionType.trim().isEmpty()) {
-                qType = Question.QuestionType.valueOf(questionType);
-            }
-
-            Question.DifficultyLevel difficulty = null;
-            if (difficultyLevel != null && !difficultyLevel.trim().isEmpty()) {
-                difficulty = Question.DifficultyLevel.valueOf(difficultyLevel);
-            }
-
-            // Create question
-            quizService.addQuestionToQuiz(quizId, content, qType, description,
-                    null, expectedSql, null, null, score, difficulty);
-
-            redirectAttributes.addFlashAttribute("message", "Question added successfully!");
-            return "redirect:/teacher/question-list";
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            redirectAttributes.addFlashAttribute("error", "Failed to add question: " + e.getMessage());
-            return "redirect:/teacher/question-create";
-        }
-    }
-
     // Generic statistics page
     @GetMapping("/quiz-statistics")
     public String quizStatistics(Model model, Authentication auth) {
@@ -444,47 +696,47 @@ public class TeacherController {
     }
 
     // Generic submission detail page
-    @GetMapping("/submission-detail")
-    @Transactional(readOnly = true)
-    public String submissionDetail(@RequestParam(required = false) Long submission_id,
-                                   @RequestParam(required = false) Long quiz_id,
-                                   Model model, Authentication auth) {
-        User teacher = (User) auth.getPrincipal();
-
-        if (submission_id != null) {
-            // Show specific submission detail - use preloaded query to avoid lazy loading issues
-            Optional<Submission> submissionOpt = submissionRepository.findByIdWithDetails(submission_id);
-            if (!submissionOpt.isPresent()) {
-                return "redirect:/teacher/quiz-statistics";
-            }
-
-            Submission submission = submissionOpt.get();
-            if (!submission.getQuiz().getTeacher().getId().equals(teacher.getId())) {
-                return "redirect:/teacher/quiz-statistics";
-            }
-
-            List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
-            model.addAttribute("submission", submission);
-            model.addAttribute("questionAnswers", questionAnswers);
-        } else if (quiz_id != null) {
-            // Show all submissions for specific quiz
-            Quiz quiz = quizService.findById(quiz_id).orElse(null);
-            if (quiz == null || !quiz.getTeacher().getId().equals(teacher.getId())) {
-                return "redirect:/teacher/quiz-statistics";
-            }
-
-            List<Submission> submissions = quizService.getQuizSubmissions(quiz_id);
-            model.addAttribute("quiz", quiz);
-            model.addAttribute("submissions", submissions);
-        } else {
-            // Show all submissions
-            List<Submission> allSubmissions = quizService.getAllSubmissionsByTeacher(teacher);
-            model.addAttribute("submissions", allSubmissions);
-        }
-
-        model.addAttribute("teacher", teacher);
-        return "teacher/submission-detail";
-    }
+//    @GetMapping("/submission-detail")
+//    @Transactional(readOnly = true)
+//    public String submissionDetail(@RequestParam(required = false) Long submission_id,
+//                                   @RequestParam(required = false) Long quiz_id,
+//                                   Model model, Authentication auth) {
+//        User teacher = (User) auth.getPrincipal();
+//
+//        if (submission_id != null) {
+//            // Show specific submission detail - use preloaded query to avoid lazy loading issues
+//            Optional<Submission> submissionOpt = submissionRepository.findByIdWithDetails(submission_id);
+//            if (!submissionOpt.isPresent()) {
+//                return "redirect:/teacher/quiz-statistics";
+//            }
+//
+//            Submission submission = submissionOpt.get();
+//            if (!submission.getQuiz().getTeacher().getId().equals(teacher.getId())) {
+//                return "redirect:/teacher/quiz-statistics";
+//            }
+//
+//            List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
+//            model.addAttribute("submission", submission);
+//            model.addAttribute("questionAnswers", questionAnswers);
+//        } else if (quiz_id != null) {
+//            // Show all submissions for specific quiz
+//            Quiz quiz = quizService.findById(quiz_id).orElse(null);
+//            if (quiz == null || !quiz.getTeacher().getId().equals(teacher.getId())) {
+//                return "redirect:/teacher/quiz-statistics";
+//            }
+//
+//            List<Submission> submissions = quizService.getQuizSubmissions(quiz_id);
+//            model.addAttribute("quiz", quiz);
+//            model.addAttribute("submissions", submissions);
+//        } else {
+//            // Show all submissions
+//            List<Submission> allSubmissions = quizService.getAllSubmissionsByTeacher(teacher);
+//            model.addAttribute("submissions", allSubmissions);
+//        }
+//
+//        model.addAttribute("teacher", teacher);
+//        return "teacher/submission-detail";
+//    }
 
     // SQL test page
     @GetMapping("/sql-test")
