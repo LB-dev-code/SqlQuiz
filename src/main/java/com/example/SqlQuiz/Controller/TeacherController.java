@@ -695,48 +695,7 @@ public class TeacherController {
         return "teacher/quiz-statistics";
     }
 
-    // Generic submission detail page
-//    @GetMapping("/submission-detail")
-//    @Transactional(readOnly = true)
-//    public String submissionDetail(@RequestParam(required = false) Long submission_id,
-//                                   @RequestParam(required = false) Long quiz_id,
-//                                   Model model, Authentication auth) {
-//        User teacher = (User) auth.getPrincipal();
-//
-//        if (submission_id != null) {
-//            // Show specific submission detail - use preloaded query to avoid lazy loading issues
-//            Optional<Submission> submissionOpt = submissionRepository.findByIdWithDetails(submission_id);
-//            if (!submissionOpt.isPresent()) {
-//                return "redirect:/teacher/quiz-statistics";
-//            }
-//
-//            Submission submission = submissionOpt.get();
-//            if (!submission.getQuiz().getTeacher().getId().equals(teacher.getId())) {
-//                return "redirect:/teacher/quiz-statistics";
-//            }
-//
-//            List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
-//            model.addAttribute("submission", submission);
-//            model.addAttribute("questionAnswers", questionAnswers);
-//        } else if (quiz_id != null) {
-//            // Show all submissions for specific quiz
-//            Quiz quiz = quizService.findById(quiz_id).orElse(null);
-//            if (quiz == null || !quiz.getTeacher().getId().equals(teacher.getId())) {
-//                return "redirect:/teacher/quiz-statistics";
-//            }
-//
-//            List<Submission> submissions = quizService.getQuizSubmissions(quiz_id);
-//            model.addAttribute("quiz", quiz);
-//            model.addAttribute("submissions", submissions);
-//        } else {
-//            // Show all submissions
-//            List<Submission> allSubmissions = quizService.getAllSubmissionsByTeacher(teacher);
-//            model.addAttribute("submissions", allSubmissions);
-//        }
-//
-//        model.addAttribute("teacher", teacher);
-//        return "teacher/submission-detail";
-//    }
+
 
     // SQL test page
     @GetMapping("/sql-test")
@@ -764,6 +723,9 @@ public class TeacherController {
         try {
             // Create teacher test-specific sandbox
             sandbox = sandboxService.createTeacherTestSandbox(teacher.getId());
+
+            // Clone entire testdb to sandbox (so teacher can test queries against existing tables)
+            sandboxService.cloneEntireTestDB(sandbox);
 
             // Execute SQL in sandbox
             com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
