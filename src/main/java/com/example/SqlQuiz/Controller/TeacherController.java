@@ -539,6 +539,7 @@ public class TeacherController {
             } else {
                 // Generate new prefix
                 tablePrefix = tableMetadataService.generateUniqueTablePrefix();
+                System.out.println("test prefix:"+tablePrefix);
             }
 
             // Generate setupSql from table data
@@ -666,19 +667,6 @@ public class TeacherController {
         model.addAttribute("teacher", teacher);
 
         return "teacher/quiz-statistics";
-    }
-
-    // Generic question list page
-    @GetMapping("/question-list")
-    public String questionList(Model model, Authentication auth) {
-        User teacher = (User) auth.getPrincipal();
-        List<Question> questions = quizService.getAllQuestionsByTeacher(teacher);
-        model.addAttribute("questions", questions);
-        model.addAttribute("questionTypes", Question.QuestionType.values());
-        model.addAttribute("difficultyLevels", Question.DifficultyLevel.values());
-        model.addAttribute("teacher", teacher);
-
-        return "teacher/question-list";
     }
 
     // Generic statistics page
