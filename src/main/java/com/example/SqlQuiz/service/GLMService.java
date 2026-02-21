@@ -563,7 +563,7 @@ public class GLMService {
 
     public String generateQuestionWithRAG(String questionType, String difficulty) throws JsonProcessingException {
         String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
-        
+        // 题目类型映射
         String typeMapping = "{\n" +
                 "  \"SINGLE_TABLE\": \"Single table query\",\n" +
                 "  \"GROUP_AGGREGATE\": \"Group by and aggregate functions\",\n" +
@@ -573,6 +573,7 @@ public class GLMService {
                 "  \"UPDATE_DELETE\": \"UPDATE and DELETE operations\"\n" +
                 "}";
 
+        // 构建RAG Prompt
         String ragPrompt = "You are a MySQL quiz question generation expert with access to a knowledge base of SQL problems.\n" +
                 "\n" +
                 "Knowledge Base ID: " + KNOWLEDGE_BASE_ID + "\n" +
@@ -633,43 +634,147 @@ public class GLMService {
                 "  * **IMPORTANT**: Every column should have meaningful data in every row - avoid empty NULL values\n" +
                 "\n" +
                 "Return valid JSON only, no extra text.";
-        
+
         List<Map<String, String>> messages = List.of(
                 Map.of("role", "user", "content", ragPrompt)
         );
-        
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", messages,
-                "max_tokens", 4000,
-                "temperature", 0.7
-        );
-        
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("messages", messages);
+        body.put("max_tokens", 4000);
+        body.put("temperature", 0.7);
+
+        // 添加RAG知识库支持
+        Map<String, Object> tools = new HashMap<>();
+        tools.put("type", "retrieval");
+        tools.put("retrieval", Map.of("knowledge_id", KNOWLEDGE_BASE_ID));
+        body.put("tools", List.of(tools));
+
         String result = "";
         try {
+            // ========== RAG调试信息开始 ==========
+            System.out.println("==================== RAG题目生成调试信息 ====================");
+            System.out.println("[RAG Config] 知识库ID: " + KNOWLEDGE_BASE_ID);
+            System.out.println("[RAG Config] 题目类型: " + questionType);
+            System.out.println("[RAG Config] 难度级别: " + difficulty);
+            System.out.println("[RAG Config] 表前缀: " + tablePrefix);
+            System.out.println("[RAG Request] 使用RAG检索工具: true");
+            System.out.println("============================================================");
+
             result = restClient.post()
                     .uri("/api/paas/v4/chat/completions")
                     .body(body)
                     .retrieve()
                     .body(String.class);
-                    
+
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(result);
-            
+
+            // 打印RAG检索相关信息
+            System.out.println("==================== RAG响应分析 ====================");
+            System.out.println("[RAG Response] 完整响应长度: " + result.length() + " 字符");
+            System.out.println("[RAG Response] 响应预览: " + result.substring(0, Math.min(500, result.length())));
+
+            // 检查智谱 RAG 检索结果格式：data 数组
+            if (jsonNode.has("data")) {
+                JsonNode dataArray = jsonNode.get("data");
+                System.out.println("==================== RAG检索结果 ====================");
+                System.out.println("[RAG Data] 检索到 " + dataArray.size() + " 个文档切片");
+
+                if (dataArray.isArray()) {
+                    for (int i = 0; i < dataArray.size() && i < 5; i++) {  // 最多显示5个
+                        JsonNode item = dataArray.get(i);
+                        System.out.println("\n--- 切片 " + (i + 1) + " ---");
+
+                        // 切片内容
+                        if (item.has("text")) {
+                            String text = item.get("text").asText();
+                            System.out.println("[Content] " + (text.length() > 200 ? text.substring(0, 200) + "..." : text));
+                        }
+
+                        // 相似度分数
+                        if (item.has("score")) {
+                            System.out.println("[Score] 相似度: " + item.get("score").asDouble());
+                        }
+
+                        // 元数据
+                        if (item.has("metadata")) {
+                            JsonNode metadata = item.get("metadata");
+                            System.out.println("[Metadata]");
+                            if (metadata.has("doc_name")) {
+                                System.out.println("  文档: " + metadata.get("doc_name").asText());
+                            }
+                            if (metadata.has("knowledge_id")) {
+                                System.out.println("  知识库ID: " + metadata.get("knowledge_id").asText());
+                            }
+                            if (metadata.has("doc_id")) {
+                                System.out.println("  文档ID: " + metadata.get("doc_id").asText());
+                            }
+                            if (metadata.has("contextual_text") && !metadata.get("contextual_text").isNull()) {
+                                String ctxText = metadata.get("contextual_text").asText();
+                                System.out.println("  上下文增强: " + (ctxText.length() > 100 ? ctxText.substring(0, 100) + "..." : ctxText));
+                            }
+                        }
+                    }
+                }
+                System.out.println("=====================================================");
+            } else {
+                System.out.println("[RAG] 响应中没有 data 字段（检索结果可能在后台处理）");
+            }
+
+            // 检查其他可能的检索信息字段
+            if (jsonNode.has("retrieval_info")) {
+                JsonNode retrievalInfo = jsonNode.get("retrieval_info");
+                System.out.println("[RAG Retrieved] 检索信息: " + retrievalInfo.toPrettyString());
+            }
+            if (jsonNode.has("context")) {
+                JsonNode context = jsonNode.get("context");
+                System.out.println("[RAG Context] 上下文: " + context.toPrettyString());
+            }
+
+            // 检查choices中的检索相关信息
+            JsonNode choices = jsonNode.get("choices");
+            if (choices != null && choices.isArray() && choices.size() > 0) {
+                JsonNode message = choices.get(0).get("message");
+                if (message != null) {
+                    // 检查tool_calls（可能包含检索结果）
+                    if (message.has("tool_calls")) {
+                        JsonNode toolCalls = message.get("tool_calls");
+                        System.out.println("[RAG Tool Calls] 工具调用: " + toolCalls.toPrettyString());
+                    }
+                    // 检查context字段
+                    if (message.has("context")) {
+                        JsonNode context = message.get("context");
+                        System.out.println("[RAG Message Context] 消息上下文: " + context.toPrettyString());
+                    }
+                    // 检查retrieval_info字段
+                    if (message.has("retrieval_info")) {
+                        JsonNode retrievalInfo = message.get("retrieval_info");
+                        System.out.println("[RAG Retrieved Info] 检索到的信息: " + retrievalInfo.toPrettyString());
+                    }
+                    // 检查role字段（可能有retrieval角色）
+                    if (message.has("role")) {
+                        System.out.println("[RAG Message Role] 消息角色: " + message.get("role").asText());
+                    }
+                }
+            }
+            System.out.println("=====================================================");
+
             JsonNode error = jsonNode.get("error");
             if (error != null) {
                 String errorMessage = error.get("message") != null ? error.get("message").asText() : error.asText();
                 throw new RuntimeException("GLM API returned error: " + errorMessage);
             }
-            
-            JsonNode choices = jsonNode.get("choices");
+
             if (choices != null && choices.isArray() && choices.size() > 0) {
                 JsonNode message = choices.get(0).get("message");
                 if (message != null) {
                     JsonNode content = message.get("content");
                     if (content != null) {
                         String contentText = content.asText();
-                        
+
+                        // 清理JSON
                         String cleanResponse = contentText.trim();
                         if (cleanResponse.startsWith("```json")) {
                             cleanResponse = cleanResponse.substring(7);
@@ -680,21 +785,22 @@ public class GLMService {
                         if (cleanResponse.endsWith("```")) {
                             cleanResponse = cleanResponse.substring(0, cleanResponse.length() - 3);
                         }
-                        
+
                         JsonNode responseJson = objectMapper.readTree(cleanResponse.trim());
-                        
+
                         String responseWithPrefix = objectMapper.writeValueAsString(responseJson);
-                        
+
                         return responseWithPrefix;
                     }
                 }
             }
-            
+
             return result;
-            
+
         } catch (Exception e) {
-            System.err.println("Question generation with RAG failed: " + e.getMessage());
-            throw new RuntimeException("Question generation with RAG failed: " + e.getMessage());
+            System.err.println("[RAG Error] RAG题目生成失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("RAG题目生成失败: " + e.getMessage());
         }
     }
 
