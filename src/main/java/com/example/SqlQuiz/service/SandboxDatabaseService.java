@@ -1,3 +1,4 @@
+
 package com.example.SqlQuiz.service;
 
 import com.example.SqlQuiz.entity.SandboxContext;
@@ -708,9 +709,11 @@ public class SandboxDatabaseService {
             List<String> tableNames = new ArrayList<>();
 
             try (PreparedStatement ps = conn.prepareStatement(query)) {
-                String pattern = escapedPrefix + "\\_%" ;
+                // 使用前缀_作为匹配模式，确保只匹配该前缀的表
+                String pattern = escapedPrefix + "\\_%";
                 ps.setString(1, pattern);
                 log.info("[generateMarkdownFromTestDB] LIKE pattern: {}", pattern);
+                log.info("[generateMarkdownFromTestDB] Escaped prefix: {}", escapedPrefix);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         tableNames.add(rs.getString("TABLE_NAME"));
