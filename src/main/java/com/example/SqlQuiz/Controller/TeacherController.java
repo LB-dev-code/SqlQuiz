@@ -562,24 +562,18 @@ public class TeacherController {
                 }
             }
 
-            // Update question entity
-            question.setContent(content);
-            question.setDescription(description);
-            question.setExpectedSql(expectedSql);
-            if (!setupSql.isEmpty()) {
-                question.setSetupSql(setupSql);
-            }
-            
+            // Update question entity with new setupSql
             quizService.updateQuestion(
-                questionId, 
-                content, 
+                questionId,
+                content,
                 question.getQuestionType(),
-                description, 
-                question.getDatabaseContext(), 
+                description,
+                question.getDatabaseContext(),
                 expectedSql,
-                question.getTestData(), 
+                setupSql.isEmpty() ? null : setupSql,
+                question.getTestData(),
                 question.getExpectedResult(),
-                question.getScore(), 
+                question.getScore(),
                 question.getDifficultyLevel()
             );
 

@@ -157,6 +157,15 @@ public class QuizService {
                                    String description, String databaseContext, String expectedSql,
                                    String testData, String expectedResult, Double score,
                                    Question.DifficultyLevel difficultyLevel) {
+        return updateQuestion(questionId, content, questionType, description, databaseContext,
+                expectedSql, null, testData, expectedResult, score, difficultyLevel);
+    }
+
+    // Update question (including setupSql)
+    public Question updateQuestion(Long questionId, String content, Question.QuestionType questionType,
+                                   String description, String databaseContext, String expectedSql,
+                                   String setupSql, String testData, String expectedResult, Double score,
+                                   Question.DifficultyLevel difficultyLevel) {
         Optional<Question> questionOpt = questionRepository.findById(questionId);
         if (questionOpt.isPresent()) {
             Question question = questionOpt.get();
@@ -165,6 +174,9 @@ public class QuizService {
             question.setDescription(description);
             question.setDatabaseContext(databaseContext);
             question.setExpectedSql(expectedSql);
+            if (setupSql != null) {
+                question.setSetupSql(setupSql);
+            }
             question.setTestData(testData);
             question.setExpectedResult(expectedResult);
             question.setScore(score);

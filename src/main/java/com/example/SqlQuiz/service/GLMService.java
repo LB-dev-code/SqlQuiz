@@ -572,7 +572,7 @@ public class GLMService {
                 "  \"COMPREHENSIVE\": \"Comprehensive complex queries\",\n" +
                 "  \"UPDATE_DELETE\": \"UPDATE and DELETE operations\"\n" +
                 "}";
-        
+
         String ragPrompt = "You are a MySQL quiz question generation expert with access to a knowledge base of SQL problems.\n" +
                 "\n" +
                 "Knowledge Base ID: " + KNOWLEDGE_BASE_ID + "\n" +
@@ -592,11 +592,12 @@ public class GLMService {
                 "  \"description\": \"Detailed question description\",\n" +
                 "  \"databaseContext\": \"Table structure with SAMPLE DATA in Markdown table format\",\n" +
                 "  \"setupSql\": \"CREATE TABLE and INSERT statements\",\n" +
-                "  \"expectedSql\": \"Correct answer SQL\",\n" +
+                "  \"expectedSql\": \"Correct SQL answer\",\n" +
                 "  \"answer\": \"Detailed solution explanation in Markdown\",\n" +
                 "  \"questionType\": \"" + questionType + "\",\n" +
-                "  \"difficulty\": \"" + difficulty + "\"\n" +
-                "}\n" +
+                "Difficulty: " + difficulty + "\n"
+                + "Please strictly refer to the difficulty level definitions in the knowledge base to ensure the generated question matches the expected complexity for " + difficulty + " level questions.\n"
+                + "\n" +
                 "\n" +
                 "**CRITICAL - databaseContext Format:**\n" +
                 "The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
