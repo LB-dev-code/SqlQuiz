@@ -485,6 +485,32 @@
         // --- Timer Logic ---
         let timeRemaining = /*[[${timeRemaining ge 0 ? timeRemaining * 60 : -1}]]*/ 3600;
 
+        // Issue 4: endTime auto-submit with popup
+        /*[[${quizEndTime}]]*/
+        const quizEndTimeTimestamp = /*[[${quizEndTime != null ? #temporals.format(quizEndTime, 'yyyy-MM-dd HH:mm:ss') : ''}]]*/ null;
+        let quizEndTime = null;
+        let endTimeReached = false;
+
+        if (quizEndTimeTimestamp) {
+            // Parse the endTime (format: "yyyy-MM-dd HH:mm:ss")
+            const parts = quizEndTimeTimestamp.split(/[- :]/);
+            // parts: [yyyy, MM, dd, HH, mm, ss]
+            quizEndTime = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
+        }
+
+        function checkEndTime() {
+            if (quizEndTime && !endTimeReached) {
+                const now = new Date();
+                if (now >= quizEndTime) {
+                    endTimeReached = true;
+                    // Show English popup message
+                    alert('TIME LIMIT EXCEEDED: The quiz end time has been reached. Your answers will be automatically submitted.');
+                    // Auto submit
+                    submitQuiz();
+                }
+            }
+        }
+
         function updateTimer() {
             if (timeRemaining < 0) return;
 
@@ -504,10 +530,16 @@
                 submitQuiz();
             }
             timeRemaining--;
+
+            // Also check endTime (Issue 4)
+            checkEndTime();
         }
 
         if (timeRemaining >= 0) {
             setInterval(updateTimer, 1000);
+        } else if (quizEndTime) {
+            // If no timeLimit but has endTime, check every second
+            setInterval(checkEndTime, 1000);
         }
 
         // --- Navigation: show one question at a time ---

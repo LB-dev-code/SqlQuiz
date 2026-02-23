@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,8 +48,8 @@ public class StudentController {
     public String dashboard(Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
 
-        // Get available quizzes
-        List<Quiz> availableQuizzes = quizService.findOpenQuizzes();
+        // Get all active quizzes (show all, regardless of time constraints)
+        List<Quiz> availableQuizzes = quizService.findActiveQuizzes();
 
         // Get student's quiz records
         List<Submission> allSubmissions = quizService.getStudentSubmissions(student);
@@ -96,7 +97,8 @@ public class StudentController {
     @GetMapping("/quizzes")
     public String quizList(Model model, Authentication auth) {
         User student = (User) auth.getPrincipal();
-        List<Quiz> availableQuizzes = quizService.findOpenQuizzes();
+        // Get all active quizzes (show all, regardless of time constraints)
+        List<Quiz> availableQuizzes = quizService.findActiveQuizzes();
 
         // Get student's quiz records
         List<Submission> submissions = quizService.getStudentSubmissions(student);
@@ -133,7 +135,7 @@ public class StudentController {
 
     // Quiz detail
     @GetMapping("/quiz/{id}")
-    public String quizDetail(@PathVariable Long id, Model model, Authentication auth) {
+    public String quizDetail(@PathVariable Long id, Model model, Authentication auth, RedirectAttributes redirectAttributes) {
         User student = (User) auth.getPrincipal();
         Quiz quiz = quizService.findById(id).orElse(null);
 
@@ -141,7 +143,25 @@ public class StudentController {
             return "redirect:/student/quizzes";
         }
 
-        boolean canTake = quizService.canStudentTakeQuiz(id, student);
+        LocalDateTime now = LocalDateTime.now();
+
+        // Check time constraints and provide English error messages
+        if (quiz.getStartTime() != null && now.isBefore(quiz.getStartTime())) {
+            redirectAttributes.addFlashAttribute("error", "This quiz is not yet available. Available starting from: " + quiz.getStartTime());
+            model.addAttribute("quiz", quiz);
+            model.addAttribute("canTake", false);
+            return "student/quiz-detail";
+        }
+
+        if (quiz.getEndTime() != null && now.isAfter(quiz.getEndTime())) {
+            redirectAttributes.addFlashAttribute("error", "This quiz has ended. The end time was: " + quiz.getEndTime());
+            model.addAttribute("quiz", quiz);
+            model.addAttribute("canTake", false);
+            return "student/quiz-detail";
+        }
+
+        // Check if student can take (attempt limit, in-progress submission, etc.)
+        boolean canTake = quizService.canStudentTakeQuizIgnoreTime(id, student);
         model.addAttribute("quiz", quiz);
         model.addAttribute("canTake", canTake);
 
@@ -154,8 +174,28 @@ public class StudentController {
         try {
             User student = (User) auth.getPrincipal();
 
-            if (!quizService.canStudentTakeQuiz(id, student)) {
-                redirectAttributes.addFlashAttribute("error", "Cannot take this quiz");
+            Quiz quiz = quizService.findById(id).orElse(null);
+            if (quiz == null) {
+                redirectAttributes.addFlashAttribute("error", "Quiz not found");
+                return "redirect:/student/quizzes";
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Check time constraints with English error messages
+            if (quiz.getStartTime() != null && now.isBefore(quiz.getStartTime())) {
+                redirectAttributes.addFlashAttribute("error", "This quiz is not yet available. Available starting from: " + quiz.getStartTime());
+                return "redirect:/student/quiz/" + id;
+            }
+
+            if (quiz.getEndTime() != null && now.isAfter(quiz.getEndTime())) {
+                redirectAttributes.addFlashAttribute("error", "This quiz has ended. The end time was: " + quiz.getEndTime());
+                return "redirect:/student/quiz/" + id;
+            }
+
+            // Check other constraints (attempt limit, etc.)
+            if (!quizService.canStudentTakeQuizIgnoreTime(id, student)) {
+                redirectAttributes.addFlashAttribute("error", "Cannot take this quiz. Maximum attempts reached or quiz is inactive.");
                 return "redirect:/student/quiz/" + id;
             }
 
@@ -170,7 +210,7 @@ public class StudentController {
 
     // Take quiz page
     @GetMapping("/submission/{id}")
-    public String takeQuiz(@PathVariable Long id, Model model, Authentication auth) {
+    public String takeQuiz(@PathVariable Long id, Model model, Authentication auth, RedirectAttributes redirectAttributes) {
         User student = (User) auth.getPrincipal();
 
         // Get submission record
@@ -191,8 +231,33 @@ public class StudentController {
             return "redirect:/student/submission/" + id + "/result";
         }
 
-        // Get quiz and question information
+        // Get quiz and check time constraints
         Quiz quiz = submission.getQuiz();
+        LocalDateTime now = LocalDateTime.now();
+
+        System.out.println("[takeQuiz] Checking time constraints for submission " + id);
+        System.out.println("[takeQuiz] Current time: " + now);
+        System.out.println("[takeQuiz] Quiz startTime: " + quiz.getStartTime());
+        System.out.println("[takeQuiz] Quiz endTime: " + quiz.getEndTime());
+
+        // Check if quiz has started (Issue 1: cannot enter before start time)
+        if (quiz.getStartTime() != null && now.isBefore(quiz.getStartTime())) {
+            System.out.println("[takeQuiz] BLOCKED: Quiz has not started yet");
+            redirectAttributes.addFlashAttribute("error", "This quiz is not yet available. It will start at: " + quiz.getStartTime());
+            return "redirect:/student/quiz/" + quiz.getId();
+        }
+
+
+        // Check if quiz has ended (Issue 3: cannot enter after end time)
+        if (quiz.getEndTime() != null && now.isAfter(quiz.getEndTime())) {
+            System.out.println("[takeQuiz] BLOCKED: Quiz has already ended");
+            redirectAttributes.addFlashAttribute("error", "This quiz has ended. The end time was: " + quiz.getEndTime());
+            return "redirect:/student/quiz/" + quiz.getId();
+        }
+
+        System.out.println("[takeQuiz] Time check passed, allowing access");
+
+        // Get question information
         List<Question> questions = quizService.getQuestionsByQuiz(quiz.getId());
 
         // Get student's question answer records
@@ -218,6 +283,11 @@ public class StudentController {
         model.addAttribute("questionAnswers", questionAnswers != null ? questionAnswers : new ArrayList<>());
         model.addAttribute("student", student);
         model.addAttribute("realDatabaseContextMap", realDatabaseContextMap);
+
+        // Pass quiz endTime to frontend (Issue 4: auto-submit when endTime is reached)
+        if (quiz.getEndTime() != null) {
+            model.addAttribute("quizEndTime", quiz.getEndTime());
+        }
 
         // Calculate remaining time (if there's a time limit)
         if (quiz.hasTimeLimit()) {

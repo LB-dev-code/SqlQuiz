@@ -88,9 +88,9 @@ public class Quiz {
     // 业务方法
     public boolean isOpen() {
         LocalDateTime now = LocalDateTime.now();
-        return isActive && 
-               (startTime == null || now.isAfter(startTime)) && 
-               (endTime == null || now.isBefore(endTime));
+        return isActive &&
+               (startTime == null || !now.isBefore(startTime)) &&   // !isBefore = >= 包含边界
+               (endTime == null || !now.isAfter(endTime));          // !isAfter = <= 包含边界
     }
     
     public boolean hasTimeLimit() {
