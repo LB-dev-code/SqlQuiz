@@ -336,8 +336,8 @@ public class QuizService {
         }
     }
 
-    // Check if student can take quiz
-    public boolean canStudentTakeQuiz(Long quizId, User student) {
+    // Check if student can take quiz (ignoring time constraints)
+    public boolean canStudentTakeQuizIgnoreTime(Long quizId, User student) {
         Optional<Quiz> quizOpt = quizRepository.findById(quizId);
         if (!quizOpt.isPresent()) {
             return false;
@@ -345,8 +345,8 @@ public class QuizService {
 
         Quiz quiz = quizOpt.get();
 
-        // Check if quiz is open
-        if (!quiz.isOpen()) {
+        // Check if quiz is active
+        if (!quiz.getIsActive()) {
             return false;
         }
 
@@ -360,6 +360,44 @@ public class QuizService {
         // Check attempt limit
         long attemptCount = submissionRepository.countByStudentAndQuiz(student, quiz);
         return attemptCount < quiz.getMaxAttempts();
+    }
+
+    // Check if student can take quiz
+    public boolean canStudentTakeQuiz(Long quizId, User student) {
+        Optional<Quiz> quizOpt = quizRepository.findById(quizId);
+        if (!quizOpt.isPresent()) {
+            System.out.println("[canStudentTakeQuiz] Quiz not found: " + quizId);
+            return false;
+        }
+
+        Quiz quiz = quizOpt.get();
+        LocalDateTime now = LocalDateTime.now();
+
+        System.out.println("[canStudentTakeQuiz] Checking quiz " + quizId + " for student " + student.getUsername());
+        System.out.println("[canStudentTakeQuiz] Current time: " + now);
+        System.out.println("[canStudentTakeQuiz] Quiz startTime: " + quiz.getStartTime());
+        System.out.println("[canStudentTakeQuiz] Quiz endTime: " + quiz.getEndTime());
+        System.out.println("[canStudentTakeQuiz] Quiz isOpen: " + quiz.isOpen());
+
+        // Check if quiz is open (time constraints must always be checked)
+        if (!quiz.isOpen()) {
+            System.out.println("[canStudentTakeQuiz] BLOCKED: Quiz is not open");
+            return false;
+        }
+
+        // Check if there's an in-progress submission
+        Optional<Submission> inProgressSubmission = submissionRepository
+                .findByStudentAndQuizAndStatus(student, quiz, Submission.SubmissionStatus.IN_PROGRESS);
+        if (inProgressSubmission.isPresent()) {
+            System.out.println("[canStudentTakeQuiz] Found IN_PROGRESS submission: " + inProgressSubmission.get().getId());
+            return true; // Can continue in-progress quiz (only if quiz is still open, checked above)
+        }
+
+        // Check attempt limit
+        long attemptCount = submissionRepository.countByStudentAndQuiz(student, quiz);
+        boolean canTake = attemptCount < quiz.getMaxAttempts();
+        System.out.println("[canStudentTakeQuiz] Attempt count: " + attemptCount + ", max attempts: " + quiz.getMaxAttempts() + ", can take: " + canTake);
+        return canTake;
     }
 
     // Get quiz statistics

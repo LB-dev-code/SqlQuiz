@@ -696,7 +696,7 @@
             // Initialize Flatpickr for all datetime picker inputs
             flatpickr('.datetime-picker', {
                 enableTime: true,
-                dateFormat: 'Y-m-d H:i',
+                dateFormat: 'Y-m-d\\TH:i',  // ISO format: "2026-02-23T12:46" for Java LocalDateTime.parse()
                 altInput: true,
                 altFormat: 'F j, Y - h:i K',
                 theme: 'dark',

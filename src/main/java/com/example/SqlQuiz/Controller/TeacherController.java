@@ -168,8 +168,6 @@ public class TeacherController {
         }
 
         try {
-            User teacher = (User) auth.getPrincipal();
-
             // Parse start time and end time
             LocalDateTime startDateTime = null;
             LocalDateTime endDateTime = null;
@@ -192,7 +190,41 @@ public class TeacherController {
                 }
             }
 
+            // Issue 2: Validate start time must be in the future
+            LocalDateTime now = LocalDateTime.now();
+            if (startDateTime != null && startDateTime.isBefore(now)) {
+                errors.add("Activation Date (Start Time) cannot be in the past");
+                redirectAttributes.addFlashAttribute("errors", errors);
+                redirectAttributes.addFlashAttribute("inputData", Map.of(
+                    "title", title != null ? title : "",
+                    "description", description != null ? description : "",
+                    "timeLimit", timeLimit != null ? timeLimit.toString() : "",
+                    "maxAttempts", maxAttempts != null ? maxAttempts.toString() : "",
+                    "startTime", startTime != null ? startTime : "",
+                    "endTime", endTime != null ? endTime : "",
+                    "isActive", isActive != null ? isActive : false
+                ));
+                return "redirect:/teacher/quiz/create";
+            }
+
+            // Validate end time is after start time
+            if (startDateTime != null && endDateTime != null && endDateTime.isBefore(startDateTime)) {
+                errors.add("Termination Date (End Time) must be after Activation Date (Start Time)");
+                redirectAttributes.addFlashAttribute("errors", errors);
+                redirectAttributes.addFlashAttribute("inputData", Map.of(
+                    "title", title != null ? title : "",
+                    "description", description != null ? description : "",
+                    "timeLimit", timeLimit != null ? timeLimit.toString() : "",
+                    "maxAttempts", maxAttempts != null ? maxAttempts.toString() : "",
+                    "startTime", startTime != null ? startTime : "",
+                    "endTime", endTime != null ? endTime : "",
+                    "isActive", isActive != null ? isActive : false
+                ));
+                return "redirect:/teacher/quiz/create";
+            }
+
             // Create quiz
+            User teacher = (User) auth.getPrincipal();
             Quiz quiz = quizService.createQuiz(title, description, timeLimit, maxAttempts, teacher);
 
             // Update quiz start time and end time
