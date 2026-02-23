@@ -424,6 +424,12 @@
                 <a href="/teacher/question/ai-normalize" class="btn btn-tech">
                     <i class="fas fa-magic"></i> AI Norm.
                 </a>
+                <button id="selectAllBtn" class="btn" style="color: var(--blueprint-blue);">
+                    <i class="fas fa-check-square"></i> Select All
+                </button>
+                <button id="batchDeleteBtn" class="btn" style="color: var(--alert-red);">
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
             </div>
 
             <div th:if="${message}"
@@ -442,6 +448,9 @@
                 </div>
 
                 <div class="quiz-card" th:each="quiz : ${quizzes}">
+                    <div style="position: absolute; top: 1rem; right: 1rem;">
+                        <input type="checkbox" class="quiz-checkbox" th:value="${quiz.id}" style="width: 18px; height: 18px; cursor: pointer;">
+                    </div>
                     <div class="q-header">
                         <div class="q-title" th:text="${quiz.title}">Advanced SQL Join</div>
                         <div>
@@ -469,6 +478,8 @@
                         <a th:href="@{/teacher/quiz/{id}/statistics(id=${quiz.id})}" class="q-btn-sm">Analytics</a>
                         <a href="#" class="q-btn-sm" style="color: var(--alert-red); border-color: #333;"
                             th:onclick="|if(confirm('Toggle Status?')) window.location.href='/teacher/quiz/${quiz.id}/toggle-status'|">Toggle</a>
+                        <a href="#" class="q-btn-sm" style="color: var(--alert-red); border-color: var(--border-steel);"
+                            th:onclick="|if(confirm('Delete this quiz? All questions and related tables will be removed. This action cannot be undone.')) window.location.href='/teacher/quiz/${quiz.id}/delete'|">Delete</a>
                     </div>
                 </div>
 
@@ -476,6 +487,49 @@
 
         </main>
     </div>
+
+    <script>
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        const checkboxes = document.querySelectorAll('.quiz-checkbox');
+        let allSelected = false;
+
+        // Select All / Deselect All
+        selectAllBtn.addEventListener('click', function() {
+            allSelected = !allSelected;
+            checkboxes.forEach(cb => cb.checked = allSelected);
+            selectAllBtn.innerHTML = allSelected
+                ? '<i class="fas fa-square"></i> Deselect All'
+                : '<i class="fas fa-check-square"></i> Select All';
+        });
+
+        // Batch Delete
+        batchDeleteBtn.addEventListener('click', function() {
+            const selectedIds = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one quiz to delete.');
+                return;
+            }
+
+            if (confirm(`Delete ${selectedIds.length} quiz(es)? All questions and related tables will be removed. This action cannot be undone.`)) {
+                // Delete each selected quiz
+                let deletedCount = 0;
+                selectedIds.forEach(id => {
+                    fetch('/teacher/quiz/' + id + '/delete', { method: 'GET' })
+                        .then(() => {
+                            deletedCount++;
+                            if (deletedCount === selectedIds.length) {
+                                window.location.reload();
+                            }
+                        })
+                        .catch(err => console.error('Delete failed:', err));
+                });
+            }
+        });
+    </script>
 
 </body>
 

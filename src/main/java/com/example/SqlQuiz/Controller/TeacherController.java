@@ -1068,4 +1068,33 @@ public class TeacherController {
             return "redirect:/teacher/quizzes";
         }
     }
+
+    // Delete Quiz (including questions and their tables in testdb)
+    @GetMapping("/quiz/{id}/delete")
+    public String deleteQuiz(@PathVariable Long id, Authentication auth, RedirectAttributes redirectAttributes) {
+        try {
+            User teacher = (User) auth.getPrincipal();
+            Quiz quiz = quizService.findById(id).orElse(null);
+
+            if (quiz == null) {
+                redirectAttributes.addFlashAttribute("error", "Quiz does not exist");
+                return "redirect:/teacher/quizzes";
+            }
+
+            // Check permission
+            if (!quiz.getTeacher().getId().equals(teacher.getId())) {
+                redirectAttributes.addFlashAttribute("error", "No permission to delete this quiz");
+                return "redirect:/teacher/quizzes";
+            }
+
+            quizService.deleteQuiz(id);
+            redirectAttributes.addFlashAttribute("message", "Quiz deleted successfully");
+            return "redirect:/teacher/quizzes";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("error", "Failed to delete quiz: " + e.getMessage());
+            return "redirect:/teacher/quizzes";
+        }
+    }
 }
