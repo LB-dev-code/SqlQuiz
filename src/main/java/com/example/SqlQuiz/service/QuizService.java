@@ -30,7 +30,13 @@ public class QuizService {
     private QuestionAnswerRepository questionAnswerRepository;
 
     @Autowired
-    private  GLMService glmService;
+    private GLMService glmService;
+
+    @Autowired
+    private SetupSqlExecutorService setupSqlExecutorService;
+
+    @Autowired
+    private QuizTableMetadataRepository quizTableMetadataRepository;
     // Create quiz
     public Quiz createQuiz(String title, String description, Integer timeLimit,
                            Integer maxAttempts, User teacher) throws JsonProcessingException {
@@ -102,13 +108,30 @@ public class QuizService {
         }
     }
 
-    // Delete quiz
+    // Delete quiz (including questions and their tables in testdb)
+    @Transactional
     public void deleteQuiz(Long quizId) {
-        if (quizRepository.existsById(quizId)) {
-            quizRepository.deleteById(quizId);
-        } else {
+        Optional<Quiz> quizOpt = quizRepository.findById(quizId);
+        if (!quizOpt.isPresent()) {
             throw new RuntimeException("Quiz does not exist");
         }
+
+        Quiz quiz = quizOpt.get();
+        List<Question> questions = quiz.getQuestions();
+
+        // Delete tables in testdb for each question
+        if (questions != null) {
+            for (Question question : questions) {
+                try {
+                    setupSqlExecutorService.dropTablesByQuestionId(question.getId());
+                } catch (Exception e) {
+                    System.err.println("Failed to drop tables for question " + question.getId() + ": " + e.getMessage());
+                }
+            }
+        }
+
+        // Delete quiz (JPA cascade will delete questions, submissions, and question answers)
+        quizRepository.delete(quiz);
     }
 
     // Add question to quiz
