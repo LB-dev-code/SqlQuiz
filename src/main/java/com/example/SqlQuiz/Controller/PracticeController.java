@@ -129,22 +129,7 @@ public class PracticeController {
         return "student/practice-feedback";
     }
 
-    /**
-     * Practice history page
-     */
-    @GetMapping("/history")
-    public String practiceHistory(Model model, Authentication auth) {
-        String username = auth.getName();
-        User student = userService.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        List<PracticeSession> history = practiceService.getPracticeHistory(student);
-
-        model.addAttribute("student", student);
-        model.addAttribute("history", history);
-
-        return "student/practice-history";
-    }
 
     // ==================== REST API ====================
 
