@@ -317,7 +317,7 @@ public class StudentController {
         }
     }
 
-  
+
     // Submit quiz
     @PostMapping("/submission/{id}/submit")
     @ResponseBody
@@ -382,16 +382,6 @@ public class StudentController {
         return "student/my-submissions";
     }
 
-    // SQL practice page (for student practice)
-    @GetMapping("/sql-practice")
-    public String sqlPractice() {
-        return "student/sql-practice";
-    }
 
-    // Execute practice SQL
-    @PostMapping("/sql-practice")
-    @ResponseBody
-    public SqlValidationService.SqlExecutionResult practiceSQL(@RequestParam String sql) {
-        return sqlValidationService.executeSQL(sql);
-    }
+
 }
