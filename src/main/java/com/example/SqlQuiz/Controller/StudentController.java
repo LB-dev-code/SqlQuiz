@@ -317,45 +317,7 @@ public class StudentController {
         }
     }
 
-    // Review answers page
-    @GetMapping("/submission/{id}/review")
-    public String reviewAnswers(@PathVariable Long id, Model model, Authentication auth) {
-        User student = (User) auth.getPrincipal();
-
-        // Get submission record
-        Optional<Submission> submissionOpt = submissionRepository.findById(id);
-        if (!submissionOpt.isPresent()) {
-            return "redirect:/student/quizzes";
-        }
-
-        Submission submission = submissionOpt.get();
-
-        // Verify permission
-        if (!submission.getStudent().getId().equals(student.getId())) {
-            return "redirect:/student/quizzes";
-        }
-
-        // Check submission status
-        if (!submission.isInProgress()) {
-            return "redirect:/student/submission/" + id + "/result";
-        }
-
-        // Get question answer records
-        List<QuestionAnswer> questionAnswers = questionAnswerRepository.findBySubmission(submission);
-
-        // Count answered questions
-        long answeredCount = questionAnswers.stream()
-            .filter(qa -> qa.getStudentSql() != null && !qa.getStudentSql().trim().isEmpty())
-            .count();
-
-        model.addAttribute("submission", submission);
-        model.addAttribute("questionAnswers", questionAnswers);
-        model.addAttribute("answeredCount", answeredCount);
-        model.addAttribute("student", student);
-
-        return "student/quiz-review";
-    }
-
+  
     // Submit quiz
     @PostMapping("/submission/{id}/submit")
     @ResponseBody
