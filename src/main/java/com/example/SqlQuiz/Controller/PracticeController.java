@@ -131,65 +131,62 @@ public class PracticeController {
 
 
 
-    // ==================== REST API ====================
+ // ==================== REST API ====================
 
-    /**
-     * Get error statistics and recommended question types
-     */
-    @GetMapping("/api/statistics")
-    @ResponseBody
-    public ResponseEntity<?> getStatistics(Authentication auth) {
-        try {
-            String username = auth.getName();
-            User student = userService.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("Student not found"));
-
-            List<ErrorTypeStatistics> statistics = practiceService.getErrorStatistics(student);
-
-            // Build response data
-            List<Map<String, Object>> statisticsData = new ArrayList<>();
-            List<String> masteredTypes = new ArrayList<>();
-            List<String> recommendedTypes = new ArrayList<>();
-
-            for (ErrorTypeStatistics stat : statistics) {
-                Map<String, Object> statData = new HashMap<>();
-                statData.put("questionType", stat.getQuestionType().name());
-                statData.put("questionTypeDisplay", stat.getQuestionType().getDisplayName());
-                statData.put("totalCount", stat.getTotalCount());
-                statData.put("correctCount", stat.getCorrectCount());
-                statData.put("errorCount", stat.getErrorCount());
-                statData.put("accuracy", stat.getAccuracy());
-                statData.put("isMastered", stat.getIsMastered());
-                statData.put("errorFrequency", stat.getErrorFrequency());
-
-                statisticsData.add(statData);
-
-                // Record mastered question types
-                if (stat.getIsMastered()) {
-                    masteredTypes.add(stat.getQuestionType().getDisplayName());
-                }
-
-                // Recommend high error rate and not mastered question types
-                if (!stat.getIsMastered() && stat.getErrorFrequency() >= 0.3) {
-                    recommendedTypes.add(stat.getQuestionType().getDisplayName());
-                }
-            }
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("statistics", statisticsData);
-            response.put("masteredTypes", masteredTypes);
-            response.put("recommendedTypes", recommendedTypes);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "error", "Failed to get statistics: " + e.getMessage()
-            ));
-        }
-    }
+//    @GetMapping("/api/statistics")
+//    @ResponseBody
+//    public ResponseEntity<?> getStatistics(Authentication auth) {
+//        try {
+//            String username = auth.getName();
+//            User student = userService.findByUsername(username)
+//                    .orElseThrow(() -> new RuntimeException("Student not found"));
+//
+//            List<ErrorTypeStatistics> statistics = practiceService.getErrorStatistics(student);
+//
+//            // Build response data
+//            List<Map<String, Object>> statisticsData = new ArrayList<>();
+//            List<String> masteredTypes = new ArrayList<>();
+//            List<String> recommendedTypes = new ArrayList<>();
+//
+//            for (ErrorTypeStatistics stat : statistics) {
+//                Map<String, Object> statData = new HashMap<>();
+//                statData.put("questionType", stat.getQuestionType().name());
+//                statData.put("questionTypeDisplay", stat.getQuestionType().getDisplayName());
+//                statData.put("totalCount", stat.getTotalCount());
+//                statData.put("correctCount", stat.getCorrectCount());
+//                statData.put("errorCount", stat.getErrorCount());
+//                statData.put("accuracy", stat.getAccuracy());
+//                statData.put("isMastered", stat.getIsMastered());
+//                statData.put("errorFrequency", stat.getErrorFrequency());
+//
+//                statisticsData.add(statData);
+//
+//                // Record mastered question types
+//                if (stat.getIsMastered()) {
+//                    masteredTypes.add(stat.getQuestionType().getDisplayName());
+//                }
+//
+//                // Recommend high error rate and not mastered question types
+//                if (!stat.getIsMastered() && stat.getErrorFrequency() >= 0.3) {
+//                    recommendedTypes.add(stat.getQuestionType().getDisplayName());
+//                }
+//            }
+//
+//            Map<String, Object> response = new HashMap<>();
+//            response.put("success", true);
+//            response.put("statistics", statisticsData);
+//            response.put("masteredTypes", masteredTypes);
+//            response.put("recommendedTypes", recommendedTypes);
+//
+//            return ResponseEntity.ok(response);
+//
+//        } catch (Exception e) {
+//            return ResponseEntity.status(500).body(Map.of(
+//                    "success", false,
+//                    "error", "Failed to get statistics: " + e.getMessage()
+//            ));
+//        }
+//    }
 
     /**
      * Start practice session (supports multi-type selection)
