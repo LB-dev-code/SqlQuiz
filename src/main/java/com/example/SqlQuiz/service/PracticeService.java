@@ -477,49 +477,41 @@ public class PracticeService {
             log.info("[步骤4] 题型分布计算完成 - distribution: {}, 耗时: {}ms",
                     distribution, System.currentTimeMillis() - distStart);
 
-            // 步骤5: 构建黑名单
-            long blacklistStart = System.currentTimeMillis();
-            log.info("[步骤5] 构建题目黑名单 - 开始...");
-            List<QuestionBlacklistItem> blacklist = deduplicationService.buildBlacklistForTypes(selectedTypes);
-            List<String> blacklistContent = deduplicationService.extractBlacklistContent(blacklist);
-            log.info("[步骤5] 黑名单构建完成 - 黑名单题目数: {}, 耗时: {}ms",
-                    blacklist.size(), System.currentTimeMillis() - blacklistStart);
-
-            // 步骤6: 使用AI批量生成题目
+            // 步骤5: 使用AI批量生成题目（已移除黑名单筛选）
             long aiStart = System.currentTimeMillis();
-            log.info("[步骤6] AI批量生成题目 - 开始调用GLM-4-Plus...");
-            log.info("[步骤6] 分布配置: {}", distribution);
+            log.info("[步骤5] AI批量生成题目 - 开始调用GLM-4-Plus...");
+            log.info("[步骤5] 分布配置: {}", distribution);
             try {
-                String batchJson = glmService.generatePracticeQuestionsBatch(distribution, blacklistContent);
-                log.info("[步骤6] AI生成完成 - 返回长度: {}字符, 耗时: {}ms",
+                String batchJson = glmService.generatePracticeQuestionsBatch(distribution, null);
+                log.info("[步骤5] AI生成完成 - 返回长度: {}字符, 耗时: {}ms",
                         batchJson != null ? batchJson.length() : 0, System.currentTimeMillis() - aiStart);
-                
+
                 // 增加详细日志：输出AI返回的原始JSON（前500字符）
                 if (batchJson != null && !batchJson.isEmpty()) {
-                    log.info("[步骤6] AI返回JSON预览(前500字符): {}", 
+                    log.info("[步骤5] AI返回JSON预览(前500字符): {}",
                             batchJson.substring(0, Math.min(500, batchJson.length())));
                 } else {
-                    log.warn("[步骤6] AI返回的JSON为空!");
+                    log.warn("[步骤5] AI返回的JSON为空!");
                 }
 
-                // 步骤7: 解析并去重
+                // 步骤6: 解析题目（已移除去重逻辑）
                 long parseStart = System.currentTimeMillis();
-                log.info("[步骤7] 解析并去重 - 开始解析JSON...");
+                log.info("[步骤6] 解析题目 - 开始解析JSON...");
                 List<QuestionDeduplicationService.GeneratedQuestion> generatedQuestions =
-                        deduplicationService.parseAndDeduplicate(batchJson, blacklist);
-                log.info("[步骤7] 解析完成 - 生成题目数: {}, 去重后: {}, 耗时: {}ms",
-                        generatedQuestions.size(), generatedQuestions.size(), System.currentTimeMillis() - parseStart);
-                
+                        deduplicationService.parseAndDeduplicate(batchJson, null);
+                log.info("[步骤6] 解析完成 - 生成题目数: {}, 耗时: {}ms",
+                        generatedQuestions.size(), System.currentTimeMillis() - parseStart);
+
                 // 增加详细日志：检查每个题目的setupSql是否存在
                 for (int i = 0; i < generatedQuestions.size(); i++) {
                     QuestionDeduplicationService.GeneratedQuestion gq = generatedQuestions.get(i);
-                    log.info("[步骤7] 题目[{}] - title: {}, hasSetupSql: {}, hasDbContext: {}",
-                            i, gq.title, 
+                    log.info("[步骤6] 题目[{}] - title: {}, hasSetupSql: {}, hasDbContext: {}",
+                            i, gq.title,
                             (gq.setupSql != null && !gq.setupSql.trim().isEmpty()),
                             (gq.databaseContext != null && !gq.databaseContext.trim().isEmpty()));
                 }
 
-                // 按题型分配题号并保存
+                // 步骤7: 按题型分配题号并保存
                 int questionIndex = 0;
                 Map<Question.QuestionType, Integer> typeCounters = new HashMap<>();
                 for (Question.QuestionType type : selectedTypes) {
@@ -565,7 +557,7 @@ public class PracticeService {
                             log.info("[步骤7] setupSQL内容: {}", gq.setupSql.substring(0, Math.min(200, gq.setupSql.length())));
                             tablePrefix = setupSqlExecutorService.executeSetupSql(gq.setupSql);
                             log.info("[步骤7] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
-                            
+
                             // 验证表是否真的创建成功
                             if (tablePrefix != null) {
                                 log.info("[步骤7] 验证表前缀: {}", tablePrefix);
@@ -573,7 +565,7 @@ public class PracticeService {
                                 log.warn("[步骤7] setupSQL执行返回null前缀");
                             }
                         } catch (Exception e) {
-                            log.error("[步骤7] setupSQL执行失败 - questionIndex: {}, error: {}, stacktrace: {}", 
+                            log.error("[步骤7] setupSQL执行失败 - questionIndex: {}, error: {}, stacktrace: {}",
                                     questionIndex, e.getMessage(), e);
                             // 继续保存题目，但没有表前缀
                         }
@@ -593,7 +585,7 @@ public class PracticeService {
                     );
 
                     log.info("[步骤7] 题目信息 - index: {}, title: {}, tablePrefix: {}, hasSetupSql: {}",
-                            questionIndex, answer.getQuestionTitle(), tablePrefix, 
+                            questionIndex, answer.getQuestionTitle(), tablePrefix,
                             (gq.setupSql != null && !gq.setupSql.trim().isEmpty()));
 
                     saveAnswerInNewTransaction(answer);
@@ -604,9 +596,9 @@ public class PracticeService {
 
                 log.info("[步骤7] 已保存题目数: {}, 耗时: {}ms", questionIndex, System.currentTimeMillis() - saveStart);
 
-                // 如果生成的题目不够，用旧方法补齐
+                // 步骤8: 如果生成的题目不够，用旧方法补齐
                 if (questionIndex < PracticeRound.QUESTIONS_PER_ROUND) {
-                    log.warn("[步骤7] 题目数量不足，开始补齐 - 需要: {}, 已有: {}",
+                    log.warn("[步骤8] 题目数量不足，开始补齐 - 需要: {}, 已有: {}",
                             PracticeRound.QUESTIONS_PER_ROUND, questionIndex);
 
                     while (questionIndex < PracticeRound.QUESTIONS_PER_ROUND) {
@@ -615,29 +607,29 @@ public class PracticeService {
                                 Question.QuestionType.SELECT_BASIC : selectedTypes.get(0);
 
                         try {
-                            log.info("[步骤7-补齐] 开始单题生成 - index: {}, type: {}", questionIndex, fallbackType);
+                            log.info("[步骤8-补齐] 开始单题生成 - index: {}, type: {}", questionIndex, fallbackType);
                             String questionJson = glmService.generatePracticeQuestion(
                                     fallbackType.name(),
                                     Question.DifficultyLevel.MEDIUM.name()
                             );
-                            log.info("[步骤7-补齐] 单题生成返回 - 长度: {}", questionJson != null ? questionJson.length() : 0);
+                            log.info("[步骤8-补齐] 单题生成返回 - 长度: {}", questionJson != null ? questionJson.length() : 0);
                             if (questionJson != null && !questionJson.isEmpty()) {
-                                log.info("[步骤7-补齐] 单题JSON预览: {}", questionJson.substring(0, Math.min(300, questionJson.length())));
+                                log.info("[步骤8-补齐] 单题JSON预览: {}", questionJson.substring(0, Math.min(300, questionJson.length())));
                             }
 
                             JsonNode questionNode = objectMapper.readTree(cleanJsonResponse(questionJson));
                             String setupSql = getJsonFieldOrNull(questionNode, "setupSql");
-                            log.info("[步骤7-补齐] 解析完成 - hasSetupSql: {}", setupSql != null);
-                            
+                            log.info("[步骤8-补齐] 解析完成 - hasSetupSql: {}", setupSql != null);
+
                             // 执行setupSql并获取表前缀
                             String tablePrefix = null;
                             if (setupSql != null && !setupSql.trim().isEmpty()) {
                                 try {
-                                    log.info("[步骤7-补齐] 执行setupSQL...");
+                                    log.info("[步骤8-补齐] 执行setupSQL...");
                                     tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
-                                    log.info("[步骤7-补齐] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
+                                    log.info("[步骤8-补齐] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
                                 } catch (Exception ex) {
-                                    log.error("[步骤7-补齐] setupSQL执行失败: {}", ex.getMessage());
+                                    log.error("[步骤8-补齐] setupSQL执行失败: {}", ex.getMessage());
                                 }
                             }
 
@@ -653,7 +645,7 @@ public class PracticeService {
                             );
 
                         } catch (Exception e) {
-                            log.warn("[步骤7] 单题生成失败，使用默认题目 - index: {}, error: {}",
+                            log.warn("[步骤8] 单题生成失败，使用默认题目 - index: {}, error: {}",
                                     questionIndex, e.getMessage());
                             answer.setQuestionInfoWithSetup(
                                     "SQL Practice Question " + (questionIndex + 1),
@@ -670,11 +662,11 @@ public class PracticeService {
                         answerRepository.saveAndFlush(answer);
                         questionIndex++;
                     }
-                    log.info("[步骤7] 补齐完成 - 最终题目数: {}", questionIndex);
+                    log.info("[步骤8] 补齐完成 - 最终题目数: {}", questionIndex);
                 }
 
             } catch (Exception aiException) {
-                log.error("[步骤6] AI生成失败 - error: {}", aiException.getMessage(), aiException);
+                log.error("[步骤5] AI生成失败 - error: {}", aiException.getMessage(), aiException);
                 throw aiException;
             }
 
