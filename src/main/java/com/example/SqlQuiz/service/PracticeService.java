@@ -1295,7 +1295,7 @@ public class PracticeService {
                 .collect(Collectors.groupingBy(PracticeAnswer::getQuestionType));
 
         for (Map.Entry<Question.QuestionType, List<PracticeAnswer>> entry : errorsByType.entrySet()) {
-            feedback.append("#### ").append(entry.getKey().getDisplayName()).append("\n");
+            feedback.append("#### ").append(entry.getKey().getEnglishName()).append("\n");
             for (PracticeAnswer answer : entry.getValue()) {
                 feedback.append("- **Q").append(answer.getQuestionIndex() + 1).append(":** ");
                 if (answer.getAiFeedback() != null) {
