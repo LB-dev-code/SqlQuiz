@@ -583,41 +583,7 @@ public class PracticeController {
         }
     }
 
-    /**
-     * End practice session
-     */
-    @PostMapping("/api/end")
-    @ResponseBody
-    public ResponseEntity<?> endSession(
-            @RequestBody Map<String, Long> request,
-            Authentication auth) {
-        try {
-            Long sessionId = request.get("sessionId");
-            if (sessionId == null) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "success", false,
-                        "error", "Session ID is required"
-                ));
-            }
 
-            PracticeSession session = practiceService.endSession(sessionId);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("totalRounds", session.getTotalRounds());
-            response.put("totalQuestions", session.getTotalQuestions());
-            response.put("totalCorrect", session.getTotalCorrect());
-            response.put("overallAccuracy", session.getOverallAccuracy());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "error", "Failed to end session: " + e.getMessage()
-            ));
-        }
-    }
 
     /**
      * Cleanup incomplete sessions (called every time Dashboard is entered)
@@ -644,40 +610,7 @@ public class PracticeController {
         }
     }
 
-    /**
-     * Get practice history
-     */
-    @GetMapping("/api/history")
-    @ResponseBody
-    public ResponseEntity<?> getHistory(Authentication auth) {
-        try {
-            String username = auth.getName();
-            User student = userService.findByUsername(username)
-                    .orElseThrow(() -> new RuntimeException("Student not found"));
-            List<PracticeSession> history = practiceService.getPracticeHistory(student);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("history", history.stream().map(s -> Map.of(
-                    "id", s.getId(),
-                    "startTime", s.getStartTime().toString(),
-                    "endTime", s.getEndTime() != null ? s.getEndTime().toString() : null,
-                    "status", s.getStatus().name(),
-                    "totalRounds", s.getTotalRounds(),
-                    "totalQuestions", s.getTotalQuestions(),
-                    "totalCorrect", s.getTotalCorrect(),
-                    "overallAccuracy", s.getOverallAccuracy()
-            )).toList());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "error", "Failed to get history: " + e.getMessage()
-            ));
-        }
-    }
 
     /**
      * Run SQL in sandbox (for Run button, does not save answer)
