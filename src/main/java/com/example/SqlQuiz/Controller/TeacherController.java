@@ -6,8 +6,6 @@ import com.example.SqlQuiz.repository.SubmissionRepository;
 import com.example.SqlQuiz.service.GLMService;
 import com.example.SqlQuiz.service.QuizService;
 import com.example.SqlQuiz.service.SetupSqlExecutorService;
-import com.example.SqlQuiz.service.SqlValidationService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +22,6 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.ArrayList;
-import java.util.zip.DeflaterOutputStream;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.ResultSet;
@@ -36,8 +33,6 @@ public class TeacherController {
     @Autowired
     private QuizService quizService;
 
-    @Autowired
-    private SqlValidationService sqlValidationService;
 
     @Autowired
     private GLMService glmService;

@@ -59,8 +59,7 @@ public class PracticeService {
     @Autowired
     private GLMService glmService;
 
-    @Autowired
-    private SqlValidationService sqlValidationService;
+
 
     @Autowired
     private QuestionDeduplicationService deduplicationService;

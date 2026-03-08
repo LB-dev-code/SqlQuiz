@@ -4,7 +4,6 @@ import com.example.SqlQuiz.entity.*;
 import com.example.SqlQuiz.service.QuizService;
 import com.example.SqlQuiz.service.QuizTableMetadataService;
 import com.example.SqlQuiz.service.SandboxDatabaseService;
-import com.example.SqlQuiz.service.SqlValidationService;
 import com.example.SqlQuiz.repository.QuestionAnswerRepository;
 import com.example.SqlQuiz.repository.SubmissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +27,7 @@ public class StudentController {
     @Autowired
     private QuizService quizService;
 
-    @Autowired
-    private SqlValidationService sqlValidationService;
+
 
     @Autowired
     private QuestionAnswerRepository questionAnswerRepository;
