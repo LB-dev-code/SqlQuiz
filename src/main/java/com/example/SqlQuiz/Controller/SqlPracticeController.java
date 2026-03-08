@@ -6,8 +6,6 @@ import com.example.SqlQuiz.entity.QuizTableMetadata;
 import com.example.SqlQuiz.entity.User;
 import com.example.SqlQuiz.service.QuizService;
 import com.example.SqlQuiz.service.QuizTableMetadataService;
-import com.example.SqlQuiz.service.SetupSqlExecutorService;
-import com.example.SqlQuiz.service.SqlValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +29,6 @@ public class SqlPracticeController {
     @Autowired
     private QuizTableMetadataService tableMetadataService;
 
-    @Autowired
-    private SqlValidationService sqlValidationService;
 
     @Autowired
     @Qualifier("testDataSource")
