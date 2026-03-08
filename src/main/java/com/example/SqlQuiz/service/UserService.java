@@ -34,12 +34,12 @@ public class UserService implements UserDetailsService {
     public User registerUser(String username, String password, String email, String fullName, User.Role role) {
         // 检查用户名是否已存在
         if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("用户名已存在");
+            throw new RuntimeException("Username already exists");
         }
         
         // 检查邮箱是否已存在
         if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("邮箱已存在");
+            throw new RuntimeException("Email already exists");
         }
         
         // 创建新用户

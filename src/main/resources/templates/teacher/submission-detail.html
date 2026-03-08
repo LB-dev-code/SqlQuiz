@@ -618,7 +618,7 @@
                                     </td>
                                     <td th:text="${#temporals.format(sub.submitTime, 'yyyy-MM-dd HH:mm')}">Date</td>
                                     <td>
-                                        <a th:href="@{/teacher/submission-detail(submission_id=${sub.id})}" class="btn"
+                                        <a th:href="@{/teacher/quiz/statistics/submission/{submission_id}(submission_id=${sub.id})}" class="btn"
                                             style="padding: 0.4rem 0.8rem; font-size: 0.7rem;">
                                             Inspect
                                         </a>
