@@ -59,8 +59,4 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     
     // 根据教师查找所有题目
     List<Question> findByQuiz_Teacher(User teacher);
-
-    // 查找所有题目（用于构建黑名单，避免生成重复题目）
-    @Query("SELECT q FROM Question q")
-    List<Question> findAllForBlacklist();
 }
