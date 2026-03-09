@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.SqlQuiz.dto.QuestionBlacklistItem;
 import com.example.SqlQuiz.entity.ErrorTypeStatistics;
 import com.example.SqlQuiz.entity.PracticeAnswer;
 import com.example.SqlQuiz.entity.PracticeRound;
@@ -497,7 +496,7 @@ public class PracticeService {
                 long parseStart = System.currentTimeMillis();
                 log.info("[步骤6] 解析题目 - 开始解析JSON...");
                 List<QuestionDeduplicationService.GeneratedQuestion> generatedQuestions =
-                        deduplicationService.parseAndDeduplicate(batchJson, null);
+                        deduplicationService.parseAndDeduplicate(batchJson);
                 log.info("[步骤6] 解析完成 - 生成题目数: {}, 耗时: {}ms",
                         generatedQuestions.size(), System.currentTimeMillis() - parseStart);
 

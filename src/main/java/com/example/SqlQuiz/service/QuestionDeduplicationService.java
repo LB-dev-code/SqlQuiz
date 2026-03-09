@@ -1,93 +1,35 @@
 package com.example.SqlQuiz.service;
 
-import com.example.SqlQuiz.dto.QuestionBlacklistItem;
 import com.example.SqlQuiz.entity.Question;
-import com.example.SqlQuiz.entity.User;
-import com.example.SqlQuiz.repository.QuestionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * 题目去重服务
- * 用于避免AI生成与现有题目重复的练习题
+ * 题目解析服务
+ * 用于解析AI生成的JSON格式题目
  */
 @Service
 public class QuestionDeduplicationService {
 
-    @Autowired
-    private QuestionRepository questionRepository;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 构建题目黑名单
-     * 从Question表中获取所有现有题目，归一化后作为黑名单
-     *
-     * @return 黑名单列表
-     */
-    public List<QuestionBlacklistItem> buildBlacklist() {
-        List<Question> allQuestions = questionRepository.findAllForBlacklist();
-        List<QuestionBlacklistItem> blacklist = new ArrayList<>();
-
-        for (Question q : allQuestions) {
-            if (q.getContent() != null && q.getExpectedSql() != null) {
-                blacklist.add(new QuestionBlacklistItem(
-                        q.getContent(),
-                        q.getExpectedSql(),
-                        q.getId()
-                ));
-            }
-        }
-
-        return blacklist;
-    }
-
-    /**
-     * 构建指定题型的黑名单
-     *
-     * @param questionTypes 题型列表
-     * @return 黑名单列表
-     */
-    public List<QuestionBlacklistItem> buildBlacklistForTypes(List<Question.QuestionType> questionTypes) {
-        List<Question> allQuestions = questionRepository.findAllForBlacklist();
-        List<QuestionBlacklistItem> blacklist = new ArrayList<>();
-
-        for (Question q : allQuestions) {
-            // 只包含指定类型的题目，如果类型列表为空则包含所有类型
-            if (questionTypes == null || questionTypes.isEmpty() || questionTypes.contains(q.getQuestionType())) {
-                if (q.getContent() != null && q.getExpectedSql() != null) {
-                    blacklist.add(new QuestionBlacklistItem(
-                            q.getContent(),
-                            q.getExpectedSql(),
-                            q.getId()
-                    ));
-                }
-            }
-        }
-
-        return blacklist;
-    }
-
-    /**
-     * 从JSON数组解析生成的题目，并进行去重
+     * 从JSON数组解析生成的题目
      *
      * @param batchJson AI生成的JSON数组格式题目
-     * @param blacklist 黑名单
-     * @return 去重后的题目列表
+     * @return 解析后的题目列表
      */
-    public List<GeneratedQuestion> parseAndDeduplicate(String batchJson, List<QuestionBlacklistItem> blacklist) {
+    public List<GeneratedQuestion> parseAndDeduplicate(String batchJson) {
         List<GeneratedQuestion> questions = new ArrayList<>();
-        
+
         System.out.println("[parseAndDeduplicate] ========== 开始解析AI返回的JSON ==========");
         System.out.println("[parseAndDeduplicate] batchJson长度: " + (batchJson != null ? batchJson.length() : "null"));
         if (batchJson != null && batchJson.length() > 0) {
-            System.out.println("[parseAndDeduplicate] batchJson前500字符: " + 
+            System.out.println("[parseAndDeduplicate] batchJson前500字符: " +
                     batchJson.substring(0, Math.min(500, batchJson.length())));
         }
 
@@ -98,7 +40,7 @@ public class QuestionDeduplicationService {
 
             // 解析JSON数组
             JsonNode rootNode = objectMapper.readTree(cleanedJson);
-            System.out.println("[parseAndDeduplicate] JSON解析成功 - isArray: " + rootNode.isArray() + 
+            System.out.println("[parseAndDeduplicate] JSON解析成功 - isArray: " + rootNode.isArray() +
                     ", size: " + rootNode.size());
 
             if (!rootNode.isArray()) {
@@ -121,21 +63,17 @@ public class QuestionDeduplicationService {
                     if (!setupSqlNode.isNull()) {
                         String setupSql = setupSqlNode.asText();
                         System.out.println("[parseAndDeduplicate]   - setupSql长度: " + setupSql.length());
-                        System.out.println("[parseAndDeduplicate]   - setupSql前100字符: " + 
+                        System.out.println("[parseAndDeduplicate]   - setupSql前100字符: " +
                                 setupSql.substring(0, Math.min(100, setupSql.length())));
                     }
                 }
-                
+
                 GeneratedQuestion q = parseQuestion(questionNode);
                 if (q != null) {
-                    System.out.println("[parseAndDeduplicate]   - 解析成功: title=" + q.title + 
+                    System.out.println("[parseAndDeduplicate]   - 解析成功: title=" + q.title +
                             ", hasSetupSql=" + (q.setupSql != null && !q.setupSql.isEmpty()));
-                    if (!isDuplicate(q, blacklist)) {
-                        questions.add(q);
-                        System.out.println("[parseAndDeduplicate]   - 添加到结果列表");
-                    } else {
-                        System.out.println("[parseAndDeduplicate]   - 跳过(重复题目)");
-                    }
+                    questions.add(q);
+                    System.out.println("[parseAndDeduplicate]   - 添加到结果列表");
                 } else {
                     System.out.println("[parseAndDeduplicate]   - 解析返回null");
                 }
@@ -148,7 +86,7 @@ public class QuestionDeduplicationService {
             System.err.println("[parseAndDeduplicate] 异常信息: " + e.getMessage());
             e.printStackTrace();
         }
-        
+
         System.out.println("[parseAndDeduplicate] ========== 解析完成 - 返回题目数: " + questions.size() + " ==========");
         return questions;
     }
@@ -216,39 +154,6 @@ public class QuestionDeduplicationService {
             System.err.println("Failed to parse question: " + e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 检查题目是否与黑名单重复
-     */
-    private boolean isDuplicate(GeneratedQuestion question, List<QuestionBlacklistItem> blacklist) {
-        if (blacklist == null || blacklist.isEmpty()) {
-            return false;
-        }
-
-        // 创建黑名单项用于比较
-        QuestionBlacklistItem questionItem = new QuestionBlacklistItem(
-                question.description,
-                question.expectedSql
-        );
-
-        // 检查是否与任何黑名单项相似
-        for (QuestionBlacklistItem blacklistItem : blacklist) {
-            if (questionItem.isPossibleDuplicate(blacklistItem)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * 从黑名单中提取归一化的题目内容（用于AI提示）
-     */
-    public List<String> extractBlacklistContent(List<QuestionBlacklistItem> blacklist) {
-        return blacklist.stream()
-                .map(QuestionBlacklistItem::getContent)
-                .collect(Collectors.toList());
     }
 
     private String cleanJsonResponse(String response) {
