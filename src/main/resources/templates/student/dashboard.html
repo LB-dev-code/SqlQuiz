@@ -444,9 +444,11 @@
                             th:each="quiz : ${availableQuizzes}">
                             <h3 th:text="${quiz.title}">Database Fundamentals</h3>
                             <div class="quiz-meta-row">
-                                <span th:text="${quiz.description}">Description relative...</span>
-                                <span>|</span>
                                 <span th:text="${quiz.timeLimit + ' min'}">30 min</span>
+                                <span>|</span>
+                                <span>Start: <span th:text="${quiz.startTime != null ? #temporals.format(quiz.startTime, 'MM-dd HH:mm') : 'Open'}">01-15 09:00</span></span>
+                                <span>|</span>
+                                <span>End: <span th:text="${quiz.endTime != null ? #temporals.format(quiz.endTime, 'MM-dd HH:mm') : 'Open'}">01-20 23:59</span></span>
                             </div>
                         </a>
                     </div>
