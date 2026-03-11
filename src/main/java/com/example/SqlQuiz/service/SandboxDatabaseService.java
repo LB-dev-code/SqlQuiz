@@ -55,15 +55,6 @@ public class SandboxDatabaseService {
     }
 
     /**
-     * 为教师SQL测试创建沙库
-     */
-    public SandboxContext createTeacherTestSandbox(Long teacherId) {
-        String dbName = "quiz_sb_teacher_" + teacherId + "_" + System.currentTimeMillis() + "_" +
-                        RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-        return createSandboxInternal(dbName, "teacher_test");
-    }
-
-    /**
      * 内部创建沙库方法
      */
     private SandboxContext createSandboxInternal(String dbName, String type) {
@@ -180,9 +171,6 @@ public class SandboxDatabaseService {
             throw new IllegalArgumentException("Table prefix cannot be null or empty");
         }
 
-        log.info("========== 从testdb克隆表到沙库 ==========");
-        log.info("沙库数据库名: {}", context.getDatabaseName());
-        log.info("表前缀: {}", tablePrefix);
 
         // 1. 从testdb获取所有以该前缀开头的表
         List<String> tablesToClone = getTablesByPrefix(tablePrefix);
