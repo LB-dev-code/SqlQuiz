@@ -791,16 +791,12 @@ SELECT * FROM ..."></textarea>
                 const container = document.getElementById('resultContent');
                 container.innerHTML = '';
 
-                if (result.isCorrect) {
-                    container.innerHTML += `<div class="msg-success"> <i class="fas fa-check"></i> CORRECT SOLUTION </div>`;
-                } else if (!result.success && result.error) {
+                if (!result.success && result.error) {
                     container.innerHTML += `<div class="msg-error"> <i class="fas fa-times"></i> ${result.error} </div>`;
-                } else if (!result.isCorrect) {
-                    container.innerHTML += `<div class="msg-error" style="border-color:var(--warning-amber); color:var(--warning-amber);"> <i class="fas fa-exclamation"></i> LOGIC INCORRECT </div>`;
                 }
 
-                if (result.userResult && result.userResult.length > 0) {
-                    renderTable(result.userResult, container);
+                if (result.data && result.data.length > 0) {
+                    renderTable(result.data, container);
                 } else if (result.rowCount !== undefined) {
                     container.innerHTML += `<div style="padding:1rem; color:#fff;">Affected Rows: ${result.rowCount}</div>`;
                 }

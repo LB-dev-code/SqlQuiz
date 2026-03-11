@@ -199,15 +199,15 @@ public class SqlPracticeController {
     }
 
     /**
-     * Execute SQL and validate answer (using sandbox environment, supports automatic table name prefix mapping)
+     * Execute SQL (using sandbox environment, supports automatic table name prefix mapping)
      */
     @PostMapping("/question/{questionId}/validate")
     public ResponseEntity<?> validateSql(
             @PathVariable Long questionId,
             @RequestBody Map<String, String> request) {
-        
+
         com.example.SqlQuiz.entity.SandboxContext sandbox = null;
-        
+
         try {
             String userSql = request.get("sql");
             if (userSql == null || userSql.trim().isEmpty()) {
@@ -275,30 +275,7 @@ public class SqlPracticeController {
                 System.out.println("  Converted: " + actualUserSql);
             }
 
-            // 5. Execute expected SQL first to get expected result (before user SQL to avoid data modification by user SQL)
-            String expectedSql = question.getExpectedSql();
-            boolean isCorrect = false;
-            List<Map<String, Object>> expectedData = null;
-
-            if (expectedSql != null && !expectedSql.trim().isEmpty()) {
-                String actualExpectedSql = expectedSql;
-                if (tablePrefix != null && !tablePrefix.isEmpty()) {
-                    actualExpectedSql = addTablePrefixToSql(expectedSql, tablePrefix);
-                }
-                System.out.println("[SQL Validation] Executing expectedSql first to get expected result...");
-
-                com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult expectedResult =
-                    sandboxService.executeInSandbox(sandbox, actualExpectedSql);
-
-                if (expectedResult.isSuccess()) {
-                    expectedData = expectedResult.getResultData();
-                    System.out.println("[SQL Validation] expectedSql executed successfully, result rows: " + (expectedData != null ? expectedData.size() : 0));
-                } else {
-                    System.err.println("[SQL Validation] expectedSql execution failed: " + expectedResult.getErrorMessage());
-                }
-            }
-
-            // 6. Execute user's SQL
+            // 5. Execute user's SQL
             System.out.println("[SQL Validation] Executing user SQL...");
             com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult userResult =
                 sandboxService.executeInSandbox(sandbox, actualUserSql);
@@ -311,26 +288,12 @@ public class SqlPracticeController {
                 ));
             }
 
-            // 7. Compare results
-            if (expectedData != null) {
-                isCorrect = compareResults(userResult.getResultData(), expectedData);
-            }
-
+            // 6. Return execution result
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("isCorrect", isCorrect);
-            response.put("userResult", userResult.getResultData());
+            response.put("data", userResult.getResultData());
             response.put("rowCount", userResult.getRowCount());
             response.put("executionTime", userResult.getExecutionTimeMs());
-
-            if (!isCorrect && expectedData != null) {
-                response.put("expectedResult", expectedData);
-                response.put("message", "Statement incorrect, please check result differences");
-            } else if (isCorrect) {
-                response.put("message", "✓ Statement correct!");
-            } else {
-                response.put("message", "SQL executed successfully");
-            }
 
             return ResponseEntity.ok(response);
 
@@ -341,7 +304,7 @@ public class SqlPracticeController {
                 "error", "Execution failed: " + e.getMessage()
             ));
         } finally {
-            // 7. Cleanup sandbox
+            // Cleanup sandbox
             if (sandbox != null) {
                 try {
                     sandboxService.closeConnection(sandbox);
