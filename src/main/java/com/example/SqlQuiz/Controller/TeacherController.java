@@ -714,56 +714,6 @@ public class TeacherController {
         return "teacher/sql-test";
     }
 
-    // Test SQL execution
-    @PostMapping("/sql-test")
-    @ResponseBody
-    public Map<String, Object> testSql(@RequestParam String sql, Authentication auth) {
-        Map<String, Object> response = new HashMap<>();
-
-        if (sql == null || sql.trim().isEmpty()) {
-            response.put("success", false);
-            response.put("error", "SQL statement cannot be empty");
-            return response;
-        }
-
-        User teacher = (User) auth.getPrincipal();
-        com.example.SqlQuiz.entity.SandboxContext sandbox = null;
-
-        try {
-            // Create teacher test-specific sandbox
-            sandbox = sandboxService.createTeacherTestSandbox(teacher.getId());
-
-            // Clone entire testdb to sandbox (so teacher can test queries against existing tables)
-            sandboxService.cloneEntireTestDB(sandbox);
-
-            // Execute SQL in sandbox
-            com.example.SqlQuiz.service.SandboxDatabaseService.SqlExecutionResult result =
-                sandboxService.executeInSandbox(sandbox, sql);
-
-            response.put("success", result.isSuccess());
-            response.put("data", result.getResultData());
-            response.put("rowCount", result.getRowCount());
-            response.put("executionTimeMs", result.getExecutionTimeMs());
-            response.put("error", result.getErrorMessage());
-
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", "SQL execution error: " + e.getMessage());
-        } finally {
-            // Cleanup sandbox
-            if (sandbox != null) {
-                try {
-                    sandboxService.closeConnection(sandbox);
-                    sandboxService.cleanupSandbox(sandbox.getDatabaseName());
-                } catch (Exception e) {
-                    System.err.println("Failed to cleanup teacher test sandbox: " + e.getMessage());
-                }
-            }
-        }
-
-        return response;
-    }
-
     // View student submission detail page
     @GetMapping("/quiz/statistics/submission/{submission_id}")
     public String submissionDetail(@PathVariable Long submission_id, Model model, Authentication auth) {
