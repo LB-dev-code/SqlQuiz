@@ -327,7 +327,7 @@ public class GLMService {
                 "Tokenize both SQLs (keywords, identifiers, operators, literals, punctuation = separate tokens).\n" +
                 "D_min = minimum token edit distance (INSERT/DELETE/SUBSTITUTE, each costs 1).\n" +
                 "Len_A = token count of expected SQL.\n" +
-                "T = max(3, 0.2 × Len_A).\n" +
+                "T = max(3, Len_A).\n" +
                 "Score = max(0, M × (1 - D_min / T)), where M=%.1f.\n" +
                 "matchType = PARTIAL if score>0, ZERO if score=0.\n\n" +
 
@@ -599,7 +599,7 @@ public class GLMService {
                 "Tokenize both SQLs (keyword/identifier/operator/literal/punctuation = 1 token each).\n" +
                 "D_min = minimum token edit distance (INSERT/DELETE/SUBSTITUTE, each=1).\n" +
                 "Len_A = token count of expected SQL.\n" +
-                "T = max(3, 0.2 × Len_A).\n" +
+                "T = max(3, Len_A).\n" +
                 "Score = max(0, M × (1 - D_min / T)), M=%.1f.\n" +
                 "matchType = PARTIAL if score>0, ZERO if score=0.\n\n" +
 
@@ -1623,7 +1623,7 @@ public class GLMService {
                 "Tokenize both SQLs (keyword/identifier/operator/literal/punctuation = 1 token each).\n" +
                 "D_min = minimum token edit distance (INSERT/DELETE/SUBSTITUTE, each=1).\n" +
                 "Len_A = token count of expected SQL.\n" +
-                "T = max(3, 0.2 × Len_A).\n" +
+                "T = max(3, Len_A).\n" +
                 "Score = max(0, M × (1 - D_min / T)), M=%.1f.\n" +
                 "matchType = PARTIAL if score>0, ZERO if score=0.\n\n" +
 
