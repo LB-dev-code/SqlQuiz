@@ -916,11 +916,14 @@ public class PracticeService {
 
             // 直接使用AI评分（与教师评分相同的方式）
             try {
-                String aiResponse = glmService.score_answer(
+                // Use new scoring method with result validation
+                String aiResponse = glmService.scoreAnswerWithValidation(
                         fullScore,
                         ad.questionContent != null ? ad.questionContent : ad.questionTitle,
                         ad.expectedSql != null ? ad.expectedSql : "N/A",
-                        ad.studentSql
+                        ad.studentSql,
+                        ad.setupSql,
+                        ad.tablePrefix
                 );
 
                 if (aiResponse != null) {

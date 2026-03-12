@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submission / Berlin Concrete</title>
 
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}" />
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@300;500;700&display=swap"
         rel="stylesheet">
@@ -432,6 +434,59 @@
         .table-list tr:hover {
             background: rgba(255, 255, 255, 0.02);
         }
+
+        .score-input {
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom: 1px dashed rgba(255,255,255,0.3);
+            color: inherit;
+            font-family: var(--font-tech);
+            font-size: 2rem;
+            font-weight: bold;
+            width: 4ch;
+            text-align: right;
+            padding: 0;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .score-input:hover {
+            border-bottom-color: var(--blueprint-blue);
+        }
+        .score-input:focus {
+            border-color: var(--blueprint-blue);
+            background: rgba(0,68,255,0.08);
+        }
+        .score-save-hint {
+            font-size: 0.6rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .score-input:focus ~ .score-save-hint {
+            opacity: 1;
+        }
+        .score-saved {
+            font-size: 0.65rem;
+            color: var(--success-green);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .score-saved.show {
+            opacity: 1;
+        }
+        .score-error {
+            font-size: 0.65rem;
+            color: var(--alert-red);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .score-error.show {
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -503,7 +558,7 @@
                             </div>
                             <div class="detail-item">
                                 <label>Final Score</label>
-                                <div class="value"
+                                <div class="value" data-total-score
                                     th:text="${submission.totalScore != null ? submission.totalScore + ' / ' + (submission.maxScore != null ? submission.maxScore : submission.quiz.totalScore) : '-'}">
                                     0 / 0</div>
                             </div>
@@ -540,17 +595,24 @@
                                     <div class="q-text" th:text="${qa.question.content}">Question Content</div>
                                 </div>
 
-                                <div class="score-matrix">
+                                <div class="score-matrix" th:id="'score-matrix-' + ${qa.id}">
                                     <div class="score-value"
                                         th:classappend="${qa.isCorrect} ? 'text-success' : 'text-danger'">
-                                        <span th:text="${qa.score ?: 0}">0</span><span class="score-max"
+                                        <input type="number" step="0.1" min="0"
+                                               th:max="${qa.question.score}"
+                                               th:value="${qa.score ?: 0}"
+                                               th:data-qa-id="${qa.id}"
+                                               th:data-max-score="${qa.question.score}"
+                                               class="score-input"
+                                               th:classappend="${qa.isCorrect} ? 'text-success' : 'text-danger'"
+                                               onkeydown="if(event.key==='Enter'){event.preventDefault();saveScore(this);}"
+                                               onblur="saveScore(this)"
+                                        /><span class="score-max"
                                             th:text="'/' + ${qa.question.score}">/10</span>
                                     </div>
-                                    <div class="status-tag"
-                                        th:classappend="${qa.isCorrect} ? 'text-success' : 'text-danger'"
-                                        th:text="${qa.isCorrect} ? 'APPROVED' : 'REJECTED'">
-                                        STATUS
-                                    </div>
+                                    <div class="score-save-hint">Enter to save</div>
+                                    <div th:id="'saved-' + ${qa.id}" class="score-saved">Saved</div>
+                                    <div th:id="'error-' + ${qa.id}" class="score-error"></div>
                                 </div>
                             </div>
 
@@ -633,6 +695,70 @@
         </main>
     </div>
 
+<script th:inline="javascript">
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content
+                   || document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1]
+                   || '';
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+    let saveTimers = {};
+
+    function saveScore(input) {
+        const qaId = input.dataset.qaId;
+        const maxScore = parseFloat(input.dataset.maxScore);
+        let newScore = parseFloat(input.value);
+
+        if (isNaN(newScore)) newScore = 0;
+        if (newScore < 0) newScore = 0;
+        if (newScore > maxScore) newScore = maxScore;
+        input.value = newScore;
+
+        if (saveTimers[qaId]) clearTimeout(saveTimers[qaId]);
+
+        const savedEl = document.getElementById('saved-' + qaId);
+        const errorEl = document.getElementById('error-' + qaId);
+        savedEl.classList.remove('show');
+        errorEl.classList.remove('show');
+
+        const headers = { 'Content-Type': 'application/json' };
+        headers[csrfHeader] = csrfToken;
+
+        fetch('/teacher/api/question-answer/' + qaId + '/score', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ score: newScore })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                input.className = 'score-input ' + (data.isCorrect ? 'text-success' : 'text-danger');
+
+                const statusEl = document.getElementById('status-' + qaId);
+                statusEl.className = 'status-tag ' + (data.isCorrect ? 'text-success' : 'text-danger');
+                statusEl.textContent = data.isCorrect ? 'APPROVED' : 'REJECTED';
+
+                if (data.totalScore != null) {
+                    const totalEl = document.querySelector('.detail-item .value[data-total-score]');
+                    if (totalEl) {
+                        totalEl.textContent = data.totalScore + ' / ' + (data.maxScore || '');
+                    }
+                }
+
+                savedEl.classList.add('show');
+                saveTimers[qaId] = setTimeout(() => savedEl.classList.remove('show'), 2000);
+            } else {
+                errorEl.textContent = data.message || 'Save failed';
+                errorEl.classList.add('show');
+            }
+        })
+        .catch(err => {
+            errorEl.textContent = 'Network error';
+            errorEl.classList.add('show');
+        });
+
+        input.blur();
+    }
+</script>
 </body>
 
 </html>

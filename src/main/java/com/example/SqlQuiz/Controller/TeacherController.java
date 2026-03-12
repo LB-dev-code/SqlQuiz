@@ -814,6 +814,52 @@ public class TeacherController {
         }
     }
 
+    @PostMapping("/api/question-answer/{qaId}/score")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> updateQuestionAnswerScore(
+            @PathVariable Long qaId,
+            @RequestBody Map<String, Object> payload,
+            Authentication auth) {
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            User teacher = (User) auth.getPrincipal();
+            double newScore = Double.parseDouble(payload.get("score").toString());
+
+            QuestionAnswer qa = questionAnswerRepository.findById(qaId)
+                    .orElseThrow(() -> new RuntimeException("QuestionAnswer not found"));
+
+            if (!qa.getSubmission().getQuiz().getTeacher().getId().equals(teacher.getId())) {
+                response.put("success", false);
+                response.put("message", "No permission");
+                return response;
+            }
+
+            double maxScore = qa.getQuestion().getScore();
+            if (newScore < 0) newScore = 0;
+            if (newScore > maxScore) newScore = maxScore;
+
+            qa.setScore(newScore);
+            qa.setIsCorrect(newScore >= maxScore);
+            questionAnswerRepository.save(qa);
+
+            quizService.calculateAndSaveTotalScore(qa.getSubmission());
+
+            Submission updated = submissionRepository.findById(qa.getSubmission().getId()).orElse(null);
+
+            response.put("success", true);
+            response.put("score", newScore);
+            response.put("isCorrect", qa.getIsCorrect());
+            response.put("totalScore", updated != null ? updated.getTotalScore() : null);
+            response.put("maxScore", updated != null ? updated.getMaxScore() : null);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", e.getMessage());
+        }
+        return response;
+    }
+
     // Batch AI scoring
     @PostMapping("/quiz/{id}/score-all")
     @ResponseBody

@@ -37,6 +37,9 @@ public class QuizService {
 
     @Autowired
     private QuizTableMetadataRepository quizTableMetadataRepository;
+
+    @Autowired
+    private QuizTableMetadataService tableMetadataService;
     // Create quiz
     public Quiz createQuiz(String title, String description, Integer timeLimit,
                            Integer maxAttempts, User teacher) throws JsonProcessingException {
@@ -482,8 +485,23 @@ public class QuizService {
                     student_answer.setAutoFeedback("No answer provided");
                     questionAnswerRepository.save(student_answer);
                 } else {
-              score_feedback = glmService.score_answer(question.getScore(),question.getDescription(),question.getExpectedSql(),student_answer.getStudentSql());
-                System.out.println(score_feedback);
+                    // Get table prefix for this question
+                    String tablePrefix = null;
+                    List<QuizTableMetadata> metadataList = tableMetadataService.getByQuestionId(question.getId());
+                    if (!metadataList.isEmpty()) {
+                        tablePrefix = metadataList.get(0).getTablePrefix();
+                    }
+
+                    // Use new scoring method with result validation
+                    score_feedback = glmService.scoreAnswerWithValidation(
+                            question.getScore(),
+                            question.getDescription(),
+                            question.getExpectedSql(),
+                            student_answer.getStudentSql(),
+                            question.getSetupSql(),
+                            tablePrefix
+                    );
+                    System.out.println(score_feedback);
                 try {
                     // Remove possible code block markers
                     String cleanJson = score_feedback.replace("```json", "").replace("```", "").trim();
