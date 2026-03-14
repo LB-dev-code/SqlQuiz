@@ -140,145 +140,7 @@ public class GLMService {
         }
     }
 
-    /**
-     * Method to generate questions
-     */
-    public String chat_create_quiz (String description) throws JsonProcessingException {
-        // Generate unique identifier to ensure table names don't conflict
-        String uniqueId = String.valueOf(System.currentTimeMillis());
-        String randomSuffix = String.valueOf((int)(Math.random() * 1000));
-        String tablePrefix = "quiz_q_" + uniqueId.substring(uniqueId.length() - 6) + "_" + randomSuffix;
-        
-        create_promtp = "You are a database teaching expert. Please generate an English-described question for a MySQL testing platform. I will provide the question type and difficulty level, please return data in standard JSON format.\n" +
-                "\n" +
-                "Required JSON format:\n" +
-                "{\n" +
-                "  \"questionTitle\": \"Question title\",\n" +
-                "  \"questionDescription\": \"Detailed question description and requirements\",\n" +
-                "  \"databaseContext\": \"Database table structure with SAMPLE DATA in Markdown table format\",\n" +
-                "  \"expectedSql\": \"Correct answer SQL statement\",\n" +
-                "  \"setupSql\": \"SQL statements for creating table structure and inserting sample data\",\n" +
-                "  \"hints\": \"Optional tips for students\"\n" +
-                "}\n" +
-                "\n" +
-                "Question requirements:\n" +
-                "1. questionTitle: Concise question title\n" +
-                "2. questionDescription: Detailed description of the query task. **MUST explicitly state which columns/fields the result should contain.** For example: 'Write a query to return the employee name and salary...' or 'Return the columns: name, department, salary'. NEVER use vague phrasing like 'return all relevant information'. If SELECT * is intended, say 'Return all columns from the table'.\n" +
-                "3. **CRITICAL - databaseContext Format:**\n" +
-                "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
-                "   **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
-                "   Use this exact format:\n" +
-                "   \n" +
-                "   students table:\n" +
-                "   \n" +
-                "   | id | name | age | score |\n" +
-                "   |----|------|-----|-------|\n" +
-                "   | 1  | John | 20  | 85.5  |\n" +
-                "   | 2  | Mary | 21  | 92.0  |\n" +
-                "   | 3  | Bob  | 19  | 78.5  |\n" +
-                "   \n" +
-                "   The sample data should match the INSERT statements in setupSql.\n" +
-                "4. setupSql: **IMPORTANT** Please provide complete SQL statements for creating table structure and inserting sample data, including:\n" +
-                "   - CREATE TABLE statements: Create required table structure for the question, use the following unique prefix: `" + tablePrefix + "_`\n" +
-                "   - Table name format: `" + tablePrefix + "_[table_name]`, e.g., `" + tablePrefix + "_students`, `" + tablePrefix + "_orders`\n" +
-                "   - **Key**: All table primary keys must use AUTO_INCREMENT to ensure no duplicate primary key values\n" +
-                "   - INSERT INTO statements: Insert 5-8 sample data records with APPROPRIATE DISTRACTOR DATA\n" +
-                "   - **CRITICAL - Distractor Data**: The table must include records that test different scenarios:\n" +
-                "     * Some records that MATCH the query criteria (correct answers)\n" +
-                "     * Some records that DON'T match the criteria (distractors/false answers)\n" +
-                "     * Edge cases: NULL values, boundary values, similar but not matching values\n" +
-                "     * Example: If asking for names containing 'United', include 'United States', 'United Kingdom' (match) AND 'Germany', 'France' (distractors)\n" +
-                "   - Ensure SQL statements can be executed directly in MySQL for initializing test database (testdb)\n" +
-                "   - **Important**: Use the provided unique prefix to ensure table names do not conflict\n" +
-                "5. expectedSql: **IMPORTANT** Standard answer SQL statement, use simple table names WITHOUT prefix (e.g., SELECT * FROM students, NOT SELECT * FROM " + tablePrefix + "_students)\n" +
-                "6. hints: Optional solving tips\n" +
-                "\n" +
-                "**CRITICAL - Result Size Limit:**\n" +
-                "- Ensure that ALL query results return NO MORE than 30 rows\n" +
-                "- When designing INSERT statements, insert 5-8 sample records maximum\n" +
-                "- The expected query should return ≤ 30 rows even with WHERE conditions\n" +
-                "\n" +
-                "Ensure you return standard JSON format without any additional text.\n";
-        List<Map<String, String>> message_creat_quiz = List.of(
-                Map.of("role", "user", "content", create_promtp + "\n\n" + description)
-        );
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", message_creat_quiz,
-                "max_tokens", 4000,
-                "temperature", temperature
-        );
-        
-        String result = "";
-        try {
-            result = restClient.post()
-                    .uri("/api/paas/v4/chat/completions")
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-            System.out.println("GLM API Response: " + result);
-            
-            if (result == null || result.trim().isEmpty()) {
-                throw new RuntimeException("GLM API returned empty response");
-            }
-            
-            // Remove possible BOM markers and leading/trailing whitespace
-            result = result.trim();
-            if (result.startsWith("\uFEFF")) {
-                result = result.substring(1);
-            }
-            
-            // Check if response starts with error code
-            if (result.startsWith("error:") || result.startsWith("Error:")) {
-                throw new RuntimeException("GLM API returned error: " + result);
-            }
-            
-            System.out.println("Attempting to parse JSON: " + result.substring(0, Math.min(200, result.length())));
-            
-            // Parse JSON response
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode jsonNode = objectMapper.readTree(result);
-            
-            // Check for error messages
-            JsonNode error = jsonNode.get("error");
-            if (error != null) {
-                String errorMessage = error.get("message") != null ? error.get("message").asText() : error.asText();
-                throw new RuntimeException("GLM API returned error: " + errorMessage);
-            }
-            
-            JsonNode choices = jsonNode.get("choices");
-            
-            if (choices != null && choices.isArray() && choices.size() > 0) {
-                JsonNode message = choices.get(0).get("message");
-                if (message != null) {
-                    JsonNode content = message.get("content");
-                    if (content != null) {
-                        String contentText = content.asText();
-                        System.out.println("Extracted content: " + contentText);
-                        return contentText;
-                    }
-                }
-            }
-            
-            // If unable to parse, return original response for debugging
-            System.err.println("Unable to extract content from GLM API response, returning original response");
-            return result;
-            
-        } catch (JsonProcessingException e) {
-            System.err.println("JSON parsing error: " + e.getMessage());
-            System.err.println("Response was: " + result);
-            // If JSON parsing fails, try to return original response
-            if (result != null && !result.isEmpty()) {
-                System.err.println("Returning original response for debugging");
-                return result;
-            }
-            throw new RuntimeException("JSON parsing failed: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("GLM API call failed: " + e.getMessage());
-            System.err.println("Response was: " + result);
-            throw new RuntimeException("GLM API call failed: " + e.getMessage());
-        }
-    }
+
 
 
     public String score_answer(Double score, String description, String expected_answer, String student_answer) throws JsonProcessingException {
@@ -753,8 +615,9 @@ public class GLMService {
 
     public String normalizeQuestion(String input, String inputType) throws JsonProcessingException {
         String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
-        
-        String normalizePrompt = "You are a SQL question normalization expert. Please normalize the user's input into a standard MySQL quiz question format.\n" +
+
+        String normalizePrompt = "You are a SQL question normalization expert. Please normalize the user's input into a standard MySQL quiz question format. \n" +
+                " Your task is to CONVERT the user's input into a standard JSON format WITHOUT modifying any data, content, or question logic.\n" +
                 "\n" +
                 "User Input Type: " + inputType + "\n" +
                 "User Input: " + input + "\n" +
@@ -774,14 +637,7 @@ public class GLMService {
                 "Important requirements:\n" +
                 "1. Use this unique table prefix for all tables: `" + tablePrefix + "_`\n" +
                 "2. All table names must follow format: `" + tablePrefix + "_[table_name]`\n" +
-                "3. All primary keys must use AUTO_INCREMENT\n" +
-                "4. Provide 5-8 sample records in setupSql with APPROPRIATE DISTRACTOR DATA\n" +
-                "5. **CRITICAL - Distractor Data**: The table must include:\n" +
-                "   * Records that MATCH the query criteria (correct answers)\n" +
-                "   * Records that DON'T match the criteria (distractors)\n" +
-                "   * Edge cases: NULL values, boundary values, similar-but-not-matching values\n" +
-                "   * Example: For 'names containing United', include 'United States', 'United Kingdom' AND 'Germany', 'France'\n" +
-                "6. **CRITICAL - databaseContext Format:**\n" +
+                "5. **CRITICAL - databaseContext Format:**\n" +
                 "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
                 "   **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
                 "   Use this exact format:\n" +
@@ -794,20 +650,14 @@ public class GLMService {
                 "   | 2  | Mary | HR         | 4500   |\n" +
                 "   \n" +
                 "   The sample data should match the INSERT statements in setupSql.\n" +
-                "7. setupSql: **IMPORTANT** Use table names WITH prefix: `" + tablePrefix + "_[table_name]`\n" +
+                "6. setupSql: **IMPORTANT** Use table names WITH prefix: `" + tablePrefix + "_[table_name]`\n" +
                 "   - CREATE TABLE format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
-                "   - **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "   - INSERT INTO format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
-                "8. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
-                "9. Return valid JSON only, no additional text\n" +
-                "10. The answer field should include step-by-step solution explanation in Markdown\n" +
-                "11. Infer appropriate questionType and difficulty from the input question\n" +
-                "12. **CRITICAL - Column Specification**: The description MUST explicitly state which columns/fields the query result should return. For example: 'Return the columns: name, department, salary' or 'Write a query to find employee name and hire_date...'. NEVER leave this ambiguous.\n" +
-                "\n" +
-                "**CRITICAL - Result Size Limit:**\n" +
-                "- Ensure that ALL query results return NO MORE than 30 rows\n" +
-                "- When designing INSERT statements, insert 5-8 sample records maximum\n" +
-                "- The expected query should return ≤ 30 rows even with WHERE conditions";
+                "7. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "8. Return valid JSON only, no additional text\n" +
+                "9. The answer field should include step-by-step solution explanation in Markdown\n" +
+                "10. Infer appropriate questionType and difficulty from the input question\n" +
+                "11. **CRITICAL - Column Specification**: The description MUST explicitly state which columns/fields the query result should return. For example: 'Return the columns: name, department, salary' or 'Write a query to find employee name and hire_date...'. NEVER leave this ambiguous.";
         
         List<Map<String, String>> messages = List.of(
                 Map.of("role", "user", "content", normalizePrompt)
