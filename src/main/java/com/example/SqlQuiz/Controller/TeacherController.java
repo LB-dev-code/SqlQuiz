@@ -474,48 +474,6 @@ public class TeacherController {
         return tableInfo;
     }
 
-    // Process edit question
-    @PostMapping("/question/{questionId}/edit")
-    public String updateQuestion(@PathVariable Long questionId,
-                                 @RequestParam String content,
-                                 @RequestParam(required = false) String description,
-                                 @RequestParam(required = false) String expectedSql,
-                                 Authentication auth,
-                                 RedirectAttributes redirectAttributes) {
-        try {
-            User teacher = (User) auth.getPrincipal();
-            Optional<Question> questionOpt = quizService.getQuestionById(questionId);
-
-            if (!questionOpt.isPresent()) {
-                redirectAttributes.addFlashAttribute("error", "Question does not exist");
-                return "redirect:/teacher/quizzes";
-            }
-
-            Question question = questionOpt.get();
-            Long quizId = question.getQuiz().getId();
-
-            // Check permission
-            if (!question.getQuiz().getTeacher().getId().equals(teacher.getId())) {
-                redirectAttributes.addFlashAttribute("error", "No permission to operate this question");
-                return "redirect:/teacher/quizzes";
-            }
-
-            // Update question
-            quizService.updateQuestion(questionId, content, question.getQuestionType(),
-                    description, question.getDatabaseContext(), expectedSql,
-                    question.getTestData(), question.getExpectedResult(),
-                    question.getScore(), question.getDifficultyLevel());
-
-            redirectAttributes.addFlashAttribute("message", "Question updated successfully!");
-            return "redirect:/teacher/quiz/" + quizId + "/questions";
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            redirectAttributes.addFlashAttribute("error", "Failed to update question: " + e.getMessage());
-            return "redirect:/teacher/quizzes";
-        }
-    }
-
     // Update question with table data
     @PostMapping("/question/{questionId}/update-with-tables")
     @ResponseBody
