@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Neural Training / Berlin Concrete</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -301,6 +304,24 @@
             background: rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+        }
+
+        .history-zone::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .history-zone::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .history-zone::-webkit-scrollbar-thumb {
+            background: var(--border-steel);
+        }
+
+        .history-zone::-webkit-scrollbar-thumb:hover {
+            background: var(--signal-orange);
         }
 
         .history-item {
@@ -384,6 +405,10 @@
                 border-right: none;
                 border-bottom: 1px solid var(--border-steel);
             }
+
+            .history-zone {
+                max-height: 300px;
+            }
         }
     </style>
 </head>
@@ -406,7 +431,7 @@
             <nav class="nav-menu">
                 <a href="/student/dashboard" class="nav-item">Dashboard</a>
                 <a href="/student/submissions" class="nav-item">History</a>
-                <a href="/student/practice/dashboard" class="nav-item active">Training</a>
+                <a href="#" onclick="window.location.href='/student/practice/dashboard?t=' + Date.now(); return false;" class="nav-item active">Training</a>
             </nav>
 
             <div class="user-block">

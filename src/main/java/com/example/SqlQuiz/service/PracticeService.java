@@ -896,10 +896,10 @@ public class PracticeService {
         PracticeRound round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new RuntimeException("Round not found"));
 
-        Long studentId = round.getSession().getStudent().getId();
+        User student = round.getSession().getStudent();
         List<PracticeAnswer> answers = answerRepository.findByRoundOrderByQuestionIndexAsc(round);
 
-        log.info("[批量评分] 开始 - roundId={}, studentId={}, 题目数={}", roundId, studentId, answers.size());
+        log.info("[批量评分] 开始 - roundId={}, studentId={}, 题目数={}", roundId, student.getId(), answers.size());
 
         List<ScoringContext.AnswerData> answerDataList = new ArrayList<>();
         for (PracticeAnswer answer : answers) {
@@ -927,7 +927,7 @@ public class PracticeService {
             }
 
             try {
-                scoreAnswer(ad, studentId);
+                scoreAnswer(ad, student);
                 scoredCount++;
             } catch (Exception e) {
                 log.error("[批量评分] 评分失败: answerId=" + ad.answerId, e);
@@ -960,7 +960,7 @@ public class PracticeService {
     /**
      * 对单个答案进行评分（纯AI评分，不需要沙库执行）
      */
-    private void scoreAnswer(ScoringContext.AnswerData ad, Long studentId) {
+    private void scoreAnswer(ScoringContext.AnswerData ad, User student) {
         try {
             log.info("[评分] ====== 开始评分 answerId={}, questionIndex={} ======", ad.answerId, ad.questionIndex);
             log.info("[评分] 题目: {}", ad.questionTitle);
@@ -1008,6 +1008,9 @@ public class PracticeService {
             answer.setScore(score);
             answer.setAiFeedback(aiFeedback);
             answerRepository.save(answer);
+
+            // 更新错误类型统计
+            updateErrorStatistics(student, answer.getQuestionType(), isCorrect);
 
             log.info("[评分] ====== 评分完成 answerId={}, score={}/{} ======", ad.answerId, score, fullScore);
 
