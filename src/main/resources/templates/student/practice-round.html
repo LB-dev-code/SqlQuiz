@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Neural Round / Berlin Concrete</title>
 
     <!-- Fonts -->
@@ -396,15 +399,13 @@
             </div>
 
             <div class="result-zone" id="execution-result">
-                > WAITING FOR INPUT...
             </div>
 
             <div class="control-bar">
                 <span id="btn-status"
                     style="margin-right: auto; color: #666; font-size: 0.8rem; align-self: center;"></span>
                 <button onclick="runCode()" class="btn btn-run">TEST RUN</button>
-                <button onclick="saveAnswer()" class="btn btn-submit" id="save-btn">SAVE ANSWER</button>
-                <button onclick="nextQuestion()" class="btn" id="next-btn" style="display: none;">NEXT →</button>
+                <button onclick="saveAndNext()" class="btn btn-submit" id="save-next-btn">SAVE & NEXT →</button>
                 <button onclick="finishRound()" class="btn btn-submit" id="finish-btn" style="display: none;">FINISH ROUND</button>
             </div>
         </div>
@@ -425,7 +426,11 @@
         let questionIndex = 0;
         let startTime = null; // 不立即开始计时，等题目加载完成后再开始
         let timerInterval = null;
-        
+
+        // 调试日志：输出roundId
+        console.log('[Practice Round] Page loaded with roundId:', roundId);
+        console.log('[Practice Round] Current URL:', window.location.href);
+
         // Timer - 只有startTime不为null时才计时
         function startTimer() {
             if (timerInterval) return; // 避免重复启动
@@ -458,8 +463,8 @@
             document.getElementById('q-loading').style.display = 'block';
             document.getElementById('q-content').style.display = 'none';
 
-            // 题目应该已经在dashboard页面生成完，轮询次数减少
-            const maxRetries = 10; // 10次 * 2秒 = 20秒
+            // 题目应该已经在dashboard页面生成完，但增加等待时间以防生成较慢
+            const maxRetries = 60; // 60次 * 2秒 = 120秒（2分钟）
             let retryCount = 0;
 
             while (retryCount < maxRetries) {
@@ -471,9 +476,27 @@
                     const response = await fetch(url);
                     const data = await response.json();
 
+                    // 调试日志
+                    console.log('[fetchQuestionReal] API Response:', {
+                        url: url,
+                        roundId: roundId,
+                        success: data.success,
+                        hasMore: data.hasMore,
+                        generating: data.generating,
+                        questionIndex: data.questionIndex,
+                        answerId: data.answerId
+                    });
+
                     if (data.success && data.hasMore) {
                         currentAnswerId = data.answerId;
                         questionIndex = data.questionIndex;
+
+                        console.log('[fetchQuestionReal] Loaded question:', {
+                            roundId: roundId,
+                            questionIndex: questionIndex,
+                            answerId: currentAnswerId,
+                            title: data.title
+                        });
 
                         document.getElementById('q-title').innerText = data.title;
                         document.getElementById('q-desc').innerText = data.content;
@@ -488,6 +511,9 @@
                         // 清空编辑器内容，准备输入新答案
                         editor.setValue('');
                         editor.clearHistory();
+
+                        // 清空result area
+                        document.getElementById('execution-result').innerHTML = '';
 
                         // Update dots
                         const dots = document.getElementById('round-steps');
@@ -591,8 +617,8 @@
             }
         }
 
-        // Save answer (without scoring)
-        async function saveAnswer() {
+        // Save answer and automatically move to next question
+        async function saveAndNext() {
             const sql = editor.getValue();
             const resultDiv = document.getElementById('execution-result');
 
@@ -602,9 +628,7 @@
                 return;
             }
 
-            resultDiv.innerHTML = '<div class="result-status">> SAVING...</div>';
-            resultDiv.style.color = 'var(--signal-orange)';
-
+            // 直接保存，不显示保存状态
             try {
                 const response = await fetch('/student/practice/api/save-answer', {
                     method: 'POST',
@@ -626,23 +650,33 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    resultDiv.innerHTML = '<div class="result-status">> SAVED</div>';
-                    resultDiv.style.color = 'var(--success-green)';
-
                     // 判断是否是最后一道题
                     const isLastQuestion = questionIndex >= 9; // 0-9共10题
 
+                    // 调试日志
+                    console.log('[saveAndNext] Answer saved:', {
+                        roundId: roundId,
+                        questionIndex: questionIndex,
+                        currentAnswerId: currentAnswerId,
+                        isLastQuestion: isLastQuestion
+                    });
+
                     if (isLastQuestion) {
                         // 最后一题，显示 FINISH ROUND
-                        document.getElementById('save-btn').style.display = 'none';
-                        document.getElementById('next-btn').style.display = 'none';
+                        resultDiv.innerHTML = '<div class="result-status">> ALL QUESTIONS COMPLETED</div>';
+                        resultDiv.style.color = 'var(--success-green)';
+                        document.getElementById('save-next-btn').style.display = 'none';
                         document.getElementById('finish-btn').style.display = 'inline-block';
-                        document.getElementById('btn-status').innerText = `All questions answered. Click FINISH to submit.`;
+                        document.getElementById('btn-status').innerText = `Click FINISH to submit.`;
+
+                        // 设置编辑器为只读，防止修改答案
+                        editor.setOption("readOnly", true);
                     } else {
-                        // 不是最后一题，显示 NEXT
-                        document.getElementById('save-btn').style.display = 'none';
-                        document.getElementById('next-btn').style.display = 'inline-block';
-                        document.getElementById('btn-status').innerText = `Question ${questionIndex + 1}/10 saved`;
+                        // 不是最后一题，自动跳转到下一题
+                        fetchQuestionReal(questionIndex + 1);
+                        document.getElementById('save-next-btn').style.display = 'inline-block';
+                        document.getElementById('finish-btn').style.display = 'none';
+                        document.getElementById('btn-status').innerText = ``;
                     }
                 } else {
                     resultDiv.innerHTML = `<div class="result-error">> SAVE FAILED\n${data.error || 'Unknown error'}</div>`;
@@ -724,16 +758,6 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-
-        // Next question
-        function nextQuestion() {
-            fetchQuestionReal(questionIndex + 1);
-            document.getElementById('save-btn').style.display = 'inline-block';
-            document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('finish-btn').style.display = 'none';
-            document.getElementById('execution-result').innerHTML = '<div class="result-status">> WAITING FOR INPUT...</div>';
-            document.getElementById('execution-result').style.color = '#666';
         }
 
     </script>

@@ -21,6 +21,11 @@ import com.example.SqlQuiz.entity.SandboxContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.web.client.ClientHttpRequestFactories;
+import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.http.client.ClientHttpRequestFactory;
+
+import java.time.Duration;
 
 @Service
 public class GLMService {
@@ -44,10 +49,19 @@ public class GLMService {
                        @Value("${glm.base-url}") String baseUrl,
                        @Value("${glm.model}") String model) {
         this.model = model;
+
+        // 配置超时：连接超时30秒，读取超时2分钟（批量生成10道题需要较长时间）
+        ClientHttpRequestFactory requestFactory = ClientHttpRequestFactories.get(
+                ClientHttpRequestFactorySettings.DEFAULTS
+                        .withConnectTimeout(Duration.ofSeconds(30))
+                        .withReadTimeout(Duration.ofMinutes(2))
+        );
+
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .requestFactory(requestFactory)
                 .build();
     }
 
@@ -1210,7 +1224,7 @@ public class GLMService {
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("messages", messages);
-        body.put("max_tokens", 8000);
+        body.put("max_tokens", 16000); // 增加到16000以支持10道题的批量生成
         body.put("temperature", 0.7);
         
         // Add knowledge base ID

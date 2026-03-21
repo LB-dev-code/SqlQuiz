@@ -131,6 +131,36 @@ public class PracticeService {
         return sessionRepository.save(session);
     }
 
+    /**
+     * 完成练习会话（别名方法）
+     */
+    @Transactional
+    public PracticeSession completeSession(Long sessionId) {
+        return endSession(sessionId);
+    }
+
+    /**
+     * 暂停练习会话
+     */
+    @Transactional
+    public PracticeSession pauseSession(Long sessionId) {
+        PracticeSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        session.pauseSession();
+        return sessionRepository.save(session);
+    }
+
+    /**
+     * 恢复练习会话
+     */
+    @Transactional
+    public PracticeSession resumeSession(Long sessionId) {
+        PracticeSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        session.resumeSession();
+        return sessionRepository.save(session);
+    }
+
     // ==================== 轮次管理 ====================
 
     /**
@@ -271,6 +301,35 @@ public class PracticeService {
         sessionRepository.save(session);
 
         return roundRepository.save(round);
+    }
+
+    /**
+     * 完成轮次（别名方法）
+     */
+    public PracticeRound completeRound(Long roundId) {
+        return endRound(roundId);
+    }
+
+    /**
+     * 向轮次提交答案
+     * 创建新的答案记录并提交
+     */
+    @Transactional
+    public Long submitAnswerToRound(Long roundId, Integer questionIndex, String studentSql) {
+        PracticeRound round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new RuntimeException("Round not found"));
+
+        // 创建新答案记录
+        PracticeAnswer answer = new PracticeAnswer();
+        answer.setRound(round);
+        answer.setQuestionIndex(questionIndex);
+        answer.setStudentSql(studentSql);
+        answer = answerRepository.save(answer);
+
+        // 提交答案（评分）
+        submitAnswer(answer.getId(), studentSql);
+
+        return answer.getId();
     }
 
     // ==================== 题目生成 ====================
@@ -512,7 +571,9 @@ public class PracticeService {
                 // 步骤7: 按题型分配题号并保存
                 int questionIndex = 0;
                 Map<Question.QuestionType, Integer> typeCounters = new HashMap<>();
-                for (Question.QuestionType type : selectedTypes) {
+                // 使用distribution来初始化typeCounters，而不是selectedTypes
+                // 因为当selectedTypes为空时，distribution包含默认分布
+                for (Question.QuestionType type : distribution.keySet()) {
                     typeCounters.put(type, 0);
                 }
 
@@ -682,12 +743,9 @@ public class PracticeService {
                 log.error("[题目生成] 清理失败 - error: {}", cleanupException.getMessage());
             }
 
-            log.info("[题目生成] 降级到单题生成模式...");
-            // 降级到单题生成模式
-            Question.QuestionType fallbackType = selectedTypes.isEmpty() ?
-                    null : selectedTypes.get(0);
-            generateQuestionsForRound(round, student, fallbackType);
-            log.info("[题目生成] ========== 单题生成完成 ==========");
+            // 不再降级到单题生成模式，直接抛出异常让用户重试
+            log.error("[题目生成] 题目生成失败，请重试");
+            throw new RuntimeException("题目生成失败: " + e.getMessage(), e);
         }
     }
 
