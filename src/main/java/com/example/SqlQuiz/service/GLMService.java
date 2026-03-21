@@ -347,10 +347,20 @@ public class GLMService {
             sandbox = sandboxService.createAISandbox();
             System.out.println("[SQL Execution] Created sandbox: " + sandbox.getDatabaseName());
 
-            // 2. Execute setupSql to initialize tables
-            if (setupSql != null && !setupSql.trim().isEmpty()) {
+            // 2. Clone tables from testdb to initialize sandbox (ensure data consistency with frontend display)
+            // This is the same approach used when students run SQL
+            if (tablePrefix != null && !tablePrefix.isEmpty() && setupSql != null && !setupSql.trim().isEmpty()) {
+                // Clone only this question's specific tables from test_db
+                sandboxService.cloneSpecificTablesFromTestDB(sandbox, tablePrefix, setupSql);
+                System.out.println("[SQL Execution] Cloned tables from testdb successfully");
+            } else if (tablePrefix != null && !tablePrefix.isEmpty()) {
+                // Compatible with old data: clone all tables with prefix
+                sandboxService.cloneTablesFromTestDB(sandbox, tablePrefix);
+                System.out.println("[SQL Execution] Cloned all tables with prefix from testdb");
+            } else if (setupSql != null && !setupSql.trim().isEmpty()) {
+                // Fallback: execute setupSql directly (for cases without tablePrefix)
                 sandboxService.executeSetupSql(sandbox, setupSql);
-                System.out.println("[SQL Execution] Executed setupSql successfully");
+                System.out.println("[SQL Execution] Executed setupSql (fallback mode)");
             }
 
             // 3. Execute expected SQL
