@@ -968,6 +968,7 @@ public class SandboxDatabaseService {
     /**
      * 为SQL添加表前缀映射
      * 将无前缀的表名（如teacher）映射到带前缀的表名（如quiz_q_123_teacher）
+     * 防止重复添加前缀：如果表名已包含前缀，则跳过
      */
     private String addTablePrefixToSql(String sql, String prefix) {
         if (prefix == null || prefix.isEmpty()) {
@@ -975,46 +976,50 @@ public class SandboxDatabaseService {
         }
 
         String result = sql;
+        // 转义前缀中的特殊字符（用于正则表达式）
+        String escapedPrefix = prefix.replace("_", "_");
 
         // 按顺序匹配并替换表名，更具体的模式要先匹配
+        // 负向先行断言 (?!...) 确保表名不以该前缀开头，避免重复添加前缀
+
         // DROP TABLE table_name
         result = result.replaceAll(
-                "(?i)\\b(DROP\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(DROP\\s+TABLE)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // ALTER TABLE table_name
         result = result.replaceAll(
-                "(?i)\\b(ALTER\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(ALTER\\s+TABLE)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // TRUNCATE TABLE table_name
         result = result.replaceAll(
-                "(?i)\\b(TRUNCATE\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(TRUNCATE\\s+TABLE)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // INSERT INTO table_name
         result = result.replaceAll(
-                "(?i)\\b(INSERT\\s+INTO)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(INSERT\\s+INTO)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // UPDATE table_name
         result = result.replaceAll(
-                "(?i)\\bUPDATE\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\bUPDATE\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "UPDATE " + prefix + "_$1"
         );
         // DELETE FROM table_name
         result = result.replaceAll(
-                "(?i)\\b(DELETE\\s+FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(DELETE\\s+FROM)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // FROM table_name
         result = result.replaceAll(
-                "(?i)\\b(FROM)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(FROM)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
         // JOIN table_name
         result = result.replaceAll(
-                "(?i)\\b(JOIN)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "(?i)\\b(JOIN)\\s+(?!" + escapedPrefix + "_)([a-zA-Z_][a-zA-Z0-9_]*)\\b",
                 "$1 " + prefix + "_$2"
         );
 
