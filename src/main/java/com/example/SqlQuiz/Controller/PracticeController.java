@@ -131,62 +131,6 @@ public class PracticeController {
 
 
 
- // ==================== REST API ====================
-
-//    @GetMapping("/api/statistics")
-//    @ResponseBody
-//    public ResponseEntity<?> getStatistics(Authentication auth) {
-//        try {
-//            String username = auth.getName();
-//            User student = userService.findByUsername(username)
-//                    .orElseThrow(() -> new RuntimeException("Student not found"));
-//
-//            List<ErrorTypeStatistics> statistics = practiceService.getErrorStatistics(student);
-//
-//            // Build response data
-//            List<Map<String, Object>> statisticsData = new ArrayList<>();
-//            List<String> masteredTypes = new ArrayList<>();
-//            List<String> recommendedTypes = new ArrayList<>();
-//
-//            for (ErrorTypeStatistics stat : statistics) {
-//                Map<String, Object> statData = new HashMap<>();
-//                statData.put("questionType", stat.getQuestionType().name());
-//                statData.put("questionTypeDisplay", stat.getQuestionType().getDisplayName());
-//                statData.put("totalCount", stat.getTotalCount());
-//                statData.put("correctCount", stat.getCorrectCount());
-//                statData.put("errorCount", stat.getErrorCount());
-//                statData.put("accuracy", stat.getAccuracy());
-//                statData.put("isMastered", stat.getIsMastered());
-//                statData.put("errorFrequency", stat.getErrorFrequency());
-//
-//                statisticsData.add(statData);
-//
-//                // Record mastered question types
-//                if (stat.getIsMastered()) {
-//                    masteredTypes.add(stat.getQuestionType().getDisplayName());
-//                }
-//
-//                // Recommend high error rate and not mastered question types
-//                if (!stat.getIsMastered() && stat.getErrorFrequency() >= 0.3) {
-//                    recommendedTypes.add(stat.getQuestionType().getDisplayName());
-//                }
-//            }
-//
-//            Map<String, Object> response = new HashMap<>();
-//            response.put("success", true);
-//            response.put("statistics", statisticsData);
-//            response.put("masteredTypes", masteredTypes);
-//            response.put("recommendedTypes", recommendedTypes);
-//
-//            return ResponseEntity.ok(response);
-//
-//        } catch (Exception e) {
-//            return ResponseEntity.status(500).body(Map.of(
-//                    "success", false,
-//                    "error", "Failed to get statistics: " + e.getMessage()
-//            ));
-//        }
-//    }
 
     /**
      * Start practice session (supports multi-type selection)
@@ -352,24 +296,28 @@ public class PracticeController {
             }
 
             if (question.isEmpty()) {
-                // 判断是“题目还在生成中”还是“轮次真正完成”
+                // 判断是"题目还在生成中"还是"轮次真正完成"
                 PracticeRound round = practiceService.getRound(roundId).orElse(null);
                 if (round != null) {
-                    // 检查当前轮次是否有任何已生成的题目
+                    // 检查当前轮次已生成的题目数量
                     List<PracticeAnswer> existingAnswers = practiceService.getAnswersByRound(roundId);
-                    boolean isStillGenerating = existingAnswers.isEmpty() && round.isInProgress();
-                    
-                    if (isStillGenerating) {
+                    int generatedCount = existingAnswers.size();
+                    int expectedCount = PracticeRound.QUESTIONS_PER_ROUND; // 10
+
+                    System.out.println("[Question Query] 已生成题目数: " + generatedCount + ", 预期: " + expectedCount);
+
+                    // 如果已生成数量不足10题，说明还在生成中
+                    if (generatedCount < expectedCount && round.isInProgress()) {
                         System.out.println("[Question Query] 题目还在生成中...");
                         return ResponseEntity.ok(Map.of(
                                 "success", true,
                                 "hasMore", false,
                                 "generating", true,
-                                "message", "Questions are still being generated"
+                                "message", "Questions are still being generated (" + generatedCount + "/" + expectedCount + ")"
                         ));
                     }
                 }
-                
+
                 System.out.println("[Question Query] 轮次完成，没有更多题目");
                 return ResponseEntity.ok(Map.of(
                         "success", true,

@@ -585,7 +585,8 @@
                     // 如果题目已生成
                     if (data.success && data.hasMore) {
                         console.log('[DEBUG] Questions ready, redirecting to round page');
-                        window.location.href = '/student/practice/round/' + roundId;
+                        // 添加时间戳参数防止浏览器缓存
+                        window.location.href = '/student/practice/round/' + roundId + '?t=' + Date.now();
                         return;
                     }
 
@@ -605,7 +606,7 @@
                     console.error('[DEBUG] Error checking questions:', err);
                     retryCount++;
                     if (retryCount >= maxRetries) {
-                        alert('Question generation timeout. Please try again.');
+                        alert('Question generation timeout after 2 minutes. The server may be busy. Please try again.');
                         loading.style.display = 'none';
                         return;
                     }

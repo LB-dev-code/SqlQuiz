@@ -44,7 +44,8 @@
       "Bash(taskkill:*)",
       "Bash(chmod:*)",
       "Bash(curl:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(mvn test:*)"
     ],
     "deny": [],
     "ask": []
