@@ -319,12 +319,24 @@ public class GLMService {
 
     /**
      * Check if SQL is a SELECT query
+     * Skips comments (single-line and multi-line) to detect the actual SQL statement type
      */
     private boolean isSelectQuery(String sql) {
         if (sql == null || sql.trim().isEmpty()) {
             return false;
         }
-        return sql.trim().toUpperCase().startsWith("SELECT");
+
+        // Remove single-line comments -- ...
+        String cleaned = sql.replaceAll("--[^\\n\\r]*", "");
+
+        // Remove multi-line comments /* ... */
+        cleaned = cleaned.replaceAll("/\\*[\\s\\S]*?\\*/", " ");
+
+        // Trim leading whitespace
+        cleaned = cleaned.trim();
+
+        // Check the first valid SQL keyword
+        return cleaned.toUpperCase().startsWith("SELECT");
     }
 
     /**
@@ -465,7 +477,7 @@ public class GLMService {
                 "=== GRADING RULES (execute steps in strict order) ===\n\n" +
 
                 "Step 1: EXECUTION STATUS\n" +
-                "If student SQL failed to execute → score=0, matchType=ZERO. Done.\n" +
+                "If student SQL failed to execute → RECORD the error, but CONTINUE to Step 4 for partial credit.\n" +
                 "If expected SQL failed → fall back to direct SQL comparison (skip result-set steps).\n\n" +
 
                 "Step 2: RESULT SET COMPARISON (both executed successfully)\n" +
@@ -480,14 +492,15 @@ public class GLMService {
                 "  - Coincidental match (different logic, same test result) → NOT equivalent\n" +
                 "If semantically equivalent → score=%.1f, matchType=SEMANTIC. Done.\n\n" +
 
-                "Step 4: PARTIAL CREDIT (result sets differ OR not semantically equivalent)\n" +
-                "If student SQL has errors, identify what they were trying to write, find the closest correct interpretation.\n" +
+                "Step 4: PARTIAL CREDIT (result sets differ OR not semantically equivalent OR execution failed)\n" +
+                "If student SQL has errors (including execution errors), identify what they were trying to write, find the closest correct interpretation.\n" +
                 "Tokenize both SQLs (keyword/identifier/operator/literal/punctuation = 1 token each).\n" +
                 "D_min = minimum token edit distance (INSERT/DELETE/SUBSTITUTE, each=1).\n" +
                 "Len_A = token count of expected SQL.\n" +
                 "T = max(3, Len_A).\n" +
                 "Score = max(0, M × (1 - D_min / T)), M=%.1f.\n" +
-                "matchType = PARTIAL if score>0, ZERO if score=0.\n\n" +
+                "matchType = PARTIAL if score>0, ZERO if score=0.\n" +
+                "CRITICAL: Even if SQL execution failed, ALWAYS calculate edit distance and give partial credit when appropriate.\n\n" +
 
                 "Token edit distance examples:\n" +
                 "  SELECT * → SELECT col1, col2: DELETE(*) + INSERT(col1) + INSERT(,) + INSERT(col2) = 4 edits\n" +
@@ -534,7 +547,7 @@ public class GLMService {
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("messages", messages);
-        body.put("max_tokens", 2000);
+        body.put("max_tokens", 4000);
         body.put("temperature", 0);
         body.put("top_p", 0.1);
 
@@ -568,6 +581,8 @@ public class GLMService {
                     JsonNode content = message.get("content");
                     if (content != null) {
                         String contentText = content.asText();
+                        // 清理JSON响应，提取纯JSON部分
+                        contentText = cleanJsonResponse(contentText);
                         System.out.println("[AI Score with Result Data] Result extracted");
                         return contentText;
                     }
@@ -595,6 +610,49 @@ public class GLMService {
         } catch (Exception e) {
             return "[]";
         }
+    }
+
+    /**
+     * 清理AI返回的JSON响应，提取纯JSON部分
+     * 处理可能的前缀文本、代码块标记、中文标点符号等问题
+     */
+    private String cleanJsonResponse(String response) {
+        if (response == null || response.isEmpty()) {
+            return response;
+        }
+
+        // 移除可能的前缀文本（如 "Here is the result:" 等）
+        int jsonStart = response.indexOf("{");
+        if (jsonStart > 0) {
+            response = response.substring(jsonStart);
+            System.out.println("[Clean JSON] Removed prefix text, remaining: " + response.substring(0, Math.min(100, response.length())));
+        }
+
+        // 移除可能的代码块标记
+        response = response.replaceAll("```json\\s*", "").replaceAll("```\\s*", "");
+
+        // 移除末尾的非JSON内容（保留到最后一个 }）
+        int jsonEnd = response.lastIndexOf("}");
+        if (jsonEnd > 0 && jsonEnd < response.length() - 1) {
+            String afterJson = response.substring(jsonEnd + 1).trim();
+            if (!afterJson.isEmpty()) {
+                System.out.println("[Clean JSON] Removed trailing text: " + afterJson);
+            }
+            response = response.substring(0, jsonEnd + 1);
+        }
+
+        // 替换中文标点符号为英文
+        response = response.replaceAll("\u201C", "\"").replaceAll("\u201D", "\"")
+                          .replaceAll("\u300C", "\"").replaceAll("\u300D", "\"")
+                          .replaceAll("\uFF02", "\"").replaceAll("\uFF02", "\"")
+                          .replaceAll("：", ":").replaceAll("，", ",")
+                          .replaceAll("；", ";").replaceAll("‘", "'").replaceAll("’", "'");
+
+        // 移除可能的换行符问题在JSON字符串值内部（保留结构化换行）
+        // 处理reasoning字段中可能出现的未转义换行
+        response = response.replaceAll("(?<=[^\"\\n])\n(?=[^\"\\n])", " ");
+
+        return response.trim();
     }
 
     /**
@@ -1490,10 +1548,12 @@ public class GLMService {
 
                 "Step 4: RESULT SET COMPARISON (if execution results provided)\n" +
                 "Compare row count, columns, and data content.\n" +
-                "Use result match as supporting evidence for partial credit.\n\n" +
+                "Use result match as supporting evidence for partial credit.\n" +
+                "CRITICAL: If execution failed, DO NOT stop here - continue to Step 5.\n\n" +
 
-                "Step 5: PARTIAL CREDIT (edit distance)\n" +
-                "If student SQL has errors, identify what they intended, find closest correct interpretation.\n" +
+                "Step 5: PARTIAL CREDIT (edit distance - ALWAYS calculate)\n" +
+                "CRITICAL: Even if SQL execution failed, ALWAYS calculate edit distance and give partial credit when appropriate.\n" +
+                "If student SQL has errors (including execution errors), identify what they intended, find closest correct interpretation.\n" +
                 "Tokenize both SQLs (keyword/identifier/operator/literal/punctuation = 1 token each).\n" +
                 "D_min = minimum token edit distance (INSERT/DELETE/SUBSTITUTE, each=1).\n" +
                 "Len_A = token count of expected SQL.\n" +

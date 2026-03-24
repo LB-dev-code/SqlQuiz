@@ -960,9 +960,24 @@ public class SandboxDatabaseService {
 
     /**
      * 判断是否为SELECT查询
+     * 会跳过SQL注释来检测实际的SQL语句类型
      */
     private boolean isSelectQuery(String sql) {
-        return sql.trim().toUpperCase().startsWith("SELECT");
+        if (sql == null || sql.trim().isEmpty()) {
+            return false;
+        }
+
+        // 移除单行注释 -- ...
+        String cleaned = sql.replaceAll("--[^\\n\\r]*", "");
+
+        // 移除多行注释 /* ... */
+        cleaned = cleaned.replaceAll("/\\*[\\s\\S]*?\\*/", " ");
+
+        // 移除前导空白
+        cleaned = cleaned.trim();
+
+        // 检查第一个有效的SQL关键字
+        return cleaned.toUpperCase().startsWith("SELECT");
     }
 
     /**
