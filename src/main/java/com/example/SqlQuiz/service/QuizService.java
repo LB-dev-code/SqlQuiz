@@ -520,6 +520,13 @@ public class QuizService {
                     questionAnswerRepository.save(student_answer);
                 } catch (Exception e) {
                     System.err.println("Error parsing AI scoring feedback: " + e.getMessage());
+                    // 打印原始响应以便调试
+                    if (score_feedback != null && !score_feedback.isEmpty()) {
+                        System.err.println("Raw AI response (first 500 chars): " + score_feedback.substring(0, Math.min(500, score_feedback.length())));
+                        if (score_feedback.length() > 500) {
+                            System.err.println("Raw AI response (last 200 chars): ..." + score_feedback.substring(score_feedback.length() - Math.min(200, score_feedback.length())));
+                        }
+                    }
                     // If parsing fails, give 0 score and log error
                     student_answer.setScore(0.0);
                     student_answer.setIsCorrect(false);

@@ -47,6 +47,7 @@ public class EmailService {
         // 生成6位数字验证码
         String code = RandomStringUtils.randomNumeric(6);
         log.info("[Email Service] 生成的验证码: {}", code);
+        System.out.println("[Email Verification Code] 邮箱 " + email + " 的验证码: " + code);
 
         // 保存验证码记录
         EmailVerification verification = new EmailVerification(email, code, codeExpiryMinutes);
