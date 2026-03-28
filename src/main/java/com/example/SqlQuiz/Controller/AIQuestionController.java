@@ -22,14 +22,28 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/teacher/api/question")
 public class AIQuestionController {
+    private static final Pattern FORBIDDEN_SYSTEM_SCHEMA_PATTERN = Pattern.compile(
+            "(?i)\\b(?:information_schema|mysql|performance_schema|sys)\\b\\s*\\."
+    );
+    private static final Pattern CJK_CHAR_PATTERN = Pattern.compile(
+            "[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}]"
+    );
+    private static final Pattern BASIC_EASY_COMPLEX_KEYWORDS_PATTERN = Pattern.compile(
+            "(?i)\\b(?:join|group\\s+by|having|union|intersect|except|with\\b)\\b"
+    );
+    private static final Pattern SUBQUERY_PATTERN = Pattern.compile("(?i)\\(\\s*select\\b");
+    private static final int GENERATION_MAX_ATTEMPTS = 3;
+
 
     @Autowired
     private GLMService glmService;
@@ -113,6 +127,13 @@ public class AIQuestionController {
                 String setupSql = jsonNode.get("setupSql").asText();
                 String expectedSql = jsonNode.get("expectedSql").asText();
 
+                if (containsForbiddenSystemSchemaQuery(expectedSql)) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "success", false,
+                            "error", "AI-normalized SQL contains system schema query (information_schema/mysql/performance_schema/sys), which is blocked in sandbox verification"
+                    ));
+                }
+
                 if (setupSql != null && !setupSql.trim().isEmpty()) {
                     boolean isValid = glmService.verifyQuestionInSandbox(setupSql, expectedSql);
                     if (!isValid) {
@@ -158,9 +179,36 @@ public class AIQuestionController {
                 difficulty = "MEDIUM";
             }
 
-            String jsonResponse = glmService.generateQuestionWithRAG(questionType, difficulty);
             ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode jsonNode = objectMapper.readTree(jsonResponse);
+            JsonNode jsonNode = null;
+            String lastRejectReason = "Unknown generation error";
+
+            for (int attempt = 1; attempt <= GENERATION_MAX_ATTEMPTS; attempt++) {
+                try {
+                    String jsonResponse = glmService.generateQuestionWithRAG(questionType, difficulty);
+                    JsonNode candidate = objectMapper.readTree(jsonResponse);
+                    String validationError = validateGeneratedQuestion(candidate, questionType, difficulty);
+
+                    if (validationError == null) {
+                        jsonNode = candidate;
+                        break;
+                    }
+
+                    lastRejectReason = validationError;
+                    System.err.println("[AI Generate] Rejected candidate (attempt " + attempt + "): " + validationError);
+                } catch (Exception e) {
+                    lastRejectReason = "Model response is not valid JSON: " + e.getMessage();
+                    System.err.println("[AI Generate] Parse failed (attempt " + attempt + "): " + e.getMessage());
+                }
+            }
+
+            if (jsonNode == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "error", "AI generated question did not pass internal quality checks after "
+                                + GENERATION_MAX_ATTEMPTS + " attempts: " + lastRejectReason + ". Please retry."
+                ));
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -265,6 +313,13 @@ public class AIQuestionController {
             SandboxContext sandbox = null;
             try {
                 if (setupSql != null && !setupSql.trim().isEmpty()) {
+                    if (containsForbiddenSystemSchemaQuery(expectedSql)) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "success", false,
+                                "error", "Expected SQL references system schema (information_schema/mysql/performance_schema/sys). Please use business tables defined in setupSql."
+                        ));
+                    }
+
                     // Use sandbox to verify setupSql and expectedSql
                     boolean isValid = glmService.verifyQuestionInSandbox(setupSql, expectedSql);
                     if (!isValid) {
@@ -315,5 +370,88 @@ public class AIQuestionController {
                     "error", "Failed to confirm question: " + e.getMessage()
             ));
         }
+    }
+
+    private boolean containsForbiddenSystemSchemaQuery(String sql) {
+        if (sql == null || sql.isBlank()) {
+            return false;
+        }
+        String normalized = sql.toLowerCase(Locale.ROOT);
+        if (normalized.contains("show tables") || normalized.contains("show databases")) {
+            return true;
+        }
+        return FORBIDDEN_SYSTEM_SCHEMA_PATTERN.matcher(sql).find();
+    }
+
+    private String validateGeneratedQuestion(JsonNode jsonNode, String requestedType, String requestedDifficulty) {
+        if (jsonNode == null) {
+            return "AI response is empty";
+        }
+
+        String setupSql = jsonNode.path("setupSql").asText("");
+        String expectedSql = jsonNode.path("expectedSql").asText("");
+        String title = jsonNode.path("title").asText("");
+        String description = jsonNode.path("description").asText("");
+        String databaseContext = jsonNode.path("databaseContext").asText("");
+        String answer = jsonNode.path("answer").asText("");
+        String actualType = jsonNode.path("questionType").asText("");
+        String actualDifficulty = jsonNode.path("difficulty").asText("");
+
+        if (title.isBlank()) {
+            return "Generated title is empty";
+        }
+        if (description.isBlank()) {
+            return "Generated description is empty";
+        }
+        if (setupSql.isBlank()) {
+            return "Generated setupSql is empty";
+        }
+        if (expectedSql.isBlank()) {
+            return "Generated expectedSql is empty";
+        }
+        if (containsForbiddenSystemSchemaQuery(expectedSql)) {
+            return "expectedSql queries system schema/table";
+        }
+        if (containsCjkCharacters(title) || containsCjkCharacters(description)
+                || containsCjkCharacters(databaseContext) || containsCjkCharacters(answer)
+                || containsCjkCharacters(setupSql) || containsCjkCharacters(expectedSql)) {
+            return "Generated content must be English only (CJK characters detected)";
+        }
+
+        if ("SELECT_BASIC".equalsIgnoreCase(requestedType) && "EASY".equalsIgnoreCase(requestedDifficulty)) {
+            String trimmed = expectedSql.trim();
+            if (trimmed.isEmpty() || !trimmed.toLowerCase(Locale.ROOT).startsWith("select")) {
+                return "SELECT_BASIC EASY expectedSql must start with SELECT";
+            }
+
+            String withoutTrailingSemicolon = trimmed.endsWith(";")
+                    ? trimmed.substring(0, trimmed.length() - 1)
+                    : trimmed;
+            if (withoutTrailingSemicolon.contains(";")) {
+                return "SELECT_BASIC EASY expectedSql must contain only one SQL statement";
+            }
+            if (BASIC_EASY_COMPLEX_KEYWORDS_PATTERN.matcher(expectedSql).find()) {
+                return "SELECT_BASIC EASY expectedSql is too complex (JOIN/GROUP/HAVING/UNION/CTE)";
+            }
+            if (SUBQUERY_PATTERN.matcher(expectedSql).find()) {
+                return "SELECT_BASIC EASY expectedSql must not contain subquery";
+            }
+        }
+
+        if (!actualType.isBlank() && !requestedType.equalsIgnoreCase(actualType)) {
+            return "Generated questionType mismatch: requested " + requestedType + ", got " + actualType;
+        }
+        if (!actualDifficulty.isBlank() && !requestedDifficulty.equalsIgnoreCase(actualDifficulty)) {
+            return "Generated difficulty mismatch: requested " + requestedDifficulty + ", got " + actualDifficulty;
+        }
+
+        return null;
+    }
+
+    private boolean containsCjkCharacters(String text) {
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        return CJK_CHAR_PATTERN.matcher(text).find();
     }
 }

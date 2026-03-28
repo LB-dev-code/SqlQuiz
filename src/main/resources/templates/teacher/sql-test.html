@@ -718,10 +718,11 @@ SELECT * FROM ..."></textarea>
                                 if (t && t.tableName) {
                                     const div = document.createElement('div');
                                     div.className = 'table-item';
-                                    const parts = t.tableName.split('_');
-                                    let shortName = parts.length > 4
-                                        ? (parts.slice(5).join('_') || parts[parts.length - 1])
-                                        : parts[parts.length - 1];
+                                    let shortName = t.tableName;
+                                    if (tInfo.prefix && t.tableName.startsWith(tInfo.prefix + '_')) {
+                                        // Remove only the system-generated prefix, keep full business table name.
+                                        shortName = t.tableName.substring((tInfo.prefix + '_').length);
+                                    }
                                     div.innerHTML = `<i class="fas fa-table"></i> ${shortName} <span style="opacity:0.5; font-size:0.7rem;">(${t.tableName})</span>`;
                                     div.onclick = () => insertTableName(t.tableName);
                                     div.title = `Click to insert table name`;
