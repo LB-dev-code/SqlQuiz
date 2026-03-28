@@ -736,6 +736,7 @@ public class GLMService {
                 "   - CREATE TABLE format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
                 "   - INSERT INTO format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "7. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "7.1 expectedSql MUST NOT query system schemas/tables (information_schema, mysql, performance_schema, sys) and MUST NOT use SHOW TABLES/SHOW DATABASES\n" +
                 "8. Return valid JSON only, no additional text\n" +
                 "9. The answer field should include step-by-step solution explanation in Markdown\n" +
                 "10. Infer appropriate questionType and difficulty from the input question\n" +
@@ -819,6 +820,16 @@ public class GLMService {
                 "  \"UPDATE_DELETE\": \"UPDATE and DELETE operations\"\n" +
                 "}";
 
+        String strictTypeDifficultyRule = "";
+        if ("SELECT_BASIC".equalsIgnoreCase(questionType) && "EASY".equalsIgnoreCase(difficulty)) {
+            strictTypeDifficultyRule =
+                    "**STRICT RULE FOR SELECT_BASIC + EASY:**\n" +
+                    "- expectedSql must be exactly ONE simple SELECT statement on ONE business table from setupSql\n" +
+                    "- Do NOT use JOIN, GROUP BY, HAVING, UNION, WITH, or subqueries\n" +
+                    "- Do NOT query system schemas/tables (information_schema, mysql, performance_schema, sys)\n" +
+                    "- Do NOT use SHOW TABLES or SHOW DATABASES\n";
+        }
+
         // 构建RAG Prompt
         String ragPrompt = "You are a MySQL quiz question generation expert with access to a knowledge base of SQL problems.\n" +
                 "\n" +
@@ -829,6 +840,8 @@ public class GLMService {
                 "Difficulty: " + difficulty + "\n" +
                 "\n" +
                 "Question Type Mapping:\n" + typeMapping + "\n" +
+                "\n" +
+                strictTypeDifficultyRule +
                 "\n" +
                 "Requirements:\n" +
                 "1. Reference the style and structure from knowledge base, but create a completely NEW scenario\n" +
@@ -845,6 +858,11 @@ public class GLMService {
                 "Difficulty: " + difficulty + "\n"
                 + "Please strictly refer to the difficulty level definitions in the knowledge base to ensure the generated question matches the expected complexity for " + difficulty + " level questions.\n"
                 + "\n" +
+                "**CRITICAL - Language Requirement:**\n" +
+                "- ALL generated text must be in English only\n" +
+                "- This includes: title, description, databaseContext, answer, and any SQL comments\n" +
+                "- Do NOT output Chinese or any non-English language\n" +
+                "\n" +
                 "**CRITICAL - Column Specification in Description:**\n" +
                 "The description field MUST explicitly state which columns/fields the query result should contain.\n" +
                 "Good examples: 'Write a query to return the employee name and salary...', 'Return the columns: name, department, total_sales'.\n" +
@@ -877,6 +895,7 @@ public class GLMService {
                 "  * For AUTO_INCREMENT columns: either include the value OR set to 0/NULL (but still list the column)\n" +
                 "  * This ensures no column has NULL values across all rows\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "- expectedSql MUST NOT query system schemas/tables (information_schema, mysql, performance_schema, sys) and MUST NOT use SHOW TABLES/SHOW DATABASES\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
                 "- **CRITICAL - Distractor Data**: Insert 5-8 sample records with:\n" +
                 "  * Records matching the query criteria (correct answers)\n" +
@@ -1091,6 +1110,7 @@ public class GLMService {
                 "Generate a practice question with these requirements:\n" +
                 "Question Type: " + questionType + " (" + getTypeDescription(questionType) + ")\n" +
                 "Difficulty: " + difficulty + "\n\n" +
+                "Language requirement: ALL generated text must be English only. Do NOT output Chinese or any non-English language.\n\n" +
                 "Return JSON format:\n" +
                 "{\n" +
                 "  \"title\": \"Brief question title\",\n" +
@@ -1124,6 +1144,7 @@ public class GLMService {
                 "- **Do NOT use FOREIGN KEY constraints** (sandbox user doesn't have REFERENCES permission)\n" +
                 "- setupSql format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
                 "- expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
+                "- expectedSql MUST NOT query system schemas/tables (information_schema, mysql, performance_schema, sys) and MUST NOT use SHOW TABLES/SHOW DATABASES\n" +
                 "- All primary keys: AUTO_INCREMENT\n" +
                 "- **CRITICAL - Distractor Data**: Insert 5-8 sample records with:\n" +
                 "  * Records matching the query criteria (correct answers)\n" +
