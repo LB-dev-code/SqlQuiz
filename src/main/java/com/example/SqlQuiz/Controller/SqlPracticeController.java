@@ -340,101 +340,7 @@ public class SqlPracticeController {
         return null;
     }
 
-    /**
-     * Copy table structure and data from main database to sandbox
-     */
-    private void copyTableToSandbox(String tablePrefix, com.example.SqlQuiz.entity.SandboxContext sandbox) {
-        System.out.println("[copyTableToSandbox] Starting to find tables, tablePrefix: " + tablePrefix);
 
-        try (Connection mainDbConnection = testDataSource.getConnection()) {
-            // Find all tables starting with this prefix
-            String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
-                         "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME LIKE '" + tablePrefix + "%'";
-
-            System.out.println("[copyTableToSandbox] Query: " + query);
-
-            try (Statement statement = mainDbConnection.createStatement();
-                 ResultSet rs = statement.executeQuery(query)) {
-
-                int tableCount = 0;
-                while (rs.next()) {
-                    String tableName = rs.getString("TABLE_NAME");
-                    System.out.println("[copyTableToSandbox] Found table: " + tableName);
-                    copySingleTableToSandbox(tableName, sandbox, mainDbConnection);
-                    tableCount++;
-                }
-
-                System.out.println("[copyTableToSandbox] Found " + tableCount + " tables in total");
-
-                if (tableCount == 0) {
-                    System.err.println("[copyTableToSandbox] ⚠️ No matching tables found!");
-                    System.err.println("[copyTableToSandbox] Please check if tables starting with '" + tablePrefix + "' exist in testdb");
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to copy table to sandbox: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Copy single table to sandbox (including structure and data)
-     */
-    private void copySingleTableToSandbox(String sourceTableName,
-                                          com.example.SqlQuiz.entity.SandboxContext sandbox,
-                                          Connection mainDbConnection) {
-        try {
-            System.out.println("[SQL Validation] Starting to copy table: " + sourceTableName);
-
-            // Get CREATE TABLE statement
-            String showCreateTableSql = "SHOW CREATE TABLE `" + sourceTableName + "`";
-            String createTableSql = null;
-
-            try (Statement stmt = mainDbConnection.createStatement();
-                 ResultSet rs = stmt.executeQuery(showCreateTableSql)) {
-                if (rs.next()) {
-                    createTableSql = rs.getString(2);
-                }
-            }
-
-            if (createTableSql != null) {
-                System.out.println("[SQL Validation] Obtained CREATE TABLE statement");
-
-                // Create table in sandbox (remove database name prefix, keep only table name)
-                String simplifiedTableName = sourceTableName;
-                if (sourceTableName.contains(".")) {
-                    simplifiedTableName = sourceTableName.substring(sourceTableName.lastIndexOf('.') + 1);
-                }
-
-                // Replace table name in CREATE TABLE statement with simplified table name
-                createTableSql = createTableSql.replaceAll(
-                    "CREATE\\s+TABLE\\s+`?" + java.util.regex.Pattern.quote(sourceTableName) + "`?",
-                    "CREATE TABLE `" + simplifiedTableName + "`"
-                );
-
-                // Execute CREATE TABLE statement in sandbox
-                try (Statement sandboxStmt = sandbox.getConnection().createStatement()) {
-                    sandboxStmt.execute(createTableSql);
-                    System.out.println("[SQL Validation] Table created successfully in sandbox: " + simplifiedTableName);
-                }
-
-                // Copy data - Note: Need to use full database.tableName format to reference source table
-                // Because connection is on sandbox, need to specify database where source table is located
-                String insertSql = "INSERT INTO `" + simplifiedTableName + "` SELECT * FROM mysql_test_db.`" + sourceTableName + "`";
-                try (Statement sandboxStmt = sandbox.getConnection().createStatement()) {
-                    sandboxStmt.execute(insertSql);
-                    System.out.println("[SQL Validation] Data copied successfully: " + simplifiedTableName);
-                }
-
-                System.out.println("[SQL Validation] Successfully copied table " + sourceTableName + " to sandbox");
-            } else {
-                System.err.println("[SQL Validation] Unable to get CREATE TABLE statement: " + sourceTableName);
-            }
-        } catch (Exception e) {
-            System.err.println("[SQL Validation] Failed to copy single table " + sourceTableName + ": " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Add prefix to table names in SQL statement
@@ -499,20 +405,20 @@ public class SqlPracticeController {
     private List<Map<String, Object>> getTableDataByPrefix(String tablePrefix) {
         List<Map<String, Object>> result = new ArrayList<>();
 
-        try (Connection connection = testDataSource.getConnection()) {
-            // Find all tables starting with this prefix
-            String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
-                         "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME LIKE '" + tablePrefix + "%'";
+                    try (Connection connection = testDataSource.getConnection()) {
+                        // Find all tables starting with this prefix
+                        String query = "SELECT TABLE_NAME FROM information_schema.TABLES " +
+                                "WHERE TABLE_SCHEMA = 'mysql_test_db' AND TABLE_NAME LIKE '" + tablePrefix + "%'";
 
-            try (Statement statement = connection.createStatement();
-                 ResultSet rs = statement.executeQuery(query)) {
+                        try (Statement statement = connection.createStatement();
+                             ResultSet rs = statement.executeQuery(query)) {
 
-                while (rs.next()) {
-                    String tableName = rs.getString("TABLE_NAME");
-                    Map<String, Object> tableData = getTableData(tableName);
-                    if (tableData != null) {
-                        result.add(tableData);
-                    }
+                            while (rs.next()) {
+                                String tableName = rs.getString("TABLE_NAME");
+                                Map<String, Object> tableData = getTableData(tableName);
+                                if (tableData != null) {
+                                    result.add(tableData);
+                                }
                 }
             }
         } catch (Exception e) {
@@ -565,16 +471,5 @@ public class SqlPracticeController {
         return tableInfo;
     }
 
-    /**
-     * Compare whether two query results are the same
-     */
-    private boolean compareResults(List<Map<String, Object>> result1, List<Map<String, Object>> result2) {
-        if (result1 == null && result2 == null) return true;
-        if (result1 == null || result2 == null) return false;
-        if (result1.size() != result2.size()) return false;
 
-        // Simple comparison: same row count and column count
-        // Can implement more complex comparison logic as needed
-        return true;
-    }
 }
