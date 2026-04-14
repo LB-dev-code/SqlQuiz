@@ -1,291 +1,216 @@
 package com.example.SqlQuiz.core;
 
-import com.example.SqlQuiz.entity.*;
-import com.example.SqlQuiz.service.PracticeService;
-import com.example.SqlQuiz.repository.PracticeSessionRepository;
-import com.example.SqlQuiz.repository.PracticeRoundRepository;
+import com.example.SqlQuiz.entity.ErrorTypeStatistics;
+import com.example.SqlQuiz.entity.PracticeAnswer;
+import com.example.SqlQuiz.entity.PracticeRound;
+import com.example.SqlQuiz.entity.PracticeSession;
+import com.example.SqlQuiz.entity.Question;
+import com.example.SqlQuiz.entity.User;
 import com.example.SqlQuiz.repository.ErrorTypeStatisticsRepository;
+import com.example.SqlQuiz.repository.PracticeAnswerRepository;
+import com.example.SqlQuiz.repository.PracticeRoundRepository;
+import com.example.SqlQuiz.repository.PracticeSessionRepository;
+import com.example.SqlQuiz.service.GLMService;
+import com.example.SqlQuiz.service.PracticeService;
+import com.example.SqlQuiz.service.QuestionDeduplicationService;
+import com.example.SqlQuiz.service.SandboxDatabaseService;
+import com.example.SqlQuiz.service.SetupSqlExecutorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
-
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-/**
- * Core Feature Test: Student Self-Practice
- *
- * Feature Description:
- * Besides taking quizzes, students can also practice on their own. Students select
- * question types to practice, and the system prioritizes question types based on
- * error frequency from answer history, then batch-generates questions (10 questions
- * per round, students can practice unlimited rounds). After each round, the system
- * scores and provides feedback on student performance.
- */
-@SpringBootTest
-@ActiveProfiles("test")
-@Import(com.example.SqlQuiz.TestConfig.class)
-@org.springframework.test.context.TestPropertySource(properties = {
-    "spring.datasource.primary.url=jdbc:h2:mem:testdb",
-    "spring.datasource.primary.driver-class-name=org.h2.Driver",
-    "spring.datasource.primary.username=sa",
-    "spring.datasource.primary.password=",
-    "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
-})
-@DisplayName("Core Feature: Student Self-Practice Test")
-public class PracticeServiceCoreTest {
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Core Feature: Student Self-Practice")
+class PracticeServiceCoreTest {
 
-    @Autowired(required = false)
-    private PracticeService practiceService;
-
-    @Autowired(required = false)
+    @Mock
     private PracticeSessionRepository sessionRepository;
 
-    @Autowired(required = false)
+    @Mock
     private PracticeRoundRepository roundRepository;
 
-    @Autowired(required = false)
+    @Mock
+    private PracticeAnswerRepository answerRepository;
+
+    @Mock
     private ErrorTypeStatisticsRepository statisticsRepository;
 
-    @Autowired(required = false)
-    private com.example.SqlQuiz.repository.UserRepository userRepository;
+    @Mock
+    private GLMService glmService;
 
-    private User testStudent;
+    @Mock
+    private QuestionDeduplicationService deduplicationService;
+
+    @Mock
+    private SetupSqlExecutorService setupSqlExecutorService;
+
+    @Mock
+    private SandboxDatabaseService sandboxService;
+
+    @InjectMocks
+    private PracticeService practiceService;
+
+    private User student;
 
     @BeforeEach
     void setUp() {
-        // Create test student
-        testStudent = new User();
-        testStudent.setId(1L);
-        testStudent.setUsername("student");
-        testStudent.setRole(User.Role.STUDENT);
+        student = new User();
+        student.setId(7L);
+        student.setUsername("student");
+        student.setRole(User.Role.STUDENT);
     }
 
     @Test
-    @DisplayName("Verify practice service is configured")
-    void verifyPracticeServiceConfigured() {
-        // Verify practice service is properly configured
-        assertThat(practiceService).as("Practice service (PracticeService) should be configured").isNotNull();
-        assertThat(sessionRepository).as("Practice session repository should be configured").isNotNull();
-        assertThat(roundRepository).as("Practice round repository should be configured").isNotNull();
-        assertThat(statisticsRepository).as("Error statistics repository should be configured").isNotNull();
+    @DisplayName("startSession should initialize history-based error statistics and persist selected types")
+    void startSessionShouldInitializeStatisticsAndSaveSelectedTypes() {
+        when(sessionRepository.findActiveSessionByStudent(student)).thenReturn(Optional.empty());
+        when(statisticsRepository.findByStudent(student)).thenReturn(List.of());
+        when(answerRepository.getStatisticsByStudentGroupByType(student.getId())).thenReturn(List.of(
+                new Object[] {Question.QuestionType.SELECT_JOIN, 4L, 1L},
+                new Object[] {Question.QuestionType.SELECT_BASIC, 2L, 2L}
+        ));
+        when(sessionRepository.save(any(PracticeSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PracticeSession session = practiceService.startSession(
+                student,
+                List.of(Question.QuestionType.SELECT_JOIN, Question.QuestionType.SELECT_BASIC));
+
+        ArgumentCaptor<ErrorTypeStatistics> statsCaptor = ArgumentCaptor.forClass(ErrorTypeStatistics.class);
+
+        assertThat(session.getStudent()).isEqualTo(student);
+        assertThat(session.getStatus()).isEqualTo(PracticeSession.SessionStatus.IN_PROGRESS);
+        assertThat(session.getSelectedTypes()).containsExactly(
+                Question.QuestionType.SELECT_JOIN,
+                Question.QuestionType.SELECT_BASIC);
+
+        verify(statisticsRepository, times(2)).save(statsCaptor.capture());
+        verify(sessionRepository).save(any(PracticeSession.class));
+
+        List<ErrorTypeStatistics> savedStats = statsCaptor.getAllValues();
+        assertThat(savedStats)
+                .extracting(ErrorTypeStatistics::getQuestionType)
+                .containsExactly(Question.QuestionType.SELECT_JOIN, Question.QuestionType.SELECT_BASIC);
+        assertThat(savedStats.get(0).getErrorCount()).isEqualTo(3);
+        assertThat(savedStats.get(0).getAccuracy()).isEqualTo(0.25);
+        assertThat(savedStats.get(1).getErrorCount()).isZero();
+        assertThat(savedStats.get(1).getIsMastered()).isTrue();
     }
 
     @Test
-    @DisplayName("Verify practice session creation functionality")
-    void verifyCreatePracticeSession() {
-        // Verify practice service supports session creation (not actually executing to avoid transaction issues)
+    @DisplayName("startSession should return an existing active session instead of creating a new one")
+    void startSessionShouldReuseExistingActiveSession() {
+        PracticeSession existing = new PracticeSession(student);
+        existing.setId(99L);
+        when(sessionRepository.findActiveSessionByStudent(student)).thenReturn(Optional.of(existing));
 
-        if (practiceService == null) {
-            return; // Skip test if service not configured
-        }
+        PracticeSession result = practiceService.startSession(student, List.of(Question.QuestionType.SELECT_JOIN));
 
-        // Verify service exists and is available
-        assertThat(practiceService).as("Practice service should be configured").isNotNull();
-
-        // Practice session functionality:
-        // 1. Student selects question type
-        // 2. System recommends questions based on error statistics
-        // 3. Batch generates 10 questions
-        // 4. Creates practice session record
-        // 5. Supports session state management (in progress, paused, completed)
-
-        assertThat(practiceService).as("Should support practice session creation").isNotNull();
+        assertThat(result).isSameAs(existing);
+        verify(sessionRepository, never()).save(any(PracticeSession.class));
+        verify(statisticsRepository, never()).findByStudent(student);
     }
 
     @Test
-    @DisplayName("Verify error statistics functionality - for priority sorting")
-    void verifyErrorStatisticsForPriority() {
-        // Verify system can track student error types
-        // Error statistics used for question recommendation priority sorting
+    @DisplayName("updateErrorStatistics should increment counts and recalculate accuracy")
+    void updateErrorStatisticsShouldRecordAnswers() {
+        ErrorTypeStatistics stat = new ErrorTypeStatistics(student, Question.QuestionType.SELECT_JOIN);
+        stat.setTotalCount(4);
+        stat.setCorrectCount(2);
+        stat.setErrorCount(2);
+        stat.recalculateAccuracy();
 
-        if (statisticsRepository == null) {
-            return;
-        }
+        when(statisticsRepository.findByStudentAndQuestionType(student, Question.QuestionType.SELECT_JOIN))
+                .thenReturn(Optional.of(stat));
 
-        // Error statistics should include:
-        // 1. Student ID
-        // 2. Question type
-        // 3. Error count
-        // 4. Last error time
+        practiceService.updateErrorStatistics(student, Question.QuestionType.SELECT_JOIN, true);
 
-        assertThat(statisticsRepository).as("Error statistics repository should be available").isNotNull();
+        assertThat(stat.getTotalCount()).isEqualTo(5);
+        assertThat(stat.getCorrectCount()).isEqualTo(3);
+        assertThat(stat.getErrorCount()).isEqualTo(2);
+        assertThat(stat.getAccuracy()).isEqualTo(0.6);
+        assertThat(stat.getLastPracticedAt()).isNotNull();
+        verify(statisticsRepository).save(stat);
     }
 
     @Test
-    @DisplayName("Verify batch question generation functionality - 10 questions per round")
-    void verifyBatchQuestionGeneration() {
-        // Verify system generates 10 questions per round
+    @DisplayName("cleanupIncompleteSessions should complete every in-progress session for the student")
+    void cleanupIncompleteSessionsShouldCompleteActiveSessions() {
+        PracticeSession first = new PracticeSession(student);
+        first.setId(1L);
+        PracticeSession second = new PracticeSession(student);
+        second.setId(2L);
 
-        int questionsPerRound = 10;
-        int unlimitedRounds = -1; // -1 indicates unlimited rounds
+        when(sessionRepository.findByStudentAndStatus(student, PracticeSession.SessionStatus.IN_PROGRESS))
+                .thenReturn(List.of(first, second));
+        when(sessionRepository.save(any(PracticeSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(questionsPerRound).as("Each round should include 10 questions").isEqualTo(10);
-        assertThat(unlimitedRounds).as("Should support unlimited practice rounds").isLessThanOrEqualTo(0);
+        int cleaned = practiceService.cleanupIncompleteSessions(student);
+
+        assertThat(cleaned).isEqualTo(2);
+        assertThat(first.getStatus()).isEqualTo(PracticeSession.SessionStatus.COMPLETED);
+        assertThat(second.getStatus()).isEqualTo(PracticeSession.SessionStatus.COMPLETED);
+        assertThat(first.getEndTime()).isNotNull();
+        assertThat(second.getEndTime()).isNotNull();
+        verify(sessionRepository, times(2)).save(any(PracticeSession.class));
     }
 
     @Test
-    @DisplayName("Verify question type selection functionality")
-    void verifyQuestionTypeSelection() {
-        // Verify students can select question types to practice
-
-        Question.QuestionType[] availableTypes = Question.QuestionType.values();
-
-        assertThat(availableTypes).as("Should provide multiple question type options").isNotEmpty();
-        assertThat(availableTypes.length).as("Should support at least 5 question types").isGreaterThanOrEqualTo(5);
-
-        // Students can:
-        // 1. Select single question type
-        // 2. Select multiple question types combination
-        // 3. Not select type (system auto-recommends)
-    }
-
-    @Test
-    @DisplayName("Verify priority sorting algorithm")
-    void verifyPrioritySortingAlgorithm() {
-        // Verify system can sort based on error frequency
-
-        // Priority factors:
-        // 1. Error frequency for that question type
-        // 2. Most recent error time
-        // 3. Overall mastery level
-
-        String priorityFactors = """
-            Priority Sorting Basis:
-            1. Question types with higher error frequency first
-            2. Question types with recent errors first
-            3. Question types with lower mastery first
-            4. Ensure question type diversity
-            """;
-
-        assertThat(priorityFactors).as("Should have clear priority sorting basis").contains("error frequency");
-    }
-
-    @Test
-    @DisplayName("Verify practice session state management")
-    void verifyPracticeSessionStateManagement() {
-        if (practiceService == null) {
-            return;
-        }
-
-        // Practice session states:
-        PracticeSession.SessionStatus[] statuses = PracticeSession.SessionStatus.values();
-
-        assertThat(statuses).as("Should support multiple session states").isNotEmpty();
-
-        // Verify state transitions:
-        // CREATED -> IN_PROGRESS -> COMPLETED/PAUSED
-        // PAUSED -> IN_PROGRESS
-    }
-
-    @Test
-    @DisplayName("Verify scoring and feedback functionality")
-    void verifyScoringAndFeedback() {
-        // After each practice round, score and provide feedback on student performance
-
-        String feedbackContent = """
-            Practice feedback should include:
-            1. Overall score
-            2. Accuracy rate statistics
-            3. Performance analysis by question type
-            4. Error analysis
-            5. Improvement suggestions
-            """;
-
-        assertThat(feedbackContent).as("Should provide complete practice feedback").contains("score", "analysis");
-    }
-
-    @Test
-    @DisplayName("Verify unlimited rounds practice support")
-    void verifyUnlimitedRoundsSupport() {
-        // Verify students can practice unlimited rounds
-
-        // Practice rounds should include:
-        // 1. Round number
-        // 2. Questions in that round
-        // 3. Answer records for that round
-        // 4. Score for that round
-
+    @DisplayName("generateRoundFeedback should group incorrect answers by type and include AI feedback")
+    void generateRoundFeedbackShouldSummarizeIncorrectAnswers() {
         PracticeRound round = new PracticeRound();
-        round.setRoundNumber(1);
-        round.setStatus(PracticeRound.RoundStatus.IN_PROGRESS);
-        round.setTotalQuestions(10);
+        round.setRoundNumber(3);
+        round.setCorrectCount(1);
+        round.setTotalQuestions(3);
 
-        assertThat(round.getRoundNumber()).as("Should be able to record round number").isEqualTo(1);
-        assertThat(round.getTotalQuestions()).as("Each round should include 10 questions").isEqualTo(10);
+        PracticeAnswer joinAnswer = new PracticeAnswer(round, 0);
+        joinAnswer.setQuestionType(Question.QuestionType.SELECT_JOIN);
+        joinAnswer.setAiFeedback("Remember the JOIN condition.");
+
+        PracticeAnswer aggregateAnswer = new PracticeAnswer(round, 1);
+        aggregateAnswer.setQuestionType(Question.QuestionType.SELECT_AGGREGATE);
+        aggregateAnswer.setAiFeedback("Use GROUP BY before HAVING.");
+
+        when(answerRepository.findIncorrectByRound(round)).thenReturn(List.of(joinAnswer, aggregateAnswer));
+
+        String feedback = ReflectionTestUtils.invokeMethod(practiceService, "generateRoundFeedback", round);
+
+        assertThat(feedback).contains("Round 3 Summary");
+        assertThat(feedback).contains("**Score:** 1/3");
+        assertThat(feedback).contains("JOIN Queries");
+        assertThat(feedback).contains("Aggregate Functions");
+        assertThat(feedback).contains("Q1");
+        assertThat(feedback).contains("Q2");
+        assertThat(feedback).contains("Remember the JOIN condition.");
+        assertThat(feedback).contains("Use GROUP BY before HAVING.");
     }
 
     @Test
-    @DisplayName("Documentation: Student Self-Practice Feature Description")
-    void documentPracticeFeature() {
-        // This test demonstrates student self-practice feature implementation to reviewers
+    @DisplayName("isTypeMastered should reflect the stored mastery flag")
+    void isTypeMasteredShouldReadRepositoryState() {
+        ErrorTypeStatistics stat = new ErrorTypeStatistics(student, Question.QuestionType.SELECT_BASIC);
+        stat.setIsMastered(true);
 
-        String featureDocumentation = """
-            ========================================
-            Core Feature: Student Self-Practice
-            ========================================
+        when(statisticsRepository.findByStudentAndQuestionType(student, Question.QuestionType.SELECT_BASIC))
+                .thenReturn(Optional.of(stat));
 
-            Feature Description:
-            Besides taking quizzes, students can also practice on their own. Students
-            select question types to practice, and the system prioritizes question types
-            based on error frequency from answer history, then batch-generates questions
-            (10 questions per round, students can practice unlimited rounds). After each
-            round, the system scores and provides feedback on student performance.
+        boolean mastered = practiceService.isTypeMastered(student, Question.QuestionType.SELECT_BASIC);
 
-            Implementation Components:
-            1. PracticeService
-               - startSession(): Create practice session
-               - getActiveSession(): Get current session
-               - completeSession(): Complete session
-               - pauseSession(): Pause session
-               - resumeSession(): Resume session
-
-            2. Error Statistics Service
-               - ErrorTypeStatisticsRepository: Store error statistics
-               - Track error frequency by question type
-               - Track most recent error time
-               - Calculate priority sorting
-
-            3. Question Recommendation Algorithm
-               - Sort by error frequency
-               - Ensure question type diversity
-               - Adaptive difficulty adjustment
-               - Batch generate 10 questions
-
-            4. Practice Feedback System
-               - Calculate overall score
-               - Statistics accuracy rate
-               - Analyze performance by question type
-               - Provide error analysis
-               - Give improvement suggestions
-
-            Practice Flow:
-            1. Student selects question type (or system recommends)
-            2. System sorts question types based on error statistics
-            3. Batch generate 10 questions
-            4. Student answers questions one by one
-            5. Generate feedback for this round after completion
-            6. Can start new practice round
-
-            Verification Methods:
-            - Review PracticeService implementation
-            - Review error statistics logic
-            - Actually start practice session
-            - Complete one practice round and view feedback
-            """;
-
-        // Output documentation to console for reviewers
-        System.out.println(featureDocumentation);
-
-        assertThat(true).as("Student self-practice feature implemented, see source code and documentation").isTrue();
+        assertThat(mastered).isTrue();
     }
 }
