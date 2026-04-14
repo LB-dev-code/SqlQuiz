@@ -84,9 +84,25 @@ public class StudentController {
             }
         });
 
+        // Calculate average score
+        double totalScore = 0.0;
+        double maxTotalScore = 0.0;
+        for (Submission submission : submissions) {
+            if (submission.isCompleted()) {
+                if (submission.getTotalScore() != null) {
+                    totalScore += submission.getTotalScore();
+                }
+                if (submission.getMaxScore() != null) {
+                    maxTotalScore += submission.getMaxScore();
+                }
+            }
+        }
+        double averageScore = maxTotalScore > 0 ? (totalScore / maxTotalScore) * 100 : 0.0;
+
         model.addAttribute("student", student);
         model.addAttribute("availableQuizzes", availableQuizzes);
         model.addAttribute("submissions", submissions);
+        model.addAttribute("averageScore", averageScore);
 
         return "student/dashboard";
     }

@@ -332,187 +332,7 @@ public class PracticeService {
         return answer.getId();
     }
 
-    // ==================== 题目生成 ====================
 
-    /**
-     * 为轮次生成题目（核心出题算法）
-     * 注意：非事务方法，AI调用不应在事务内执行
-     */
-    public void generateQuestionsForRound(PracticeRound round, User student, Question.QuestionType targetType) {
-        List<QuestionPriority> priorities = calculateQuestionPriorities(student, targetType);
-
-        for (int i = 0; i < PracticeRound.QUESTIONS_PER_ROUND; i++) {
-            PracticeAnswer answer = new PracticeAnswer(round, i);
-
-            // 选择题型
-            QuestionPriority selected = selectQuestionType(priorities, i);
-
-            try {
-                // 使用AI生成题目
-                String questionJson = glmService.generatePracticeQuestion(
-                        selected.questionType.name(),
-                        selected.difficulty.name()
-                );
-
-                // 解析题目信息
-                JsonNode questionNode = objectMapper.readTree(cleanJsonResponse(questionJson));
-
-                // 提取setupSql（空字符串转为null）
-                String setupSql = getJsonFieldOrNull(questionNode, "setupSql");
-                log.info("[题目生成] AI返回的JSON - index: {}, hasSetupSql: {}, setupSql长度: {}",
-                        i, setupSql != null, setupSql != null ? setupSql.length() : 0);
-
-                // 执行setupSQL并获取表前缀（与步骤7逻辑保持一致）
-                String tablePrefix = null;
-                if (setupSql != null && !setupSql.trim().isEmpty()) {
-                    try {
-                        log.info("[题目生成-批量] 执行setupSQL - questionIndex: {}", i);
-                        tablePrefix = setupSqlExecutorService.executeSetupSql(setupSql);
-                        log.info("[题目生成-批量] setupSQL执行成功 - tablePrefix: {}", tablePrefix);
-                    } catch (Exception ex) {
-                        log.error("[题目生成-批量] setupSQL执行失败 - questionIndex: {}, error: {}", i, ex.getMessage());
-                        // 继续保存题目，但没有表前缀
-                    }
-                }
-
-                // 使用setQuestionInfoWithSetup来保存setupSql和tablePrefix
-                answer.setQuestionInfoWithSetup(
-                        getJsonField(questionNode, "title"),
-                        getJsonField(questionNode, "description"),
-                        getJsonField(questionNode, "databaseContext"),
-                        getJsonField(questionNode, "expectedSql"),
-                        setupSql,
-                        tablePrefix,  // 使用执行setupSQL后获取的tablePrefix
-                        selected.questionType,
-                        selected.difficulty
-                );
-
-            } catch (Exception e) {
-                // 生成失败时使用默认题目（没有setupSql）
-                answer.setQuestionInfoWithSetup(
-                        "SQL Practice Question " + (i + 1),
-                        "Practice question for " + selected.questionType.getDisplayName(),
-                        "Please write the correct SQL query.",
-                        "SELECT * FROM table",
-                        null, // setupSql
-                        null, // tablePrefix
-                        selected.questionType,
-                        selected.difficulty
-                );
-            }
-
-            saveAnswerInNewTransaction(answer);
-        }
-    }
-
-    /**
-     * 计算题型优先级（核心算法）
-     * 规则：学生选择 > 错误频率高+难度低 > 错误频率低+难度高
-     */
-    public List<QuestionPriority> calculateQuestionPriorities(User student, Question.QuestionType targetType) {
-        List<QuestionPriority> priorities = new ArrayList<>();
-
-        // 获取学生的错误统计
-        List<ErrorTypeStatistics> stats = statisticsRepository.findByStudent(student);
-        Map<Question.QuestionType, ErrorTypeStatistics> statsMap = stats.stream()
-                .collect(Collectors.toMap(ErrorTypeStatistics::getQuestionType, s -> s));
-
-        // 遍历所有题型
-        for (Question.QuestionType type : Question.QuestionType.values()) {
-            // 跳过已掌握的题型（正确率>=90%）
-            ErrorTypeStatistics stat = statsMap.get(type);
-            if (stat != null && stat.getIsMastered()) {
-                continue;
-            }
-
-            for (Question.DifficultyLevel difficulty : Question.DifficultyLevel.values()) {
-                double priorityScore = calculatePriorityScore(type, difficulty, stat, targetType);
-                priorities.add(new QuestionPriority(type, difficulty, priorityScore));
-            }
-        }
-
-        // 按优先级降序排序
-        priorities.sort((a, b) -> Double.compare(b.priorityScore, a.priorityScore));
-
-        return priorities;
-    }
-
-    /**
-     * 计算单个题型的优先级分数
-     * 优先级规则：学生选择 > 错误频率高 > 考点基础 > 考点中等 > 考点复杂 > 错误频率低
-     */
-    private double calculatePriorityScore(Question.QuestionType type, Question.DifficultyLevel difficulty,
-                                          ErrorTypeStatistics stat, Question.QuestionType targetType) {
-        double score = 0.0;
-
-        // 1. 用户选择加权（绝对最高优先级）
-        if (targetType != null && type == targetType) {
-            score += 10000;
-        }
-
-        // 2. 错误频率权重（高错误频率优先）
-        if (stat != null) {
-            double errorFrequency = stat.getErrorFrequency();
-            if (errorFrequency >= 0.5) {
-                // 高错误频率：+1000分
-                score += 1000;
-            } else if (errorFrequency < 0.3) {
-                // 低错误频率：+50分（最低优先级）
-                score += 50;
-            } else {
-                // 中等错误频率：+300分
-                score += 300;
-            }
-        } else {
-            // 没有历史记录，给予中等优先级
-            score += 300;
-        }
-
-        // 3. 难度权重（基础=500, 中等=300, 复杂=100）
-        switch (difficulty) {
-            case EASY:
-                score += 500;
-                break;
-            case MEDIUM:
-                score += 300;
-                break;
-            case HARD:
-                score += 100;
-                break;
-        }
-
-        return score;
-    }
-
-    /**
-     * 根据优先级选择题型
-     */
-    private QuestionPriority selectQuestionType(List<QuestionPriority> priorities, int questionIndex) {
-        if (priorities.isEmpty()) {
-            // 默认返回基础查询
-            return new QuestionPriority(Question.QuestionType.SELECT_BASIC, Question.DifficultyLevel.EASY, 0);
-        }
-
-        // 前5题选择高优先级，后5题增加一些随机性
-        if (questionIndex < 5) {
-            // 选择前几个高优先级的题型
-            int index = Math.min(questionIndex, priorities.size() - 1);
-            return priorities.get(index);
-        } else {
-            // 增加随机性，从前10个中随机选择
-            int maxIndex = Math.min(10, priorities.size());
-            int randomIndex = new Random().nextInt(maxIndex);
-            return priorities.get(randomIndex);
-        }
-    }
-
-    // ==================== 批量题目生成（新功能）====================
-
-    /**
-     * 批量为轮次生成题目（一次AI调用生成10题）
-     * 注意：round必须是已持久化的实体（有有效ID）
-     * 注意：非事务方法，AI调用不应在事务内执行
-     */
     public void generateQuestionsForRoundBatch(PracticeRound round, User student, List<Question.QuestionType> selectedTypes) {
         long batchStartTime = System.currentTimeMillis();
         log.info("[题目生成] ========== 开始批量生成题目 ==========");
@@ -892,7 +712,6 @@ public class PracticeService {
      */
     @Transactional
     public void scoreAllAnswersInRound(Long roundId) {
-        // === 第一步：加载所有必要数据到POJO（利用事务内的懒加载） ===
         PracticeRound round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new RuntimeException("Round not found"));
 
@@ -962,10 +781,7 @@ public class PracticeService {
      */
     private void scoreAnswer(ScoringContext.AnswerData ad, User student) {
         try {
-            log.info("[评分] ====== 开始评分 answerId={}, questionIndex={} ======", ad.answerId, ad.questionIndex);
-            log.info("[评分] 题目: {}", ad.questionTitle);
-            log.info("[评分] 学生SQL: {}", ad.studentSql);
-            log.info("[评分] 预期SQL: {}", ad.expectedSql);
+
 
             boolean isCorrect = false;
             double score = 0.0;

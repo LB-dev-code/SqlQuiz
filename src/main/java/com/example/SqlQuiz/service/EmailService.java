@@ -39,21 +39,19 @@ public class EmailService {
         log.info("[Email Service] 准备发送验证码到: {}", email);
         log.info("[Email Service] 发件人: {}", fromEmail);
 
-        // 删除该邮箱之前的验证码
+
         verificationRepository.deleteByEmail(email);
-        // 强制刷新，确保删除操作完成
         verificationRepository.flush();
 
-        // 生成6位数字验证码
         String code = RandomStringUtils.randomNumeric(6);
         log.info("[Email Service] 生成的验证码: {}", code);
         System.out.println("[Email Verification Code] 邮箱 " + email + " 的验证码: " + code);
 
-        // 保存验证码记录
+
         EmailVerification verification = new EmailVerification(email, code, codeExpiryMinutes);
         verificationRepository.save(verification);
 
-        // 发送邮件
+
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
@@ -85,25 +83,23 @@ public class EmailService {
             return false;
         }
 
-        // 检查是否过期
+
         if (verification.isExpired()) {
             return false;
         }
 
-        // 检查验证码是否匹配
+
         if (!verification.getCode().equals(code)) {
             return false;
         }
 
-        // 标记为已验证
+
         verification.setVerified(true);
         verificationRepository.save(verification);
         return true;
     }
 
-    /**
-     * 检查邮箱是否已验证（在指定时间内）
-     */
+
     public boolean isEmailVerified(String email) {
         EmailVerification verification = verificationRepository
                 .findFirstByEmailOrderByCreatedAtDesc(email)

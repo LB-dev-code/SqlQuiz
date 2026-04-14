@@ -702,9 +702,17 @@
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
 
     let saveTimers = {};
+    let savingScores = {};
 
     function saveScore(input) {
         const qaId = input.dataset.qaId;
+
+        // 防止重复提交
+        if (savingScores[qaId]) {
+            return;
+        }
+        savingScores[qaId] = true;
+
         const maxScore = parseFloat(input.dataset.maxScore);
         let newScore = parseFloat(input.value);
 
@@ -728,14 +736,22 @@
             headers: headers,
             body: JSON.stringify({ score: newScore })
         })
-        .then(r => r.json())
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) {
+                throw new Error(data.message || 'Save failed');
+            }
+            return data;
+        })
         .then(data => {
             if (data.success) {
                 input.className = 'score-input ' + (data.isCorrect ? 'text-success' : 'text-danger');
 
                 const statusEl = document.getElementById('status-' + qaId);
-                statusEl.className = 'status-tag ' + (data.isCorrect ? 'text-success' : 'text-danger');
-                statusEl.textContent = data.isCorrect ? 'APPROVED' : 'REJECTED';
+                if (statusEl) {
+                    statusEl.className = 'status-tag ' + (data.isCorrect ? 'text-success' : 'text-danger');
+                    statusEl.textContent = data.isCorrect ? 'APPROVED' : 'REJECTED';
+                }
 
                 if (data.totalScore != null) {
                     const totalEl = document.querySelector('.detail-item .value[data-total-score]');
@@ -752,8 +768,11 @@
             }
         })
         .catch(err => {
-            errorEl.textContent = 'Network error';
+            errorEl.textContent = err?.message || 'Network error';
             errorEl.classList.add('show');
+        })
+        .finally(() => {
+            savingScores[qaId] = false;
         });
 
         input.blur();

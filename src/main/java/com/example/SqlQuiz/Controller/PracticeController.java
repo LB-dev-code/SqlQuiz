@@ -109,8 +109,7 @@ public class PracticeController {
         model.addAttribute("roundId", roundId);
         model.addAttribute("roundNumber", round.getRoundNumber());
 
-        // 题目可能还在异步生成中，前端会通过轮询API等待
-        // 不再检查 currentQuestion 是否存在，直接加载页面
+
         return "student/practice-round";
     }
 
@@ -184,7 +183,6 @@ public class PracticeController {
             if (useMultiType) {
                 session = practiceService.startSession(student, selectedTypes);
             } else {
-                // Compatible with old API
                 Question.QuestionType targetType = (selectedTypes != null && !selectedTypes.isEmpty())
                         ? selectedTypes.get(0) : null;
                 session = practiceService.startSession(student, targetType);

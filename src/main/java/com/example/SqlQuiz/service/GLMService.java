@@ -31,10 +31,10 @@ import java.time.Duration;
 public class GLMService {
 
     private final RestClient restClient;
-    private double temperature = 0.6;
+
     private String model;
     //private  String description = "";
-    private  String create_promtp ;
+
 
     private String score_prompt ;
 
@@ -668,12 +668,12 @@ public class GLMService {
             String setupSql,
             String tablePrefix) throws JsonProcessingException {
 
-        System.out.println("[Score with Validation] ==========================================");
-        System.out.println("[Score with Validation] Starting scoring with validation");
-        System.out.println("[Score with Validation] Question: " + description);
-        System.out.println("[Score with Validation] Expected SQL: " + expectedSql);
-        System.out.println("[Score with Validation] Student SQL: " + studentSql);
-        System.out.println("[Score with Validation] ==========================================");
+//        System.out.println("[Score with Validation] ==========================================");
+//        System.out.println("[Score with Validation] Starting scoring with validation");
+//        System.out.println("[Score with Validation] Question: " + description);
+//        System.out.println("[Score with Validation] Expected SQL: " + expectedSql);
+//        System.out.println("[Score with Validation] Student SQL: " + studentSql);
+//        System.out.println("[Score with Validation] ==========================================");
 
         // Check if this is a SELECT query
         if (!isSelectQuery(expectedSql)) {
@@ -924,7 +924,7 @@ public class GLMService {
         // 添加RAG知识库支持
         Map<String, Object> tools = new HashMap<>();
         tools.put("type", "retrieval");
-        tools.put("retrieval", Map.of("knowledge_id", KNOWLEDGE_BASE_ID));
+                tools.put("retrieval", Map.of("knowledge_id", KNOWLEDGE_BASE_ID));
         body.put("tools", List.of(tools));
 
         String result = "";
@@ -952,7 +952,7 @@ public class GLMService {
             System.out.println("[RAG Response] 完整响应长度: " + result.length() + " 字符");
             System.out.println("[RAG Response] 响应预览: " + result.substring(0, Math.min(500, result.length())));
 
-            // 检查智谱 RAG 检索结果格式：data 数组
+            // debug rag (no logic)
             if (jsonNode.has("data")) {
                 JsonNode dataArray = jsonNode.get("data");
                 System.out.println("==================== RAG检索结果 ====================");
@@ -999,7 +999,6 @@ public class GLMService {
                 System.out.println("[RAG] 响应中没有 data 字段（检索结果可能在后台处理）");
             }
 
-            // 检查其他可能的检索信息字段
             if (jsonNode.has("retrieval_info")) {
                 JsonNode retrievalInfo = jsonNode.get("retrieval_info");
                 System.out.println("[RAG Retrieved] 检索信息: " + retrievalInfo.toPrettyString());
@@ -1009,7 +1008,6 @@ public class GLMService {
                 System.out.println("[RAG Context] 上下文: " + context.toPrettyString());
             }
 
-            // 检查choices中的检索相关信息
             JsonNode choices = jsonNode.get("choices");
             if (choices != null && choices.isArray() && choices.size() > 0) {
                 JsonNode message = choices.get(0).get("message");
@@ -1035,7 +1033,7 @@ public class GLMService {
                     }
                 }
             }
-            System.out.println("=====================================================");
+            System.out.println("=====================================================");   //debug over
 
             JsonNode error = jsonNode.get("error");
             if (error != null) {
@@ -1121,7 +1119,8 @@ public class GLMService {
                 "  \"hints\": \"Optional hints for students\"\n" +
                 "}\n\n" +
                 "**CRITICAL - Column Specification in Description:**\n" +
-                "The description MUST explicitly state which columns the query result should return.\n" +
+                "The description MUST explicitly state which columns the query result should return \n" +
+                "You MUST use the EXACT column names as defined in the table structure (e.g., 'employee_id', 'first_name', 'salary_amount').\n" +
                 "Good: 'Write a query to return the product name, category, and price...'\n" +
                 "Bad: 'Query the product information' (too vague, student won't know which columns to select).\n" +
                 "If the answer uses SELECT *, say 'Return all columns from the table'.\n\n" +
@@ -1378,72 +1377,6 @@ public class GLMService {
     /**
      * Generate corrective feedback for practice answers
      */
-    public String generatePracticeFeedback(String questionDescription, String expectedSql, 
-                                            String studentSql, boolean isCorrect) throws JsonProcessingException {
-        String feedbackPrompt = String.format(
-                "You are a SQL tutor providing feedback on student practice.\n\n" +
-                "Question: %s\n" +
-                "Expected SQL: %s\n" +
-                "Student SQL: %s\n" +
-                "Is Correct: %s\n\n" +
-                "Provide constructive feedback in JSON format:\n" +
-                "{\n" +
-                "  \"summary\": \"Brief assessment\",\n" +
-                "  \"correct_parts\": [\"What the student did right\"],\n" +
-                "  \"errors\": [\"What needs improvement\"],\n" +
-                "  \"suggestions\": [\"How to improve\"],\n" +
-                "  \"explanation\": \"Detailed explanation of the correct approach\"\n" +
-                "}\n\n" +
-                "Keep feedback encouraging and educational. Return valid JSON only.",
-                questionDescription, expectedSql, studentSql, isCorrect ? "Yes" : "No"
-        );
-        
-        List<Map<String, String>> messages = List.of(
-                Map.of("role", "user", "content", feedbackPrompt)
-        );
-        
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", messages,
-                "max_tokens", 1500,
-                "temperature", 0.5
-        );
-        
-        try {
-            String result = restClient.post()
-                    .uri("/api/paas/v4/chat/completions")
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-                    
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode jsonNode = objectMapper.readTree(result);
-            
-            JsonNode choices = jsonNode.get("choices");
-            if (choices != null && choices.isArray() && choices.size() > 0) {
-                JsonNode message = choices.get(0).get("message");
-                if (message != null) {
-                    JsonNode content = message.get("content");
-                    if (content != null) {
-                        String contentText = content.asText().trim();
-                        if (contentText.startsWith("```json")) {
-                            contentText = contentText.substring(7);
-                        }
-                        if (contentText.startsWith("```")) {
-                            contentText = contentText.substring(3);
-                        }
-                        if (contentText.endsWith("```")) {
-                            contentText = contentText.substring(0, contentText.length() - 3);
-                        }
-                        return contentText.trim();
-                    }
-                }
-            }
-            return result;
-        } catch (Exception e) {
-            throw new RuntimeException("Practice feedback generation failed: " + e.getMessage());
-        }
-    }
 
     // ==================== Sandbox Verification ====================
 
