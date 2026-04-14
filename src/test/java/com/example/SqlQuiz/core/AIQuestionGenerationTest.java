@@ -1,190 +1,101 @@
 package com.example.SqlQuiz.core;
 
-import com.example.SqlQuiz.entity.Question;
-import com.example.SqlQuiz.entity.Quiz;
-import com.example.SqlQuiz.entity.User;
+import com.example.SqlQuiz.entity.SandboxContext;
 import com.example.SqlQuiz.service.GLMService;
+import com.example.SqlQuiz.service.QuizTableMetadataService;
 import com.example.SqlQuiz.service.SandboxDatabaseService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-/**
- * Core Feature Test: AI Question Generation
- *
- * Feature Description:
- * Teachers select question type and difficulty level. The selection and question
- * generation request are combined into a standardized prompt sent to LLM. The LLM
- * retrieves local knowledge base to get difficulty level definitions and existing
- * related questions, then creates a new question in a fresh scenario through
- * analogy. The system also creates tables and preset answers, which are executed
- * to ensure SQL correctness.
- */
-@SpringBootTest
-@ActiveProfiles("test")
-@DisplayName("Core Feature: AI Question Generation Test")
-public class AIQuestionGenerationTest {
+@DisplayName("Core Feature: AI Question Generation")
+class AIQuestionGenerationTest {
 
-    @Autowired(required = false)
-    private GLMService glmService;
-
-    @Autowired(required = false)
-    private SandboxDatabaseService sandboxService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("Verify AI question generation service is configured")
-    void verifyAIServiceConfigured() {
-        // Verify core services are properly configured
-        assertThat(glmService).as("AI question generation service (GLMService) should be configured").isNotNull();
-        assertThat(sandboxService).as("Sandbox service (SandboxDatabaseService) should be configured").isNotNull();
-    }
+    @DisplayName("generateQuestionWithRAG should include retrieval config, strict easy rules, and the generated prefix")
+    void generateQuestionWithRagShouldBuildTheExpectedPrompt() throws Exception {
+        try (GlmMockHttpServer server = new GlmMockHttpServer(
+                "{\"choices\":[{\"message\":{\"content\":\"```json\\n{\\\"title\\\":\\\"Employee Lookup\\\",\\\"questionType\\\":\\\"SELECT_BASIC\\\"}\\n```\"}}]}")) {
 
-    @Test
-    @DisplayName("Verify sandbox creation for AI question validation")
-    void verifySandboxCreationForAI() {
-        if (sandboxService == null) {
-            return; // Skip test if service not configured
+            GLMService service = new GLMService("test-key", server.baseUrl(), "glm-test");
+            QuizTableMetadataService metadataService = mock(QuizTableMetadataService.class);
+            when(metadataService.generateUniqueTablePrefix()).thenReturn("quiz_q_deadbeef_1738671234567");
+            ReflectionTestUtils.setField(service, "tableMetadataService", metadataService);
+
+            String result = service.generateQuestionWithRAG("SELECT_BASIC", "EASY");
+            JsonNode json = objectMapper.readTree(result);
+
+            assertThat(json.get("title").asText()).isEqualTo("Employee Lookup");
+            assertThat(server.lastRequestBody()).contains("\"knowledge_id\":\"2013534505419395072\"");
+            assertThat(server.lastRequestBody()).contains("STRICT RULE FOR SELECT_BASIC + EASY");
+            assertThat(server.lastRequestBody()).contains("quiz_q_deadbeef_1738671234567_");
+            assertThat(server.lastRequestBody()).contains("ALL generated text must be in English only");
         }
-
-        // Create AI validation sandbox
-        var sandbox = sandboxService.createAISandbox();
-
-        // Verify sandbox creation successful
-        assertThat(sandbox).as("AI validation sandbox should be successfully created").isNotNull();
-        assertThat(sandbox.getDatabaseName()).as("Sandbox database name should not be empty").isNotEmpty();
-        assertThat(sandbox.getDatabaseName()).as("AI sandbox name should start with quiz_sb_ai_").startsWith("quiz_sb_ai_");
     }
 
     @Test
-    @DisplayName("Verify AI question generation core flow - prompt construction")
-    void verifyAIPromptConstruction() {
-        if (glmService == null) {
-            return; // Skip test if service not configured
+    @DisplayName("generatePracticeQuestion should return clean JSON and include practice-specific prompt constraints")
+    void generatePracticeQuestionShouldReturnCleanJson() throws Exception {
+        try (GlmMockHttpServer server = new GlmMockHttpServer(
+                "{\"choices\":[{\"message\":{\"content\":\"```json\\n{\\\"title\\\":\\\"Join Practice\\\",\\\"questionType\\\":\\\"SELECT_JOIN\\\"}\\n```\"}}]}")) {
+
+            GLMService service = new GLMService("test-key", server.baseUrl(), "glm-test");
+            QuizTableMetadataService metadataService = mock(QuizTableMetadataService.class);
+            when(metadataService.generateUniqueTablePrefix()).thenReturn("quiz_q_feedface_1738671234567");
+            ReflectionTestUtils.setField(service, "tableMetadataService", metadataService);
+
+            String result = service.generatePracticeQuestion("SELECT_JOIN", "MEDIUM");
+            JsonNode json = objectMapper.readTree(result);
+
+            assertThat(json.get("title").asText()).isEqualTo("Join Practice");
+            assertThat(server.lastRequestBody()).contains("Generate a practice question with these requirements");
+            assertThat(server.lastRequestBody()).contains("quiz_q_feedface_1738671234567_");
+            assertThat(server.lastRequestBody()).contains("Language requirement: ALL generated text must be English only");
         }
-
-        // Verify prompt-related configuration
-        // These parameters are used to build standardized prompts
-        assertThat(glmService).as("GLMService should support AI question generation").isNotNull();
     }
 
     @Test
-    @DisplayName("Verify AI question generation completeness - multiple question types support")
-    void verifyQuestionTypeSupport() {
-        // Verify system supports all question types
-        Question.QuestionType[] types = Question.QuestionType.values();
+    @DisplayName("verifyQuestionInSandbox should extract the table prefix and clean up the sandbox")
+    void verifyQuestionInSandboxShouldUseExtractedPrefixAndCleanup() throws Exception {
+        GLMService service = new GLMService("test-key", "http://127.0.0.1:65535", "glm-test");
+        SandboxDatabaseService sandboxService = mock(SandboxDatabaseService.class);
+        ReflectionTestUtils.setField(service, "sandboxService", sandboxService);
 
-        assertThat(types).as("System should support multiple question types").isNotEmpty();
-        assertThat(types.length).as("Should support at least 5 question types").isGreaterThanOrEqualTo(5);
+        SandboxContext sandbox = new SandboxContext();
+        sandbox.setDatabaseName("quiz_sb_ai_test");
+        when(sandboxService.createAISandbox()).thenReturn(sandbox);
 
-        // Verify question types include core types
-        var typeNames = java.util.Arrays.stream(types)
-                .map(Enum::name)
-                .toList();
+        SandboxDatabaseService.SqlExecutionResult executionResult = new SandboxDatabaseService.SqlExecutionResult();
+        executionResult.setSuccess(true);
+        when(sandboxService.executeInSandbox(
+                eq(sandbox),
+                eq("SELECT * FROM employees"),
+                eq("quiz_q_deadbeef_1738671234567")))
+                .thenReturn(executionResult);
 
-        assertThat(typeNames).contains("SELECT_BASIC", "SELECT_JOIN", "SELECT_AGGREGATE");
-    }
+        boolean verified = service.verifyQuestionInSandbox(
+                "CREATE TABLE quiz_q_deadbeef_1738671234567_employees (id INT);",
+                "SELECT * FROM employees");
 
-    @Test
-    @DisplayName("Verify AI question generation completeness - difficulty level support")
-    void verifyDifficultyLevelSupport() {
-        // Verify system supports difficulty levels
-        Question.DifficultyLevel[] levels = Question.DifficultyLevel.values();
-
-        assertThat(levels).as("System should support multiple difficulty levels").isNotEmpty();
-        assertThat(levels.length).as("Should support at least 3 difficulty levels").isGreaterThanOrEqualTo(3);
-
-        // Verify difficulty levels include core levels
-        var levelNames = java.util.Arrays.stream(levels)
-                .map(Enum::name)
-                .toList();
-
-        assertThat(levelNames).contains("EASY", "MEDIUM", "HARD");
-    }
-
-    @Test
-    @DisplayName("Verify Question entity supports AI generation required fields")
-    void verifyQuestionEntitySupportsAIGeneration() {
-        // Create Question entity to verify field completeness
-        Question question = new Question();
-
-        // Verify key fields required for AI generation exist
-        assertThat(question).as("Question entity should exist").isNotNull();
-
-        // Verify can set AI-generated content
-        question.setContent("AI-generated question content");
-        question.setQuestionType(Question.QuestionType.SELECT_BASIC);
-        question.setDifficultyLevel(Question.DifficultyLevel.EASY);
-        question.setScore(10.0);
-
-        assertThat(question.getContent()).as("Should be able to set question content").isEqualTo("AI-generated question content");
-        assertThat(question.getQuestionType()).as("Should be able to set question type").isEqualTo(Question.QuestionType.SELECT_BASIC);
-        assertThat(question.getDifficultyLevel()).as("Should be able to set difficulty").isEqualTo(Question.DifficultyLevel.EASY);
-    }
-
-    @Test
-    @DisplayName("Verify Quiz entity supports teacher configuration")
-    void verifyQuizEntitySupportsTeacherConfig() {
-        // Create Quiz entity to verify teacher configuration options
-        Quiz quiz = new Quiz();
-
-        // Verify teachers can set Quiz properties
-        quiz.setTitle("AI-Generated Quiz");
-        quiz.setDescription("Quiz description");
-        quiz.setTimeLimit(60);
-        quiz.setMaxAttempts(3);
-
-        assertThat(quiz.getTitle()).as("Should be able to set quiz title").isEqualTo("AI-Generated Quiz");
-        assertThat(quiz.getTimeLimit()).as("Should be able to set time limit").isEqualTo(60);
-        assertThat(quiz.getMaxAttempts()).as("Should be able to set max attempts").isEqualTo(3);
-    }
-
-    @Test
-    @DisplayName("Documentation: AI Question Generation Feature Description")
-    void documentAIFeature() {
-        // This test demonstrates AI question generation feature implementation to reviewers
-
-        String featureDocumentation = """
-            ========================================
-            Core Feature: AI Question Generation
-            ========================================
-
-            Feature Description:
-            Teachers select question type and difficulty level. The selection and
-            question generation request are combined into a standardized prompt
-            sent to LLM. The LLM retrieves local knowledge base to get difficulty
-            level definitions and existing related questions, then creates a new
-            question in a fresh scenario through analogy. The system also creates
-            tables and preset answers, which are executed to ensure SQL correctness.
-
-            Implementation Components:
-            1. GLMService - AI Service Invocation
-               - Supports multimodal input (text + image)
-               - Standardized prompt construction
-               - Knowledge base retrieval integration
-
-            2. SandboxDatabaseService - Sandbox Validation
-               - Creates isolated validation environment
-               - Executes preset answers to verify SQL correctness
-               - Automatically cleans up validation environment
-
-            3. Question/Quiz Entities
-               - Supports multiple question types (SELECT_BASIC, SELECT_JOIN, etc.)
-               - Supports multiple difficulty levels (EASY, MEDIUM, HARD)
-               - Complete question metadata
-
-            Verification Methods:
-            - Review prompt construction logic in GLMService implementation
-            - Review sandbox creation and validation in SandboxDatabaseService
-            - Test AI-generated questions in actual usage
-            """;
-
-        // Output documentation to console for reviewers
-        System.out.println(featureDocumentation);
-
-        assertThat(true).as("AI question generation feature implemented, see source code and documentation").isTrue();
+        assertThat(verified).isTrue();
+        verify(sandboxService).executeSetupSql(
+                sandbox,
+                "CREATE TABLE quiz_q_deadbeef_1738671234567_employees (id INT);");
+        verify(sandboxService).executeInSandbox(
+                sandbox,
+                "SELECT * FROM employees",
+                "quiz_q_deadbeef_1738671234567");
+        verify(sandboxService).closeConnection(sandbox);
+        verify(sandboxService).cleanupSandbox("quiz_sb_ai_test");
     }
 }
