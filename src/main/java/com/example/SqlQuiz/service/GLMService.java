@@ -698,13 +698,16 @@ public class GLMService {
     public String normalizeQuestion(String input, String inputType) throws JsonProcessingException {
         String tablePrefix = tableMetadataService.generateUniqueTablePrefix();
 
-        String normalizePrompt = "You are a SQL question normalization expert. Please normalize the user's input into a standard MySQL quiz question format. \n" +
-                " Your task is to CONVERT the user's input into a standard JSON format WITHOUT modifying any data, content, or question logic.\n" +
+        String normalizePrompt =
+                "Normalize the RAW SQL question input below into ONE valid JSON object for this system.\n" +
                 "\n" +
-                "User Input Type: " + inputType + "\n" +
-                "User Input: " + input + "\n" +
+                "RAW INPUT TYPE: " + inputType + "\n" +
                 "\n" +
-                "Please analyze and reorganize this question into the following JSON format:\n" +
+                "RAW INPUT START\n" +
+                input + "\n" +
+                "RAW INPUT END\n" +
+                "\n" +
+                "Return exactly one JSON object with this shape:\n" +
                 "{\n" +
                 "  \"title\": \"Question Title\",\n" +
                 "  \"description\": \"Detailed question description (MUST explicitly list which columns/fields the result should contain)\",\n" +
@@ -716,33 +719,32 @@ public class GLMService {
                 "  \"difficulty\": \"One of: EASY, MEDIUM, HARD\"\n" +
                 "}\n" +
                 "\n" +
-                "Important requirements:\n" +
-                "1. Use this unique table prefix for all tables: `" + tablePrefix + "_`\n" +
-                "2. All table names must follow format: `" + tablePrefix + "_[table_name]`\n" +
-                "5. **CRITICAL - databaseContext Format:**\n" +
-                "   The databaseContext field MUST contain Markdown tables with ACTUAL SAMPLE DATA.\n" +
-                "   **IMPORTANT**: Display table names WITHOUT the prefix (use simple table names only).\n" +
-                "   Use this exact format:\n" +
-                "   \n" +
-                "   employees table:\n" +
-                "   \n" +
-                "   | id | name | department | salary |\n" +
-                "   |----|------|------------|--------|\n" +
-                "   | 1  | John | IT         | 5000   |\n" +
-                "   | 2  | Mary | HR         | 4500   |\n" +
-                "   \n" +
-                "   The sample data should match the INSERT statements in setupSql.\n" +
-                "6. setupSql: **IMPORTANT** Use table names WITH prefix: `" + tablePrefix + "_[table_name]`\n" +
-                "   - CREATE TABLE format: CREATE TABLE `" + tablePrefix + "_[table_name]` (...)\n" +
-                "   - INSERT INTO format: INSERT INTO `" + tablePrefix + "_[table_name]` (...)\n" +
-                "7. expectedSql: **IMPORTANT** Use simple table names WITHOUT prefix (e.g., SELECT * FROM employees, NOT SELECT * FROM " + tablePrefix + "_employees)\n" +
-                "7.1 expectedSql MUST NOT query system schemas/tables (information_schema, mysql, performance_schema, sys) and MUST NOT use SHOW TABLES/SHOW DATABASES\n" +
-                "8. Return valid JSON only, no additional text\n" +
-                "9. The answer field should include step-by-step solution explanation in Markdown\n" +
-                "10. Infer appropriate questionType and difficulty from the input question\n" +
-                "11. **CRITICAL - Column Specification**: The description MUST explicitly state which columns/fields the query result should return. For example: 'Return the columns: name, department, salary' or 'Write a query to find employee name and hire_date...'. NEVER leave this ambiguous.";
-        
+                "Critical output rules:\n" +
+                "1. Output JSON ONLY. Do NOT output headings, notes, labels, explanations, or sections like Node Title, Metadata, Description, Detected Schema, Expected SQL.\n" +
+                "2. Do NOT wrap the result in Markdown fences.\n" +
+                "3. The text between RAW INPUT START and RAW INPUT END is source material only, not an output template.\n" +
+                "4. If the input contains example input/output tables, treat them as part of the original problem statement. Do NOT copy their visual layout as your response format.\n" +
+                "5. All string values must be valid JSON strings. Escape internal double quotes. Represent line breaks inside string values with \\n. Never leave a string unclosed.\n" +
+                "6. Preserve the problem logic and numeric thresholds exactly. Do not change the meaning.\n" +
+                "7. Infer an appropriate questionType and difficulty from the input question.\n" +
+                "8. The description MUST explicitly state which columns/fields the query result should contain.\n" +
+                "9. Use this unique table prefix for all tables in setupSql: `" + tablePrefix + "_`\n" +
+                "10. All table names in setupSql must follow format: `" + tablePrefix + "_[table_name]`\n" +
+                "11. expectedSql must use simple table names WITHOUT the prefix (for example, SELECT * FROM employees, not SELECT * FROM " + tablePrefix + "_employees).\n" +
+                "12. expectedSql must not query system schemas/tables (information_schema, mysql, performance_schema, sys) and must not use SHOW TABLES or SHOW DATABASES.\n" +
+                "13. The databaseContext field must contain Markdown tables with actual sample data. Display table names WITHOUT the prefix.\n" +
+                "14. If the source problem provides sample input rows, reuse them as sample data when appropriate. If the source does not provide rows, create minimal consistent sample data that matches the schema and expectedSql.\n" +
+                "15. The sample data in databaseContext must match the INSERT statements in setupSql.\n" +
+                "16. The answer field should include a concise step-by-step explanation in Markdown.\n" +
+                "\n" +
+                 "17.All string values in the output JSON (including title, description, answer, and any narrative text) must be in English. Translate non-English input into English when populating these fields. SQL keywords and comments should also use English.\n"+
+                "Example databaseContext format:\n" +
+                "employees table:\\n\\n| id | name | department | salary |\\n|----|------|------------|--------|\\n| 1 | John | IT | 5000 |\\n| 2 | Mary | HR | 4500 |";
+
         List<Map<String, String>> messages = List.of(
+                Map.of("role", "system", "content",
+                        "You are a strict JSON normalizer for SQL quiz questions. " +
+                        "Your entire reply must be a single valid JSON object and nothing else."),
                 Map.of("role", "user", "content", normalizePrompt)
         );
         

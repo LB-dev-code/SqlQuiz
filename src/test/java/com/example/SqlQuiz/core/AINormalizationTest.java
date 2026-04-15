@@ -43,8 +43,9 @@ class AINormalizationTest {
             assertThat(json.get("title").asText()).isEqualTo("Orders");
             assertThat(json.get("questionType").asText()).isEqualTo("SELECT_JOIN");
             assertThat(server.lastRequestBody()).contains("quiz_q_deadbeef_1738671234567_[table_name]");
-            assertThat(server.lastRequestBody()).contains("User Input Type: text");
+            assertThat(server.lastRequestBody()).contains("RAW INPUT TYPE: text");
             assertThat(server.lastRequestBody()).contains("Find orders with customer names");
+            assertThat(server.lastRequestBody()).contains("Output JSON ONLY");
         }
     }
 
