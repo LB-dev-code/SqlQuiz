@@ -1,0 +1,88 @@
+# Copy this file to application.properties and fill in your own values.
+# Never commit application.properties — it holds live credentials.
+
+spring.application.name=SqlQuiz
+
+# --- Primary database: business data (users, quizzes, submissions, practice) ---
+spring.datasource.primary.url=jdbc:mysql://localhost:3306/mysql_quiz_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+spring.datasource.primary.username=root
+spring.datasource.primary.password=CHANGE_ME
+spring.datasource.primary.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.primary.hikari.maximum-pool-size=20
+spring.datasource.primary.hikari.minimum-idle=5
+spring.datasource.primary.hikari.connection-timeout=30000
+spring.datasource.primary.hikari.idle-timeout=600000
+spring.datasource.primary.hikari.max-lifetime=1800000
+
+# --- Test database: per-question reference datasets (tables named {prefix}_{table}) ---
+spring.datasource.test.url=jdbc:mysql://localhost:3306/mysql_test_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+spring.datasource.test.username=root
+spring.datasource.test.password=CHANGE_ME
+spring.datasource.test.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.test.hikari.maximum-pool-size=20
+spring.datasource.test.hikari.minimum-idle=5
+spring.datasource.test.hikari.connection-timeout=30000
+spring.datasource.test.hikari.idle-timeout=600000
+spring.datasource.test.hikari.max-lifetime=1800000
+
+# --- Sandbox admin: creates and drops throwaway schemas ---
+# Credentials must match database/create_sandbox_user.sql
+spring.datasource.sandbox-admin.url=jdbc:mysql://localhost:3306/mysql?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+spring.datasource.sandbox-admin.username=quiz_sandbox_admin
+spring.datasource.sandbox-admin.password=CHANGE_ME
+spring.datasource.sandbox-admin.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.sandbox-admin.hikari.maximum-pool-size=5
+spring.datasource.sandbox-admin.hikari.minimum-idle=2
+spring.datasource.sandbox-admin.hikari.connection-timeout=30000
+spring.datasource.sandbox-admin.hikari.idle-timeout=600000
+spring.datasource.sandbox-admin.hikari.max-lifetime=1800000
+
+# --- Sandbox user: the restricted account student SQL executes as ---
+spring.datasource.sandbox-user.url=jdbc:mysql://localhost:3306/?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+spring.datasource.sandbox-user.username=quiz_sandbox_user
+spring.datasource.sandbox-user.password=CHANGE_ME
+spring.datasource.sandbox-user.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.sandbox-user.hikari.maximum-pool-size=10
+spring.datasource.sandbox-user.hikari.minimum-idle=5
+spring.datasource.sandbox-user.hikari.connection-timeout=30000
+spring.datasource.sandbox-user.hikari.idle-timeout=600000
+spring.datasource.sandbox-user.hikari.max-lifetime=1800000
+
+# --- JPA ---
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# --- Thymeleaf ---
+spring.thymeleaf.cache=false
+spring.thymeleaf.encoding=UTF-8
+spring.thymeleaf.mode=HTML
+
+# --- Server ---
+server.port=8080
+server.servlet.context-path=/
+
+# --- Logging ---
+logging.level.com.example.SqlQuiz=DEBUG
+logging.level.org.springframework.security=DEBUG
+logging.level.org.thymeleaf=DEBUG
+
+# --- Zhipu AI (https://open.bigmodel.cn) ---
+glm.api-key=CHANGE_ME
+glm.base-url=https://open.bigmodel.cn
+glm.model=glm-4-air
+
+# --- Mail (verification codes) ---
+spring.mail.host=smtp.163.com
+spring.mail.port=465
+spring.mail.username=CHANGE_ME@163.com
+spring.mail.password=CHANGE_ME
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.ssl.enable=true
+spring.mail.properties.mail.smtp.ssl.required=true
+spring.mail.protocol=smtps
+
+# --- Email verification ---
+app.mail.from=CHANGE_ME@163.com
+app.verification.code-expiry-minutes=5

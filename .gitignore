@@ -1,6 +1,9 @@
 ### Local configuration — holds live credentials, never commit ###
 src/main/resources/application.properties
 
+### Claude Code local permission cache — contains machine-specific paths ###
+.claude/settings.local.json
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar

@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.sql.DataSource;
@@ -33,6 +34,14 @@ public class SandboxDatabaseService {
     @Autowired
     @Qualifier("testDataSource")
     private DataSource testDataSource;
+
+    // 沙库执行用户的凭证。每个沙库的库名不同，无法复用 userDataSource 的连接池，
+    // 因此这里手动建连；账号密码仍从配置读取，避免写死在代码里。
+    @Value("${spring.datasource.sandbox-user.username}")
+    private String sandboxUserUsername;
+
+    @Value("${spring.datasource.sandbox-user.password}")
+    private String sandboxUserPassword;
 
     private static final String SANDBOX_PRACTICE_PREFIX = "quiz_sb_practice_";
     private static final String SANDBOX_AI_PREFIX = "quiz_sb_ai_";
@@ -74,8 +83,8 @@ public class SandboxDatabaseService {
         try {
             Connection userConnection = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/" + dbName + "?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true",
-                "quiz_sandbox_user",
-                "quiz_sb_user_2024"
+                sandboxUserUsername,
+                sandboxUserPassword
             );
 
             SandboxContext context = new SandboxContext();
